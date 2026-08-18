@@ -1,0 +1,5 @@
+# platform	sha256	url
+linux-arm64-musl	fd9c36d74d04cf38bbcbbc028d715074222e28b7a31f11e9d839024eef7a3ad4	https://github.com/jdx/mise/releases/download/v2026.8.6/mise-v2026.8.6-linux-arm64-musl.tar.xz
+linux-x64-musl	e49c8e24faa14c7fa92e76fe70239cc01c394b800371a4b1c3948e4a21be6bfb	https://github.com/jdx/mise/releases/download/v2026.8.6/mise-v2026.8.6-linux-x64-musl.tar.xz
+macos-arm64	3fd2e1fcf38a261baeeb1df43c3b3ac951290efdecd11e03c4f9175eb8db7ce8	https://github.com/jdx/mise/releases/download/v2026.8.6/mise-v2026.8.6-macos-arm64.tar.xz
+macos-x64	a0de752b2b07519bcdf001bb25ff90c9b615b4bdcc8074d025c93526db08b8de	https://github.com/jdx/mise/releases/download/v2026.8.6/mise-v2026.8.6-macos-x64.tar.xz

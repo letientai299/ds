@@ -1,0 +1,102 @@
+[layers]
+core = [
+  "mise",
+  "git",
+  "curl",
+  "zsh",
+  "neovim",
+  "fd",
+  "fzf",
+  "ripgrep",
+  "nnn",
+  "jq",
+  "xh",
+]
+remote = [
+  "mise",
+  "git",
+  "curl",
+  "zsh",
+  "neovim",
+  "fd",
+  "fzf",
+  "ripgrep",
+  "nnn",
+  "jq",
+  "xh",
+  "tmux",
+  "docker",
+  "zoxide",
+  "bat",
+  "delta",
+]
+optional = ["starship"]
+
+[components.mise]
+commands = ["mise"]
+owner = "runtime"
+
+[components.git]
+commands = ["git"]
+owner = "native"
+
+[components.curl]
+commands = ["curl"]
+owner = "native"
+
+[components.zsh]
+commands = ["zsh"]
+owner = "native"
+
+[components.neovim]
+commands = ["nvim"]
+owner = "native"
+
+[components.fd]
+commands = ["fd"]
+owner = "mise"
+
+[components.fzf]
+commands = ["fzf"]
+owner = "mise"
+
+[components.ripgrep]
+commands = ["rg"]
+owner = "mise"
+
+[components.nnn]
+commands = ["nnn"]
+owner = "native"
+
+[components.jq]
+commands = ["jq"]
+owner = "mise"
+
+[components.xh]
+commands = ["xh"]
+owner = "mise"
+
+[components.tmux]
+commands = ["tmux"]
+owner = "native"
+
+[components.docker]
+commands = ["docker"]
+owner = "native"
+
+[components.zoxide]
+commands = ["zoxide"]
+owner = "mise"
+
+[components.bat]
+commands = ["bat"]
+owner = "mise"
+
+[components.delta]
+commands = ["delta"]
+owner = "mise"
+tool = "http-delta"
+
+[components.starship]
+commands = ["starship"]
+owner = "mise"

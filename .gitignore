@@ -1,4 +1,4 @@
 .ai.dump/
-mise.local.toml
-mise.*.local.toml
+.config/mise/config.local.toml
+.rumdl_cache/
 dist/

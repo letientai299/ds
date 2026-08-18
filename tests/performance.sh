@@ -4,8 +4,8 @@ set -eu
 
 root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
-dist=${DF_RUNTIME_DIST:-$root/dist/runtime}
-work=$(mktemp -d "${TMPDIR:-/tmp}/df-performance.XXXXXX")
+dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
+work=$(mktemp -d "${TMPDIR:-/tmp}/ds-performance.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 case "$(uname -s):$(uname -m)" in
@@ -20,17 +20,17 @@ Linux:x86_64 | Linux:amd64) platform=linux-x64-musl ;;
 esac
 
 snapshot=$work/snapshot
-archive=$work/df-performance.tar.gz
+archive=$work/ds-performance.tar.gz
 home=$work/home
 mkdir -p "$home"
 
-"$root/bundle/build.sh" \
+"$root/src/bundle/build.sh" \
 	--version performance \
 	--platform "$platform" \
 	--janet "$dist/bin/$platform/janet" \
 	--mise "$dist/bin/$platform/mise" \
 	--output "$snapshot" >/dev/null
-"$root/bundle/pack.sh" --snapshot "$snapshot" --output "$archive" >/dev/null
+"$root/src/bundle/pack.sh" --snapshot "$snapshot" --output "$archive" >/dev/null
 
 runtime_bytes=$(wc -c <"$dist/bin/$platform/janet" | tr -d ' ')
 mise_bytes=$(wc -c <"$dist/bin/$platform/mise" | tr -d ' ')
@@ -49,28 +49,28 @@ done
 measure() {
 	name=$1
 	command=$2
-	DF_BENCH_COMMAND=$command zsh -fc '
+	DS_BENCH_COMMAND=$command zsh -fc '
         zmodload zsh/datetime
         typeset -F start elapsed average
         start=$EPOCHREALTIME
-        repeat 25 { eval "$DF_BENCH_COMMAND" }
+        repeat 25 { eval "$DS_BENCH_COMMAND" }
         elapsed=$(( (EPOCHREALTIME - start) * 1000.0 ))
         average=$(( elapsed / 25.0 ))
         printf "%s_ms\t%.3f\n" "$1" "$average"
-    ' df-performance "$name"
+    ' ds-performance "$name"
 }
 
 measure_once() {
 	name=$1
 	command=$2
-	DF_BENCH_COMMAND=$command zsh -fc '
+	DS_BENCH_COMMAND=$command zsh -fc '
         zmodload zsh/datetime
         typeset -F start elapsed
         start=$EPOCHREALTIME
-        eval "$DF_BENCH_COMMAND"
+        eval "$DS_BENCH_COMMAND"
         elapsed=$(( (EPOCHREALTIME - start) * 1000.0 ))
         printf "%s_ms\t%.3f\n" "$1" "$elapsed"
-    ' df-performance "$name"
+    ' ds-performance "$name"
 }
 
 printf '%s\t%s\n' platform "$platform"
@@ -90,7 +90,7 @@ measure janet_startup "'$dist/bin/$platform/janet' -e '(print :ok)' >/dev/null"
 measure stage0_verify "'$snapshot/bootstrap.sh' --source '$snapshot' --manifest-sha256 '$manifest_sha' --verify-only >/dev/null"
 measure status_dispatch "$common '$snapshot/files/ds' status core >/dev/null"
 measure shell_init_dispatch "$common '$snapshot/files/ds' shell-init >/dev/null"
-measure portable_shell_source "$common PATH=/usr/bin:/bin zsh -dfc 'source $snapshot/files/dotfiles/shell.zsh'"
+measure portable_shell_source "$common PATH=/usr/bin:/bin zsh -dfc 'source $snapshot/files/src/dotfiles/shell.zsh'"
 
 remote_home=$work/remote-home
 fake_ssh=$work/fake-ssh
@@ -99,7 +99,7 @@ mkdir -p "$remote_home"
 printf '%s\n' \
 	'#!/bin/sh' \
 	'shift' \
-	'HOME=$DF_BENCH_REMOTE_HOME exec /bin/sh -c "$1"' >"$fake_ssh"
+	'HOME=$DS_BENCH_REMOTE_HOME exec /bin/sh -c "$1"' >"$fake_ssh"
 chmod 0755 "$fake_ssh"
-measure_once stage0_loopback_push "DF_BENCH_REMOTE_HOME='$remote_home' DF_SSH='$fake_ssh' '$root/bundle/push.sh' --snapshot '$snapshot' --host benchmark >/dev/null"
-measure stage0_idempotent_push "$common DF_BENCH_REMOTE_HOME='$remote_home' DF_SSH='$fake_ssh' '$root/bundle/push.sh' --snapshot '$snapshot' --host benchmark >/dev/null"
+measure_once stage0_loopback_push "DS_BENCH_REMOTE_HOME='$remote_home' DS_SSH='$fake_ssh' '$root/src/bundle/push.sh' --snapshot '$snapshot' --host benchmark >/dev/null"
+measure stage0_idempotent_push "$common DS_BENCH_REMOTE_HOME='$remote_home' DS_SSH='$fake_ssh' '$root/src/bundle/push.sh' --snapshot '$snapshot' --host benchmark >/dev/null"

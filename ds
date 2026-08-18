@@ -9,18 +9,21 @@ die() {
 
 script_dir=$(dirname -- "$0")
 script_dir=$(CDPATH='' cd "$script_dir" && pwd)
-df_root=${DF_ROOT:-$script_dir}
+ds_root=${DS_ROOT:-$script_dir}
+# A checkout and a delivered snapshot share one layout: `ds` at the root and
+# every payload under `src/`.
+ds_src=$ds_root/src
 os=$(uname -s)
 arch=$(uname -m)
 
 if [ "${1:-}" = push ]; then
-	[ -x "$df_root/bundle/controller.sh" ] || die 'push is available only from a controller checkout'
+	[ -x "$ds_src/bundle/controller.sh" ] || die 'push is available only from a controller checkout'
 	shift
-	exec "$df_root/bundle/controller.sh" "$@"
+	exec "$ds_src/bundle/controller.sh" "$@"
 fi
 
-if [ -n "${DF_JANET:-}" ]; then
-	janet=$DF_JANET
+if [ -n "${DS_JANET:-}" ]; then
+	janet=$DS_JANET
 else
 	case "$os:$arch" in
 	Darwin:arm64) platform=macos-arm64 ;;
@@ -29,18 +32,18 @@ else
 	Linux:x86_64 | Linux:amd64) platform=linux-x64-musl ;;
 	*) die "unsupported platform: $os $arch" ;;
 	esac
-	janet=$df_root/runtime/bin/$platform/janet
-	if [ ! -x "$janet" ] && [ -x "$df_root/dist/runtime/bin/$platform/janet" ]; then
-		janet=$df_root/dist/runtime/bin/$platform/janet
+	janet=$ds_src/runtime/bin/$platform/janet
+	if [ ! -x "$janet" ] && [ -x "$ds_root/dist/runtime/bin/$platform/janet" ]; then
+		janet=$ds_root/dist/runtime/bin/$platform/janet
 	fi
 fi
 
 [ -x "$janet" ] || die "pinned Janet runtime is missing: $janet"
 
-export DF_ROOT="$df_root"
-export DF_OS="$os"
-export DF_ARCH="$arch"
-DF_UID=$(id -u)
-export DF_UID
-export JANET_PATH="$df_root"
-exec "$janet" "$df_root/scripts/main.janet" "$@"
+export DS_ROOT="$ds_root"
+export DS_OS="$os"
+export DS_ARCH="$arch"
+DS_UID=$(id -u)
+export DS_UID
+export JANET_PATH="$ds_src"
+exec "$janet" "$ds_src/scripts/main.janet" "$@"

@@ -9,11 +9,14 @@ mise run verify
 ```
 
 `check` runs ShellCheck, C syntax checks, TOML formatting, generated-data
-validation, Janet compile checks, unit tests, and shell contracts.
+validation, Janet compile checks, unit tests, and shell contracts. The contract
+covers all four delivery transports end to end: the release installer, the
+served-directory pull with both Curl and Wget, the SSH push, and a manual
+archive. It also asserts that reinstalling the same release is idempotent and
+that a mismatched archive checksum is rejected.
 
-`e2e:all` launches all seven end-to-end targets concurrently with seven mise
-jobs. It uses `--continue-on-error`, so one failure does not discard sibling
-results.
+`e2e:all` launches every end-to-end target concurrently with seven mise jobs. It
+uses `--continue-on-error`, so one failure does not discard sibling results.
 
 `verify` adds runtime execution and reproducibility to the static and E2E
 matrix.
@@ -60,6 +63,10 @@ Benchmarks record bundle size, startup, cold/no-op layer behavior, received
 bytes, cache use, and component disk size without setting release thresholds.
 
 ## Manual boundaries
+
+`mise run try` opens a shell in a container with a layer applied, which covers
+the look and feel questions a test suite cannot assert. See
+[Try ds in Docker](try.md).
 
 Containers cannot prove:
 

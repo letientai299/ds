@@ -7,13 +7,13 @@ fail() {
 	exit 1
 }
 
-: "${DF_ALPINE_IMAGE:?run through mise so DF_ALPINE_IMAGE is set}"
-: "${DF_UBUNTU_IMAGE:?run through mise so DF_UBUNTU_IMAGE is set}"
+: "${DS_ALPINE_IMAGE:?run through mise so DS_ALPINE_IMAGE is set}"
+: "${DS_UBUNTU_IMAGE:?run through mise so DS_UBUNTU_IMAGE is set}"
 
 root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
-dist=${DF_RUNTIME_DIST:-$root/dist/runtime}
-work=$(mktemp -d "${TMPDIR:-/tmp}/df-core.XXXXXX")
+dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
+work=$(mktemp -d "${TMPDIR:-/tmp}/ds-core.XXXXXX")
 host_uid=$(id -u)
 host_gid=$(id -g)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -27,7 +27,7 @@ run_case() {
 	home=$work/home-$platform-$name
 
 	if [ ! -d "$snapshot" ]; then
-		"$root/bundle/build.sh" \
+		"$root/src/bundle/build.sh" \
 			--version 0.1.0-core \
 			--platform "$platform" \
 			--janet "$dist/bin/$platform/janet" \
@@ -47,7 +47,7 @@ run_case() {
 		--env XDG_DATA_HOME=/home/test/.local/share \
 		--env XDG_STATE_HOME=/home/test/.local/state \
 		--env MISE_CACHE_DIR=/home/test/.cache/mise \
-		--env MISE_CONFIG_DIR=/home/test/.config/df/mise \
+		--env MISE_CONFIG_DIR=/home/test/.config/ds/mise \
 		--env MISE_DATA_DIR=/home/test/.local/share/mise \
 		--env MISE_STATE_DIR=/home/test/.local/state/mise \
 		--env DEBIAN_FRONTEND=noninteractive \
@@ -57,40 +57,40 @@ run_case() {
             set -eu
             installed=$(/snapshot/bootstrap.sh \
                 --source /snapshot \
-                --prefix "$HOME/.local/share/df" \
+                --prefix "$HOME/.local/share/ds" \
                 --manifest-sha256 "$1")
             "$installed/ds" apply core
             "$installed/ds" status core
             "$installed/ds" apply core
             "$installed/ds" status core
-			find "$HOME" -print | sort > /tmp/df-before-paths
-			find "$HOME" -type f -exec sha256sum {} \; | sort > /tmp/df-before-hashes
+			find "$HOME" -print | sort > /tmp/ds-before-paths
+			find "$HOME" -type f -exec sha256sum {} \; | sort > /tmp/ds-before-hashes
 		zsh -f -c "
 				set -e
-				source \"$HOME/.config/df/shell.zsh\"
+				source \"$HOME/.config/ds/shell.zsh\"
 				echo shell-sourced
                 command -v mise fd fzf rg nvim nnn jq xh ds >/dev/null
 				echo commands-present
                 [ -f \"$HOME/.config/nvim/init.lua\" ]
 				echo nvim-config-present
             "
-			find "$HOME" -print | sort > /tmp/df-after-paths
-			find "$HOME" -type f -exec sha256sum {} \; | sort > /tmp/df-after-hashes
-			if ! cmp -s /tmp/df-before-paths /tmp/df-after-paths; then
+			find "$HOME" -print | sort > /tmp/ds-after-paths
+			find "$HOME" -type f -exec sha256sum {} \; | sort > /tmp/ds-after-hashes
+			if ! cmp -s /tmp/ds-before-paths /tmp/ds-after-paths; then
 				printf "%s\n" "paths added during shell startup"
-				comm -13 /tmp/df-before-paths /tmp/df-after-paths
+				comm -13 /tmp/ds-before-paths /tmp/ds-after-paths
 				printf "%s\n" "paths removed during shell startup"
-				comm -23 /tmp/df-before-paths /tmp/df-after-paths
+				comm -23 /tmp/ds-before-paths /tmp/ds-after-paths
 				exit 1
 			fi
-			if ! cmp -s /tmp/df-before-hashes /tmp/df-after-hashes; then
+			if ! cmp -s /tmp/ds-before-hashes /tmp/ds-after-hashes; then
 				printf "%s\n" "file hashes changed during shell startup"
-				diff -u /tmp/df-before-hashes /tmp/df-after-hashes || true
+				diff -u /tmp/ds-before-hashes /tmp/ds-after-hashes || true
 				exit 1
 			fi
 			zsh -f -c "
 				set -e
-				source \"$HOME/.config/df/shell.zsh\"
+				source \"$HOME/.config/ds/shell.zsh\"
                 fd --version >/dev/null
                 fzf --version >/dev/null
                 rg --version >/dev/null
@@ -101,7 +101,7 @@ run_case() {
 			if [ "$2" = alpine ]; then
 				zsh -f -c "
 					set -e
-					source \"$HOME/.config/df/shell.zsh\"
+					source \"$HOME/.config/ds/shell.zsh\"
 					[[ -z \"\${STARSHIP_SHELL:-}\" ]]
 					ds add starship
 					[[ \"\$STARSHIP_SHELL\" = zsh ]]
@@ -115,13 +115,13 @@ run_case() {
 				fi
 				zsh -f -c "
 					set -e
-					source \"$HOME/.config/df/shell.zsh\"
+					source \"$HOME/.config/ds/shell.zsh\"
 					[[ -z \"\${STARSHIP_SHELL:-}\" ]]
 				"
 			fi
             printf "%s\n" shell-ready
             chown -R "$HOST_UID:$HOST_GID" "$HOME"
-		' df-core "$manifest_sha" "$name" >"$work/$platform-$name.out"; then
+		' ds-core "$manifest_sha" "$name" >"$work/$platform-$name.out"; then
 		cat "$work/$platform-$name.out" >&2
 		fail "$name $platform container checks failed"
 	fi
@@ -139,27 +139,27 @@ run_case() {
 	fi
 }
 
-case "${DF_CORE_CASES:-native}" in
+case "${DS_CORE_CASES:-native}" in
 native)
 	case "$(uname -m)" in
 	arm64 | aarch64)
-		run_case linux-arm64-musl linux/arm64 "$DF_ALPINE_IMAGE" alpine
-		run_case linux-arm64-musl linux/arm64 "$DF_UBUNTU_IMAGE" ubuntu
+		run_case linux-arm64-musl linux/arm64 "$DS_ALPINE_IMAGE" alpine
+		run_case linux-arm64-musl linux/arm64 "$DS_UBUNTU_IMAGE" ubuntu
 		;;
 	x86_64 | amd64)
-		run_case linux-x64-musl linux/amd64 "$DF_ALPINE_IMAGE" alpine
-		run_case linux-x64-musl linux/amd64 "$DF_UBUNTU_IMAGE" ubuntu
+		run_case linux-x64-musl linux/amd64 "$DS_ALPINE_IMAGE" alpine
+		run_case linux-x64-musl linux/amd64 "$DS_UBUNTU_IMAGE" ubuntu
 		;;
 	*) fail 'unsupported native architecture' ;;
 	esac
 	;;
 all)
-	run_case linux-arm64-musl linux/arm64 "$DF_ALPINE_IMAGE" alpine
-	run_case linux-arm64-musl linux/arm64 "$DF_UBUNTU_IMAGE" ubuntu
-	run_case linux-x64-musl linux/amd64 "$DF_ALPINE_IMAGE" alpine
-	run_case linux-x64-musl linux/amd64 "$DF_UBUNTU_IMAGE" ubuntu
+	run_case linux-arm64-musl linux/arm64 "$DS_ALPINE_IMAGE" alpine
+	run_case linux-arm64-musl linux/arm64 "$DS_UBUNTU_IMAGE" ubuntu
+	run_case linux-x64-musl linux/amd64 "$DS_ALPINE_IMAGE" alpine
+	run_case linux-x64-musl linux/amd64 "$DS_UBUNTU_IMAGE" ubuntu
 	;;
-*) fail 'DF_CORE_CASES must be native or all' ;;
+*) fail 'DS_CORE_CASES must be native or all' ;;
 esac
 
 printf '%s\n' 'core: ok'

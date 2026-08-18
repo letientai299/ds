@@ -7,12 +7,12 @@ fail() {
 	exit 1
 }
 
-: "${DF_ROCKY_IMAGE:?run through mise so DF_ROCKY_IMAGE is set}"
+: "${DS_ROCKY_IMAGE:?run through mise so DS_ROCKY_IMAGE is set}"
 
 root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
-dist=${DF_RUNTIME_DIST:-$root/dist/runtime}
-work=$(mktemp -d "${TMPDIR:-/tmp}/df-rocky.XXXXXX")
+dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
+work=$(mktemp -d "${TMPDIR:-/tmp}/ds-rocky.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 case "$(uname -m)" in
@@ -29,7 +29,7 @@ esac
 
 snapshot=$work/snapshot
 home=$work/home
-"$root/bundle/build.sh" \
+"$root/src/bundle/build.sh" \
 	--version 0.1.0-rocky \
 	--platform "$platform" \
 	--janet "$dist/bin/$platform/janet" \
@@ -48,14 +48,14 @@ docker run --rm \
 	--env XDG_DATA_HOME=/home/test/.local/share \
 	--env XDG_STATE_HOME=/home/test/.local/state \
 	--env MISE_CACHE_DIR=/home/test/.cache/mise \
-	--env MISE_CONFIG_DIR=/home/test/.config/df/mise \
+	--env MISE_CONFIG_DIR=/home/test/.config/ds/mise \
 	--env MISE_DATA_DIR=/home/test/.local/share/mise \
 	--env MISE_STATE_DIR=/home/test/.local/state/mise \
-	"$DF_ROCKY_IMAGE" /bin/sh -c '
+	"$DS_ROCKY_IMAGE" /bin/sh -c '
         set -eu
         installed=$(/snapshot/bootstrap.sh \
             --source /snapshot \
-            --prefix "$HOME/.local/share/df" \
+            --prefix "$HOME/.local/share/ds" \
             --manifest-sha256 "$1")
         "$installed/ds" apply core
         "$installed/ds" status core >"$HOME/status-first"
@@ -65,11 +65,11 @@ docker run --rm \
         grep -q "^core: complete$" "$HOME/status-second"
         zsh -f -c "
             set -e
-            source \"$HOME/.config/df/shell.zsh\"
+            source \"$HOME/.config/ds/shell.zsh\"
             command -v mise fd fzf rg nvim nnn jq xh ds >/dev/null
             nvim --version >/dev/null
             nnn -V >/dev/null
         "
-    ' df-rocky "$manifest_sha"
+    ' ds-rocky "$manifest_sha"
 
 printf '%s\n' 'rocky: ok'

@@ -7,12 +7,12 @@ fail() {
 	exit 1
 }
 
-: "${DF_UBUNTU_IMAGE:?run through mise so DF_UBUNTU_IMAGE is set}"
+: "${DS_UBUNTU_IMAGE:?run through mise so DS_UBUNTU_IMAGE is set}"
 
 root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
-dist=${DF_RUNTIME_DIST:-$root/dist/runtime}
-work=$(mktemp -d "${TMPDIR:-/tmp}/df-performance-linux.XXXXXX")
+dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
+work=$(mktemp -d "${TMPDIR:-/tmp}/ds-performance-linux.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 case "$(uname -m)" in
@@ -30,7 +30,7 @@ esac
 snapshot=$work/snapshot
 home=$work/home
 mkdir -p "$home"
-"$root/bundle/build.sh" \
+"$root/src/bundle/build.sh" \
 	--version performance-linux \
 	--platform "$platform" \
 	--janet "$dist/bin/$platform/janet" \
@@ -48,15 +48,15 @@ docker run --rm \
 	--env XDG_DATA_HOME=/home/test/.local/share \
 	--env XDG_STATE_HOME=/home/test/.local/state \
 	--env MISE_CACHE_DIR=/home/test/.cache/mise \
-	--env MISE_CONFIG_DIR=/home/test/.config/df/mise \
+	--env MISE_CONFIG_DIR=/home/test/.config/ds/mise \
 	--env MISE_DATA_DIR=/home/test/.local/share/mise \
 	--env MISE_STATE_DIR=/home/test/.local/state/mise \
 	--env DEBIAN_FRONTEND=noninteractive \
-	"$DF_UBUNTU_IMAGE" /bin/sh -c '
+	"$DS_UBUNTU_IMAGE" /bin/sh -c '
         set -eu
         installed=$(/snapshot/bootstrap.sh \
             --source /snapshot \
-            --prefix "$HOME/.local/share/df" \
+            --prefix "$HOME/.local/share/ds" \
             --manifest-sha256 "$1")
 
 		timed_apply() {
@@ -111,6 +111,6 @@ docker run --rm \
 			size=$(dpkg-query -W -f="\${Installed-Size}" "$package")
             printf "native_package_%s_kib\t%s\n" "$package" "$size"
         done
-    ' df-performance-linux "$manifest_sha"
+    ' ds-performance-linux "$manifest_sha"
 
 printf '%s\n' 'performance-linux: ok'

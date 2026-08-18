@@ -22,13 +22,13 @@
 
 (def probed-alpine
   (platform/probe
-    {"DF_OS" "Linux" "DF_ARCH" "x86_64"}
+    {"DS_OS" "Linux" "DS_ARCH" "x86_64"}
     (fake-exists ["/lib/ld-musl-x86_64.so.1"])))
 (assert= :musl (get probed-alpine :libc) "probed Alpine libc")
 
 (def probed-ubuntu
   (platform/probe
-    {"DF_OS" "Linux" "DF_ARCH" "aarch64"}
+    {"DS_OS" "Linux" "DS_ARCH" "aarch64"}
     (fake-exists ["/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1"])))
 (assert= :glibc (get probed-ubuntu :libc) "probed Ubuntu libc")
 

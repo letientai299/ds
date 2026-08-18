@@ -7,13 +7,13 @@ fail() {
 	exit 1
 }
 
-: "${DF_ALPINE_IMAGE:?run through mise so DF_ALPINE_IMAGE is set}"
-: "${DF_UBUNTU_IMAGE:?run through mise so DF_UBUNTU_IMAGE is set}"
+: "${DS_ALPINE_IMAGE:?run through mise so DS_ALPINE_IMAGE is set}"
+: "${DS_UBUNTU_IMAGE:?run through mise so DS_UBUNTU_IMAGE is set}"
 
 root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
-dist=${DF_RUNTIME_DIST:-$root/dist/runtime}
-work=$(mktemp -d "${TMPDIR:-/tmp}/df-container.XXXXXX")
+dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
+work=$(mktemp -d "${TMPDIR:-/tmp}/ds-container.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 run_case() {
@@ -25,7 +25,7 @@ run_case() {
 	home=$work/home-$platform-$name
 
 	if [ ! -d "$snapshot" ]; then
-		"$root/bundle/build.sh" \
+		"$root/src/bundle/build.sh" \
 			--version 0.0.0-container \
 			--platform "$platform" \
 			--janet "$dist/bin/$platform/janet" \
@@ -61,22 +61,22 @@ run_case() {
             test ! -e "$HOME/.zshrc"
             installed=$(/snapshot/bootstrap.sh \
                 --source /snapshot \
-                --prefix "$HOME/.local/share/df" \
+                --prefix "$HOME/.local/share/ds" \
                 --manifest-sha256 "$1")
-            "$installed/runtime/bin/$2/mise" --version
+            "$installed/src/runtime/bin/$2/mise" --version
             "$installed/ds" status core
             test ! -e "$HOME/.zshrc"
             test ! -e "$HOME/.config/zsh/.zshrc"
-        ' df-container "$manifest_sha" "$platform" >"$work/$platform-$name.out"
+        ' ds-container "$manifest_sha" "$platform" >"$work/$platform-$name.out"
 
 	grep -q '^core: incomplete$' "$work/$platform-$name.out" || fail "$name $platform did not resolve core"
 	[ ! -e "$home/.zshrc" ] || fail "$name $platform touched .zshrc"
 	[ ! -e "$home/.config/zsh/.zshrc" ] || fail "$name $platform touched ZDOTDIR"
 }
 
-run_case linux-arm64-musl linux/arm64 "$DF_ALPINE_IMAGE" alpine
-run_case linux-arm64-musl linux/arm64 "$DF_UBUNTU_IMAGE" ubuntu
-run_case linux-x64-musl linux/amd64 "$DF_ALPINE_IMAGE" alpine
-run_case linux-x64-musl linux/amd64 "$DF_UBUNTU_IMAGE" ubuntu
+run_case linux-arm64-musl linux/arm64 "$DS_ALPINE_IMAGE" alpine
+run_case linux-arm64-musl linux/arm64 "$DS_UBUNTU_IMAGE" ubuntu
+run_case linux-x64-musl linux/amd64 "$DS_ALPINE_IMAGE" alpine
+run_case linux-x64-musl linux/amd64 "$DS_UBUNTU_IMAGE" ubuntu
 
 printf '%s\n' 'containers: ok'

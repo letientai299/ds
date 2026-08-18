@@ -4,8 +4,8 @@
   (unless (= expected actual)
     (error (string message ": expected " expected ", got " actual))))
 
-(def home (or (os/getenv "DF_TEST_HOME") (error "DF_TEST_HOME is required")))
-(def root (or (os/getenv "DF_ROOT") (error "DF_ROOT is required")))
+(def home (or (os/getenv "DS_TEST_HOME") (error "DS_TEST_HOME is required")))
+(def root (or (os/getenv "DS_ROOT") (error "DS_ROOT is required")))
 (def source (string home "/nvim-source"))
 (os/mkdir home)
 (os/mkdir source)
@@ -16,8 +16,8 @@
   {"HOME" home
    "XDG_CONFIG_HOME" (string home "/config")
    "PATH" (or (os/getenv "PATH") "/usr/bin:/bin")
-   "DF_MISE" (or (os/getenv "DF_MISE") (error "DF_MISE is required"))
-   "DF_NVIM_SOURCE" source})
+   "DS_MISE" (or (os/getenv "DS_MISE") (error "DS_MISE is required"))
+   "DS_NVIM_SOURCE" source})
 (defn runner [_argv _environment] 0)
 
 (managed/mkdir-parent runner environment existing-mise)
@@ -49,7 +49,7 @@
                              (managed/conflicts root environment "core"))) :state)
          "linked rc is a conflict")
 
-(spit (string home "/config/df/shell.zsh") "user-owned\n")
+(spit (string home "/config/ds/shell.zsh") "user-owned\n")
 (assert= :conflict
          (get (first (managed/conflicts root environment "core")) :state)
          "existing dedicated file is a conflict")
@@ -58,11 +58,11 @@
 (managed/prepare real-runner root environment "core" :adopt)
 (managed/apply real-runner root environment "core")
 (assert= true
-         (not= nil (os/stat (string home "/config/df/shell.zsh.df-adopted")))
+         (not= nil (os/stat (string home "/config/ds/shell.zsh.ds-adopted")))
          "adoption keeps a backup")
 (managed/unapply real-runner root environment "core")
 (assert= "user-owned\n"
-         (string (slurp (string home "/config/df/shell.zsh")))
+         (string (slurp (string home "/config/ds/shell.zsh")))
          "unapply restores adopted content")
 (assert= old-zshrc (os/readlink (string home "/.zshrc")) "unapply restores linked rc")
 (assert= "old linked configuration\n" (string (slurp old-zshrc)) "adoption does not edit linked rc")

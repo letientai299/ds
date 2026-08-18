@@ -23,12 +23,12 @@
 (def observed @[])
 (defn fake-exists [path]
   (array/push observed path)
-  (= path "/isolated/home/.config/df/config"))
+  (= path "/isolated/home/.config/ds/config"))
 (assert= true
-         (filesystem/exists-in? fake-root ".config/df/config" fake-exists)
+         (filesystem/exists-in? fake-root ".config/ds/config" fake-exists)
          "filesystem probe uses injected root")
 (assert= 1 (length observed) "filesystem probe count")
-(assert= "/isolated/home/.config/df/config" (first observed) "filesystem probe stays isolated")
+(assert= "/isolated/home/.config/ds/config" (first observed) "filesystem probe stays isolated")
 
 (var unsafe-failed? false)
 (try

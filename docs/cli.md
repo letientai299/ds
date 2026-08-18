@@ -3,6 +3,11 @@
 Run commands through `./ds` in a controller checkout or through the installed
 `~/.local/bin/ds` link.
 
+Delivery and demo entrypoints are separate scripts rather than subcommands,
+because they run before `ds` exists on the machine: `src/install.sh` and
+`src/try.sh` are documented in [Gitless delivery](delivery.md) and
+[Try ds in Docker](try.md).
+
 | Command                                                    | Purpose                                               |
 | ---------------------------------------------------------- | ----------------------------------------------------- |
 | `ds status LAYER`                                          | Report component and managed-file state               |
@@ -25,7 +30,7 @@ Run commands through `./ds` in a controller checkout or through the installed
 
 Normal `apply` stops before managed-file changes if a target conflicts.
 
-`adopt` moves each conflict to `<target>.df-adopted`, applies the managed
+`adopt` moves each conflict to `<target>.ds-adopted`, applies the managed
 version, and lets `unapply` restore the original. Adoption fails rather than
 overwrite an existing backup.
 
@@ -45,13 +50,13 @@ ds push HOST LAYER \
 - `--platform` overrides the SSH platform probe. Supported values are
   `macos-arm64`, `macos-x64`, `linux-arm64-musl`, and `linux-x64-musl`.
 - `--prefix` changes the content-addressed installation root relative to the
-  remote home. The default is `.local/share/df`.
+  remote home. The default is `.local/share/ds`.
 - `--home` applies inside an isolated relative home beneath the remote home.
 - `--dry-run` delivers the snapshot and previews its layer application.
 - `--deliver-only` installs the versioned snapshot without applying a layer.
 
-Push is available only from a controller checkout because delivered snapshots
-do not contain the controller transport scripts.
+Push is available only from a controller checkout because delivered snapshots do
+not contain the controller transport scripts.
 
 ## Rootful Docker boundary
 

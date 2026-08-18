@@ -1,20 +1,39 @@
 # Getting started
 
-## Requirements
+## Look before installing
 
-The controller checkout supports macOS and Linux on ARM64 and x64. Building the
-complete runtime matrix requires mise, Git, a C toolchain, and Docker. Applying
-a delivered snapshot does not require Git, Janet, mise, or a downloader to be
-preinstalled on the target.
+[Try ds in Docker](try.md) applies a layer inside a throwaway container and
+opens a shell in it. Nothing is written to your home, so it answers "what does
+this feel like" without a decision.
 
-The checkout expects these configuration sources:
+## Install
 
-- `../nvim.conf`, or a path supplied through `DF_NVIM_SOURCE`;
-- `../tmux.conf`, or a path supplied through `DF_TMUX_SOURCE` for `remote`.
+Installing a published release needs neither a checkout nor Git, Janet, mise, or
+a preinstalled downloader on the target:
 
-Delivery bundles contain committed Git exports of both sources.
+```sh
+curl -fsSL https://github.com/letientai299/ds/releases/latest/download/install.sh | sh
+```
 
-## Prepare the checkout
+Useful flags, all also available as `DS_`-prefixed environment variables:
+
+| Flag                | Effect                                                    |
+| ------------------- | --------------------------------------------------------- |
+| `--layer remote`    | Apply `remote` instead of `core`                          |
+| `--no-apply`        | Install the version directory without converging anything |
+| `--version v1.2.3`  | Pin a release tag instead of the latest                   |
+| `--prefix DIR`      | Install somewhere other than `~/.local/share/ds`          |
+| `--platform NAME`   | Skip `uname` detection                                    |
+| `--release-url URL` | Use a mirror instead of GitHub releases                   |
+
+Reinstalling the same release is a no-op: version directories are immutable and
+content-addressed, so the installer reuses an existing one.
+
+## Prepare a checkout
+
+A checkout is needed only to develop `ds` or to push to an SSH host. It supports
+macOS and Linux on ARM64 and x64, and building the complete runtime matrix
+requires mise, Git, a C toolchain, and Docker.
 
 ```sh
 mise install
@@ -23,8 +42,16 @@ mise run runtime:fetch-mise
 mise run check
 ```
 
-The first command installs development tooling selected by `.miserc.toml`.
-Runtime tasks build Janet and fetch mise for macOS and Linux, ARM64 and x64.
+The first command installs development tooling from `.config/mise/config.toml`,
+which also defines every task. Runtime tasks build Janet and fetch mise for
+macOS and Linux, ARM64 and x64.
+
+A checkout expects these configuration sources:
+
+- `../nvim.conf`, or a path supplied through `DS_NVIM_SOURCE`;
+- `../tmux.conf`, or a path supplied through `DS_TMUX_SOURCE` for `remote`.
+
+Delivery bundles contain committed Git exports of both sources.
 
 ## Apply core safely
 
@@ -55,8 +82,8 @@ If a conflict should be preserved and replaced, use adoption:
 ./ds adopt core
 ```
 
-Each conflicting target moves to `<target>.df-adopted`. Adoption never follows
-a linked Zsh rc into another repository.
+Each conflicting target moves to `<target>.ds-adopted`. Adoption never follows a
+linked Zsh rc into another repository.
 
 ## Use the remote layer
 
@@ -101,8 +128,8 @@ Remove the selection with:
 ./ds unapply core
 ```
 
-Unapply removes only exact links and marker blocks owned by `df`. It restores
-available `.df-adopted` backups when the original target is absent. Installed
+Unapply removes only exact links and marker blocks owned by `ds`. It restores
+available `.ds-adopted` backups when the original target is absent. Installed
 system packages, mise tools, and versioned snapshots are additive and remain on
 disk.
 

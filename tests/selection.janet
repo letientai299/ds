@@ -5,7 +5,7 @@
   (unless (= expected actual)
     (error (string message ": expected " expected ", got " actual))))
 
-(def home (or (os/getenv "DF_TEST_HOME") (error "DF_TEST_HOME is required")))
+(def home (or (os/getenv "DS_TEST_HOME") (error "DS_TEST_HOME is required")))
 (def environment {"HOME" home "XDG_CONFIG_HOME" (string home "/config")})
 (os/mkdir home)
 

@@ -96,6 +96,8 @@ run_case() {
                 rg --version >/dev/null
                 jq --version >/dev/null
                 xh --version >/dev/null
+                nvim --version >/dev/null
+                nvim --headless --clean +qa
 				echo tools-executed
 			"
 			if [ "$2" = alpine ]; then

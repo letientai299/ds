@@ -2,31 +2,34 @@
 fd = "10.4.2"
 fzf = "0.74.2"
 jq = "1.8.2"
+neovim = { version = "0.12.5", postinstall = 'sh "{{config_root}}/../scripts/neovim-postinstall.sh"', install_env = { DS_NVIM_SOURCE_SHA256 = "a810c95332317bd0017e1ca07e376a8472c79075cbed00fa3737d190a8a0a45a" } }
 ripgrep = "15.2.0"
 xh = "0.26.2"
 
 [bootstrap.packages]
 "apk:ca-certificates" = "latest"
+"apk:build-base" = "latest"
+"apk:cmake" = "latest"
+"apk:coreutils" = "latest"
 "apk:curl" = "latest"
 "apk:git" = "latest"
-"apk:neovim" = "latest"
+"apk:gettext-tiny-dev" = "latest"
+"apk:linux-headers" = "latest"
+"apk:samurai" = "latest"
 "apk:nnn" = "latest"
 "apk:zsh" = "latest"
 "apt:ca-certificates" = "latest"
 "apt:curl" = "latest"
 "apt:git" = "latest"
-"apt:neovim" = "latest"
 "apt:nnn" = "latest"
 "apt:zsh" = "latest"
 "brew:ca-certificates" = { os = "macos" }
 "brew:git" = { os = "macos" }
-"brew:neovim" = { os = "macos" }
 "brew:nnn" = { os = "macos" }
 "brew:zsh" = { os = "macos" }
 "dnf:ca-certificates" = "latest"
 "dnf:curl-minimal" = "latest"
 "dnf:git" = "latest"
-"dnf:neovim" = "latest"
 "dnf:nnn" = "latest"
 "dnf:zsh" = "latest"
 

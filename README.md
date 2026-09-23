@@ -20,6 +20,10 @@ Linux][rocky], and macOS.
 `src/catalog.toml` is the source of truth for this table, and `ds status LAYER`
 prints what a layer actually resolves to on a given machine.
 
+Mise manages the pinned Neovim release directly. Alpine builds that release from
+checksum-verified source during installation; macOS and glibc Linux use upstream
+binaries. Later applies reuse the installed version.
+
 Neovim and Tmux configuration come from sibling `nvim.conf` and `tmux.conf`
 checkouts by default. A delivered snapshot contains Git-exported copies, so the
 target does not need those repositories.

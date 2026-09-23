@@ -35,7 +35,8 @@ while IFS= read -r component; do
 		version_key=$component
 		[ "$tool" != http-delta ] || version_key=http:delta.version
 		for profile in "$root"/src/mise/mise*.toml; do
-			version=$("$mise_command" toml get --file "$profile" "tools.$version_key" 2>/dev/null || true)
+			version=$("$mise_command" toml get --file "$profile" "tools.$version_key.version" 2>/dev/null ||
+				"$mise_command" toml get --file "$profile" "tools.$version_key" 2>/dev/null || true)
 			[ -z "$version" ] || break
 		done
 		[ -n "$version" ] || die "missing pinned version for $component"

@@ -50,7 +50,7 @@ owner = "native"
 
 [components.neovim]
 commands = ["nvim"]
-owner = "native"
+owner = "mise"
 
 [components.fd]
 commands = ["fd"]

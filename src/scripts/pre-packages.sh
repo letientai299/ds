@@ -6,7 +6,7 @@ if ! command -v dnf >/dev/null 2>&1; then
 	exit 0
 fi
 
-if dnf -q info neovim nnn >/dev/null 2>&1; then
+if dnf -q info nnn >/dev/null 2>&1; then
 	exit 0
 fi
 

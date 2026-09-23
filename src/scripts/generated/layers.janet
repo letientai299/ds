@@ -13,7 +13,7 @@
    :git {:commands ["git"] :owner :native}
    :jq {:commands ["jq"] :owner :mise :version "1.8.2"}
    :mise {:commands ["mise"] :owner :runtime}
-   :neovim {:commands ["nvim"] :owner :native}
+   :neovim {:commands ["nvim"] :owner :mise :version "0.12.5"}
    :nnn {:commands ["nnn"] :owner :native}
    :ripgrep {:commands ["rg"] :owner :mise :version "15.2.0"}
    :starship {:commands ["starship"] :owner :mise :version "1.23.0"}

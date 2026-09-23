@@ -54,18 +54,18 @@ if [ -n "$script_dir" ] && [ -d "$script_dir" ]; then
 	[ -z "$candidate" ] || [ ! -x "$candidate/src/bundle/build.sh" ] || root=$candidate
 fi
 
-case "$(uname -m)" in
-aarch64 | arm64)
-	platform=linux-arm64-musl
-	default_docker_platform=linux/arm64
-	;;
-x86_64 | amd64)
-	platform=linux-x64-musl
-	default_docker_platform=linux/amd64
-	;;
-*) die "unsupported host architecture: $(uname -m)" ;;
+if [ -z "$docker_platform" ]; then
+	case "$(uname -m)" in
+	aarch64 | arm64) docker_platform=linux/arm64 ;;
+	x86_64 | amd64) docker_platform=linux/amd64 ;;
+	*) die "unsupported host architecture: $(uname -m)" ;;
+	esac
+fi
+case "$docker_platform" in
+linux/arm64 | linux/arm64/v8) platform=linux-arm64-musl ;;
+linux/amd64) platform=linux-x64-musl ;;
+*) die "unsupported Docker platform: $docker_platform" ;;
 esac
-[ -n "$docker_platform" ] || docker_platform=$default_docker_platform
 
 runtime_dist=${DS_RUNTIME_DIST:-${root:-.}/dist/runtime}
 if [ "$source_mode" = auto ]; then
@@ -119,7 +119,7 @@ if [ "$source_mode" = release ]; then
         # Downloading first rather than piping into sh, so that a failed fetch
         # is an error instead of an empty script that silently succeeds.
         curl -fsSL --output /tmp/ds-install.sh "$1/install.sh"
-        sh /tmp/ds-install.sh --layer "$2"
+        sh /tmp/ds-install.sh --layer "$2" --release-url "$1"
         eval "$3"
     ' ds-try "$release_url" "$layer" "$command_line"
 fi
@@ -131,7 +131,8 @@ mise=$runtime_dist/bin/$platform/mise
 [ -x "$mise" ] || die "mise runtime is missing: $mise; run mise run runtime:fetch-mise"
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-try.XXXXXX")
-trap 'rm -rf "$work"' EXIT HUP INT TERM
+trap 'rm -rf "$work"' EXIT
+trap 'exit 143' HUP INT TERM
 snapshot=$work/snapshot
 "$root/src/bundle/build.sh" \
 	--version try \
@@ -144,7 +145,7 @@ manifest_sha=$(sed -n '1p' "$snapshot/manifest.sha256")
 printf '%s\n' "ds try: applying $layer from this checkout in a throwaway $image container" >&2
 
 # shellcheck disable=SC2086 # $interactive is a deliberate word-split flag pair.
-exec docker run --rm $interactive \
+docker run --rm $interactive \
 	--platform "$docker_platform" \
 	--volume "$snapshot:/snapshot:ro" \
 	--env HOME=/root \

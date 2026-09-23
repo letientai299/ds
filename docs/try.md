@@ -29,6 +29,11 @@ notes in the [README][readme]. Force either payload source explicitly:
 ./src/try.sh --source release --version v1.0.0
 ```
 
+`--version` selects both the installer and its payload. `--platform` selects
+matching container and snapshot architectures, for example `linux/amd64` when
+trying an x64 target from an ARM64 host. Checkout snapshots are removed when
+the container exits, including on failure.
+
 ## What to look at
 
 Once the prompt appears, the container is a normal target: the managed `.zshrc`

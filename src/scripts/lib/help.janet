@@ -2,16 +2,19 @@
   {"status" ["LAYER|COMPONENT [--json] [--check]" "Report pinned versions and file health. --check: 0 complete, 1 unhealthy; invalid usage: 2." "ds status remote --json --check"]
    "diff" ["LAYER|COMPONENT" "Show missing, outdated, conflicting, or unavailable entries." "ds diff core"]
    "doctor" ["[LAYER|COMPONENT]" "Report status and bounded Docker diagnostics; defaults to core." "ds doctor remote"]
-   "apply" ["LAYER [--dry-run] [--skip docker]" "Install packages and write managed files. Conflicts stop execution." "ds adopt core --dry-run"]
-   "adopt" ["LAYER [--dry-run]" "Back up conflicts to .ds-adopted, then apply. Existing backups block adoption." "ds adopt core --dry-run"]
+   "apply" ["LAYER [--dry-run] [--skip docker]" "Install packages, write managed files, then activate. Conflicts stop execution." "ds adopt core --dry-run"]
+   "adopt" ["LAYER [--dry-run]" "Back up conflicts to .ds-adopted, then apply. Existing backups block execution." "ds adopt core --dry-run"]
    "force" ["LAYER [--dry-run]" "Replace conflicts without backups, then apply. User content outside RC markers survives." "ds force core --dry-run"]
    "unapply" ["LAYER|COMPONENT [--dry-run]" "Remove owned files or selection; restore eligible backups. Packages remain installed." "ds unapply core --dry-run"]
    "add" ["COMPONENT [--dry-run]" "Install and select an optional component." "ds add starship --dry-run"]
+   "stage" ["--source DIR --prefix DIR --manifest-sha256 HEX [--verify-only]" "Verify and stage a snapshot. Leave current unchanged." "ds stage --source ./snapshot --prefix ~/.local/share/ds --manifest-sha256 HEX"]
+   "activate" ["VERSION [--prefix DIR] [--dry-run]" "Atomically switch current to a staged version; retain previous. Packages and files are unchanged." "ds activate ds-VERSION --dry-run"]
+   "rollback" ["[--prefix DIR] [--dry-run]" "Switch current to previous; packages and managed-file contents are not rolled back." "ds rollback --dry-run"]
    "completion" ["bash|zsh" "Print shell completion using this catalog." "source <(ds completion zsh)"]
    "shell" ["" "Start interactive Zsh." "ds shell"]
    "shell-init" ["" "Print shell integration." "eval \"$(ds shell-init)\""]
    "docker-rootful" ["--approve-rootful --grant-docker-group" "Provision rootful Docker and grant root-equivalent group access." "ds docker-rootful --approve-rootful --grant-docker-group"]
-   "push" ["HOST LAYER [--platform NAME] [--prefix PATH] [--home PATH] [--dry-run|--deliver-only]" "Deliver from a checkout, then apply or preview. Deliver-only skips layer application." "ds push host core --dry-run"]})
+   "push" ["HOST LAYER [--platform NAME] [--prefix PATH] [--home PATH] [--dry-run|--deliver-only]" "Deliver from a checkout, then apply or preview. Deliver-only leaves current unchanged." "ds push host core --dry-run"]})
 
 (defn show [command catalog]
   (def spec (or (get commands command) (error (string "unknown command: " command))))
@@ -39,6 +42,8 @@
   (print (string "      adopt|force) choices='" layers " --dry-run --help' ;;"))
   (print (string "      add) choices='" optional " --dry-run --help' ;;"))
   (print "      completion) choices='bash zsh --help' ;;")
+  (print "      activate|rollback) choices='--prefix --dry-run --help' ;;")
+  (print "      stage) choices='--source --prefix --manifest-sha256 --verify-only --help' ;;")
   (print (string "      push) choices='" layers " --platform --prefix --home --dry-run --deliver-only --help' ;;"))
   (print "      docker-rootful) choices='--approve-rootful --grant-docker-group --help' ;;")
   (print (string "      help) choices='" names "' ;;"))

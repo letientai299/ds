@@ -53,4 +53,7 @@ for name in first 'with spaces' '-'; do
 	if verify >"$work/out" 2>"$work/err"; then fail "tampering accepted: $name"; fi
 	cp "$work/original" "$work/bundle/files/$name"
 done
+mkdir -p "$work/prefix/.mutation-lock"
+if "$root/src/bootstrap.sh" --source "$work/bundle" --manifest-sha256 "$manifest" --prefix "$work/prefix" >"$work/out" 2>"$work/err"; then fail 'stage ignored lock'; fi
+[ ! -e "$work/prefix/versions" ] || fail 'busy stage published files'
 printf '%s\n' 'checksum: ok'

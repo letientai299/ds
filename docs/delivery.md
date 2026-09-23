@@ -131,10 +131,45 @@ a same-directory rename, so a version directory is either absent or complete.
 Pull removes its incoming transfer data on exit. SSH push retains its incoming
 snapshot under `<prefix>/incoming/<version>`.
 
-Bootstrap then points `<prefix>/current` at the version it installed. Managed
-links resolve through that symlink rather than through a version directory, so
-delivering a new snapshot does not conflict with the links the previous one
-left behind.
+Staging leaves `<prefix>/current` untouched. This applies to bootstrap, pull,
+`install.sh --no-apply`, `push --deliver-only`, and `push --dry-run`. Managed links
+resolve through `current`; a candidate's preview checks its own sources without
+switching live links.
+
+Applying a staged candidate installs packages and writes its managed files
+before atomically switching `current`. The old link is retained as `previous`.
+An explicit switch is also available:
+
+```sh
+ds stage --source /tmp/ds-snapshot --prefix ~/.local/share/ds \
+  --manifest-sha256 MANIFEST_SHA256
+~/.local/share/ds/versions/1.0.0/ds apply core --dry-run
+~/.local/share/ds/versions/1.0.0/ds apply core
+ds activate 1.0.0 --dry-run
+ds rollback --dry-run
+ds rollback
+```
+
+`activate` and `rollback` switch version links only; they do not install or
+uninstall packages or undo managed-file edits. Use a candidate's `apply` when
+its package or file plan must also run. `--prefix DIR` selects a different
+installation; otherwise the running delivered version determines the prefix,
+or a checkout defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/ds`.
+
+Staging and mutations serialize through `<prefix>/.mutation-lock`. Contention
+fails immediately. The current symlink is replaced with a same-directory rename,
+so readers see either complete version. A failed package or file action leaves
+current unchanged, but earlier package or file actions may have completed; fix
+the reported problem and retry the candidate. Adoption backups remain available.
+Docker provisioning retains its existing advisory diagnostics; use `status
+remote --check` to require full readiness.
+
+A killed process can leave a lock or hidden incoming directory. Confirm that no
+installation process is running before removing that specific stale lock or
+incoming directory. Completed versions and `current` remain intact. If a crash
+happens after `previous` is recorded but before switching `current`, both links
+can name the old version; retry activation of the intended candidate.
+
 Payload verification feeds all validated digest records to one checksum
 process. Tools without check mode fall back to individual checks. Hosts without
 a checksum tool retain the existing controller-verification warning; pull still

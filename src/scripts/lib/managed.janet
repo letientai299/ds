@@ -1,4 +1,5 @@
 (import scripts/lib/filesystem)
+(import scripts/lib/activation)
 (import scripts/lib/mise)
 
 (def rc-start "# >>> ds managed >>>")
@@ -7,41 +8,12 @@
 (defn path [home relative]
   (string home "/" relative))
 
-(defn parent-directory [path]
-  (def index (last (string/find-all "/" path)))
-  (if (and index (> index 0)) (slice path 0 index) path))
-
-(defn basename [path]
-  (last (string/split "/" path)))
-
-# A version directory is immutable and its name changes with every release, so
-# a link built from it conflicts with itself the next time a version lands.
-# A delivered install therefore links through a stable `<prefix>/current`
-# indirection; a checkout has no versions/ layout and keeps using its own root.
-(defn delivered? [root]
-  (= "versions" (basename (parent-directory root))))
-
 (defn link-root [root]
-  (if (delivered? root)
-    (string (parent-directory (parent-directory root)) "/current")
-    root))
-
-(defn point-current [root]
-  (when (delivered? root)
-    (def link (link-root root))
-    (when (os/lstat link) (os/rm link))
-    # Relative, so the whole prefix stays relocatable.
-    (os/link (string "versions/" (basename root)) link true)))
+  (def base (activation/prefix root))
+  (if base (string base "/current") root))
 
 (defn same-link? [target source]
   (and (= :link (os/lstat target :mode)) (= source (os/readlink target))))
-
-(defn link-state [target source]
-  (cond
-    (not (os/stat source)) :unavailable
-    (same-link? target source) :present
-    (os/lstat target) :conflict
-    :else :missing))
 
 (defn executable-file? [target]
   (def facts (os/stat target))
@@ -49,23 +21,11 @@
        (= :file (get facts :mode))
        (string/find "x" (get facts :permissions))))
 
-(defn command-link-state [target source]
-  (cond
-    (not (os/stat source)) :unavailable
-    (same-link? target source) :present
-    (executable-file? target) :present
-    (os/lstat target) :conflict
-    :else :missing))
-
-(defn text-state [target contents]
-  (cond
-    (not (os/stat target)) :missing
-    (= contents (string (slurp target))) :present
-    :else :conflict))
-
 (defn layer-state [target desired]
-  (if-not (os/stat target)
-    :missing
+  (cond
+    (not (os/lstat target)) :missing
+    (not= :file (os/lstat target :mode)) :conflict
+    :else
     (let [actual (string/trim (string (slurp target)))]
       (cond
         (= actual desired) :present
@@ -78,8 +38,8 @@
 
 (defn marker-state [target line]
   (cond
-    (not (os/stat target)) :missing
-    (= :link (os/lstat target :mode)) :conflict
+    (not (os/lstat target)) :missing
+    (not= :file (os/lstat target :mode)) :conflict
     :else
     (let [contents (slurp target)
           block (marker-block line)]
@@ -145,17 +105,27 @@
      {:kind :link :target (path config-home "nvim") :source (source-root base environment "nvim")}
      {:kind :marker :target (path home ".zshrc") :line (string "source \"" config-home "/ds/shell.zsh\"")}
      {:kind :marker :target (path home ".gitconfig") :line (string "[include]\n\tpath = " config-home "/ds/gitconfig")}])
-  (if (= layer "remote")
-    (let [tmux-source (source-root base environment "tmux")]
-      (array/concat core
-                    @[{:kind :link :target (path config-home "tmux") :source tmux-source}
-                     {:kind :link :target (path home ".local/bin/tm") :source (string tmux-source "/tm")}]))
-    core))
+  (when (= layer "remote")
+    (def tmux-source (source-root base environment "tmux"))
+    (array/concat core
+      @[{:kind :link :target (path config-home "tmux") :source tmux-source}
+        {:kind :link :target (path home ".local/bin/tm") :source (string tmux-source "/tm")}]))
+  (map (fn [entry]
+         (def source (get entry :source))
+         (if (and source (string/has-prefix? (string base "/") source))
+           (merge entry {:resolved-source (string root (slice source (length base)))})
+           entry)) core))
 
 (defn state [entry]
   (case (get entry :kind)
-    :link (link-state (get entry :target) (get entry :source))
-    :command-link (command-link-state (get entry :target) (get entry :source))
+    :link (if (os/stat (or (get entry :resolved-source) (get entry :source)))
+            (cond (same-link? (get entry :target) (get entry :source)) :present
+                  (os/lstat (get entry :target)) :conflict :else :missing)
+            :unavailable)
+    :command-link (if (or (same-link? (get entry :target) (get entry :source))
+                          (executable-file? (get entry :target))) :present
+                    (if (os/stat (or (get entry :resolved-source) (get entry :source)))
+                      (if (os/lstat (get entry :target)) :conflict :missing) :unavailable))
     :marker (marker-state (get entry :target) (get entry :line))
     :layer (layer-state (get entry :target) (get entry :contents))))
 
@@ -187,26 +157,23 @@
 
 (defn marker-file? [entry]
   (and (= :marker (get entry :kind))
-       (not= :link (os/lstat (get entry :target) :mode))))
+       (= :file (os/lstat (get entry :target) :mode))))
 
-(defn prepare [runner root environment layer mode]
-  (unless (or (= mode :adopt) (= mode :force))
-    (error (string "unknown takeover mode: " mode)))
-  (each entry (conflicts root environment layer)
-    (def target (get entry :target))
-    (cond
-      (marker-file? entry) (takeover-marker entry mode)
+(defn prepare-entry [runner environment entry mode]
+  (def target (get entry :target))
+  (cond
+    (marker-file? entry) (takeover-marker entry mode)
 
-      (= mode :adopt)
-      (do
-        (def backup (backup-path entry))
-        (when (os/lstat backup)
-          (error (string "adoption backup already exists: " backup)))
-        (unless (= 0 (runner ["mv" "--" target backup] environment))
-          (error (string "could not adopt: " target))))
+    (= mode :adopt)
+    (do
+      (def backup (backup-path entry))
+      (when (os/lstat backup)
+        (error (string "adoption backup already exists: " backup)))
+      (unless (= 0 (runner ["mv" "--" target backup] environment))
+        (error (string "could not adopt: " target))))
 
-      (unless (= 0 (runner ["rm" "-rf" "--" target] environment))
-        (error (string "could not replace: " target))))))
+    (unless (= 0 (runner ["rm" "-rf" "--" target] environment))
+      (error (string "could not replace: " target)))))
 
 (defn link-kind? [kind]
   (or (= :link kind) (= :command-link kind)))
@@ -218,7 +185,7 @@
   (cond
     (link-kind? kind)
     (do
-      (unless (os/stat (get entry :source))
+      (unless (os/stat (or (get entry :resolved-source) (get entry :source)))
         (error (string "managed source is unavailable: " (get entry :source))))
       (filesystem/ensure-parent target)
       (os/link (get entry :source) target true))
@@ -235,19 +202,8 @@
       (filesystem/ensure-parent target)
       (spit target (string (get entry :contents) "\n")))))
 
-(defn apply [root environment layer]
-  (point-current root)
-  (def blocked (conflicts root environment layer))
-  (unless (empty? blocked)
-    (error (string "managed-file conflict: " (get (first blocked) :target))))
-  (each entry (entries root environment layer)
-    (apply-entry entry))
-  (def home (get environment "HOME"))
-  (def state-home (or (get environment "XDG_STATE_HOME") (path home ".local/state")))
-  (filesystem/ensure-parent (path state-home "zsh/history")))
-
 (defn remove-marker [target line]
-  (when (and (os/stat target) (not= :link (os/lstat target :mode)))
+  (when (= :file (os/lstat target :mode))
     (def contents (slurp target))
     (def block (marker-block line))
     (when (string/find block contents)
@@ -257,16 +213,3 @@
 (defn release-link [entry]
   (when (same-link? (get entry :target) (get entry :source))
     (os/rm (get entry :target))))
-
-(defn unapply [runner root environment layer]
-  (each entry (reverse (entries root environment layer))
-    (case (get entry :kind)
-      :link (release-link entry)
-      :command-link (release-link entry)
-      :marker (remove-marker (get entry :target) (get entry :line))
-      :layer (when (and (os/stat (get entry :target))
-                        (find |(= $ (string/trim (string (slurp (get entry :target))))) ["core" "remote"]))
-               (os/rm (get entry :target))))
-    (def backup (backup-path entry))
-    (when (and (os/lstat backup) (not (os/lstat (get entry :target))))
-      (runner ["mv" "--" backup (get entry :target)] environment))))

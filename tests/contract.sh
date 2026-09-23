@@ -64,7 +64,7 @@ grep -q 'checksum mismatch' "$work/tampered.err" || fail 'tampered bundle diagno
 
 DS_ROOT=$root DS_JANET=$janet DS_MISE=$mise "$root/ds" apply core --dry-run >"$work/apply.out"
 grep -q '^would apply core:$' "$work/apply.out" || fail 'dry-run header is missing'
-grep -q '^  neovim$' "$work/apply.out" || fail 'Neovim is missing from core'
+grep -q '^  packages .*neovim' "$work/apply.out" || fail 'Neovim is missing from core'
 HOME=$work/dry-home \
 	XDG_CONFIG_HOME=$work/dry-home/config \
 	XDG_STATE_HOME=$work/dry-home/state \
@@ -80,7 +80,7 @@ HOME=$work/dry-remote \
 	DS_ROOT=$root DS_JANET=$janet DS_MISE=$mise \
 	"$root/ds" apply remote --dry-run --skip docker >"$work/skip.out"
 grep -q '^would apply remote:$' "$work/skip.out" || fail 'remote skip dry-run header is missing'
-if grep -q '^  docker$' "$work/skip.out"; then
+if grep -q '^  packages .*docker\|^  converge Docker' "$work/skip.out"; then
 	fail 'remote skip dry-run still includes Docker'
 fi
 [ ! -e "$work/dry-remote" ] || fail 'remote skip dry-run wrote to the isolated home'
@@ -100,7 +100,7 @@ HOME=$work/selected-home \
 	XDG_STATE_HOME=$work/selected-home/state \
 	DS_ROOT=$root DS_JANET=$janet DS_MISE=$mise \
 	"$root/ds" apply core --dry-run >"$work/selected.out"
-grep -q '^  starship$' "$work/selected.out" || fail 'preview omitted selected Starship'
+grep -q '^  packages .*starship' "$work/selected.out" || fail 'preview omitted selected Starship'
 [ "$(cat "$work/selected-home/config/ds/components")" = starship ] || fail 'preview changed selections'
 [ ! -e "$work/selected-home/.local" ] || fail 'preview wrote managed links'
 
@@ -165,7 +165,8 @@ grep -q '^would apply core:$' "$work/snapshot.out" || fail 'installed snapshot d
 [ -f "$snapshot_root/src/THIRD-PARTY.md" ] || fail 'snapshot is missing third-party notices'
 grep -q '	src/THIRD-PARTY.md$' "$work/snapshot/manifest.tsv" ||
 	fail 'third-party notices are not covered by the manifest'
-[ -L "$work/snapshot-install/current" ] || fail 'bootstrap did not publish the current indirection'
+[ ! -L "$work/snapshot-install/current" ] || fail 'bootstrap activated a staged version'
+"$snapshot_root/ds" activate 0.0.0-snapshot --prefix "$work/snapshot-install" >/dev/null
 [ "$(readlink "$work/snapshot-install/current")" = versions/0.0.0-snapshot ] ||
 	fail 'current does not name the installed version relatively'
 [ -x "$work/snapshot-install/current/ds" ] || fail 'current does not resolve to a usable install'

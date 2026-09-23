@@ -1,8 +1,17 @@
+(import scripts/lib/mutation)
+(import scripts/lib/activation)
 (import scripts/lib/inventory)
 (import scripts/lib/json)
 (import scripts/lib/process)
 
-(each construct [(fn [] (inventory/tool-state "/missing" {:commands ["x"]}))]
+(each construct [(fn [] (mutation/action :unknown {}))
+                 (fn [] (mutation/action :write {}))
+                 (fn [] (mutation/action :write {:entry nil}))
+                 (fn [] (mutation/action :write {:entry {:kind :link :target "/x"}}))
+                 (fn [] (mutation/action :select {:target "/x" :components ["bad"]}))
+                 (fn [] (mutation/action :takeover {:entry {} :mode :replace}))
+                 (fn [] (activation/version-name "../escape"))
+                 (fn [] (inventory/tool-state "/missing" {:commands ["x"]}))]
   (var rejected false)
   (try (construct) ([_err] (set rejected true)))
   (assert rejected "invalid state accepted"))

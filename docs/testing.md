@@ -19,6 +19,13 @@ served-directory pull with both Curl and Wget, the SSH push, and a manual
 archive. It also asserts that reinstalling the same release is idempotent and
 that a mismatched archive checksum is rejected.
 
+The unit gate also exercises CLI argument rejection, removal previews, shell
+upgrades, demo cleanup, and both SSH transports using isolated homes and fake
+external commands. The approved UX checks also cover version inventory,
+JSON/exit contracts, completion, failed activation, rollback, lock contention,
+backup preflight, Docker deadlines, and batched checksum fallbacks. These checks
+do not provision a real Docker daemon.
+
 `e2e:all` launches every end-to-end target concurrently with seven mise jobs. It
 uses `--continue-on-error`, so one failure does not discard sibling results.
 

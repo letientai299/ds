@@ -1,6 +1,8 @@
+(import scripts/lib/activation)
 (import scripts/lib/help)
 (import scripts/lib/inventory)
 (import scripts/lib/json)
+(import scripts/lib/mutation)
 (import scripts/lib/process)
 (import scripts/generated/layers :as generated)
 (import scripts/lib/docker)
@@ -44,6 +46,9 @@
      "  unapply LAYER|COMPONENT  remove managed state; supports --dry-run"
      "  shell                    start an interactive Zsh with the current environment"
      "  shell-init               print the Zsh integration fragment"
+     "  stage                    verify and stage a snapshot"
+     "  activate VERSION         switch to a staged version"
+     "  rollback                 switch to the previous version"
      "  completion bash|zsh      print catalog-based completions"
      "  docker-rootful           provision rootful Docker behind two approval flags"]
     (emit line))
@@ -107,11 +112,6 @@
 (defn reject-extra [args maximum]
   (when (> (length args) maximum)
     (fail (string "unexpected argument: " (get args maximum)))))
-
-(defn print-plan [operation layer components]
-  (print (string operation " " layer ":"))
-  (each component components
-    (print (string "  " component))))
 
 (def base-environment (os/environ))
 
@@ -310,6 +310,66 @@
                   "; optional components: " (catalog-names :optional) ")")))
   name)
 
+(defn run-mutation [command args]
+  (def parsed (if (= command "apply") (parse-layer-args command args) (parse-takeover-args command args)))
+  (def target (if (find |(= $ command) ["unapply" "add"])
+                 (require-target (get parsed 0)) (require-layer (get parsed 0))))
+  (when (and (= command "add") (not (optional-component? target)))
+    (fail "add requires an optional component"))
+  (def component (if (optional-component? target) (keyword target) nil))
+  (def layer (if component (current-layer) target))
+  (def components (filter (fn [item] (not (find |(= $ item) (get parsed 2))))
+                         (layers/resolve generated/catalog layer
+                           (map string (distinct (tuple ;(selection/selected generated/catalog base-environment)
+                                                        ;(if component [component] [])))))))
+  (def request {:mode (keyword command) :layer layer :component component :components components
+                :docker (and (= layer "remote") (not (find |(= $ :docker) (get parsed 2))))})
+  (defn work []
+    (def plan (mutation/build generated/catalog root base-environment request))
+    (if (get parsed 1)
+      (do
+        (print (string "would " command " " target (if (find |(= $ command) ["unapply" "add"]) "" ":")))
+        (each item plan (print (string "  " (mutation/describe item)))))
+      (do
+        (mutation/execute plan foreground-runner root base-environment converge-docker)
+        (print (string (case command "apply" "applied" "adopt" "adopted and applied"
+                             "force" "forced and applied" "add" "added" "unapply" "unapplied") " " target)))))
+  (try
+    (if (get parsed 1) (work)
+      (activation/with-lock (or (activation/prefix root)
+                               (string (selection/config-home base-environment) "/ds")) work))
+    ([err] (eprint (string "ds: " err)) (os/exit 1))))
+
+(defn switch-version [command args]
+  (var base (or (activation/prefix root)
+                (string (or (get base-environment "XDG_DATA_HOME")
+                            (string (get base-environment "HOME") "/.local/share")) "/ds")))
+  (var preview false)
+  (var name nil)
+  (var index 2)
+  (when (= command "activate")
+    (set name (get args index))
+    (unless name (fail "activate requires a version"))
+    (++ index))
+  (while (< index (length args))
+    (case (get args index)
+      "--dry-run" (set preview true)
+      "--prefix" (do (++ index) (set base (get args index)) (unless base (fail "--prefix requires a path")))
+      (fail (string "unknown argument: " (get args index))))
+    (++ index))
+  (when (empty? base) (fail "--prefix requires a non-empty path"))
+  (unless (string/has-prefix? "/" base) (set base (string (os/cwd) "/" base)))
+  (defn work []
+    (when (= command "rollback")
+      (set name (or (activation/link-version base "previous") (error "no previous version"))))
+    (def candidate (activation/candidate base name))
+    (activation/link-version base "current")
+    (activation/link-version base "previous")
+    (if preview (print (string "would activate " candidate))
+      (do (activation/activate candidate) (print (string "activated " candidate)))))
+  (try (if preview (work) (activation/with-lock base work))
+       ([err] (eprint (string "ds: " err)) (os/exit 1))))
+
 (defn report-status [args]
   (when (< (length args) 3) (fail "status requires a layer"))
   (def target (require-target (get args 2)))
@@ -348,6 +408,10 @@
     "--help" (do (reject-extra args 2) (usage print))
     "-h" (do (reject-extra args 2) (usage print))
     "status" (report-status args)
+    "stage" (os/exit (foreground-runner
+                       ["sh" (string root "/src/bootstrap.sh") ;(slice args 2)] base-environment))
+    "activate" (switch-version command args)
+    "rollback" (switch-version command args)
     "completion" (do (reject-extra args 3)
                       (try (help/complete (get args 2) generated/catalog
                              (not= nil (os/stat (string root "/src/bundle/controller.sh"))))
@@ -366,106 +430,11 @@
             (print (string "  + " layer))))
         (print-diff layer (inspect-layer layer) (managed/inspect root base-environment layer))))
 
-    "apply"
-    (do
-      (def parsed (parse-layer-args "apply" args))
-      (def layer (require-layer (get parsed 0)))
-      (def components (filter (fn [component] (not (find |(= $ component) (get parsed 2))))
-                              (layers/resolve generated/catalog layer
-                                              (map string (selection/selected generated/catalog base-environment)))))
-      (if (get parsed 1)
-        (do
-          (print-plan "would apply" layer components)
-          (each entry (managed/inspect root base-environment layer)
-            (unless (= :present (get entry :state))
-              (print (string "  " (get entry :state) " " (get entry :target))))))
-        (do
-          (unless (empty? (managed/conflicts root base-environment layer))
-            (fail (string "managed-file conflict: "
-                          (get (first (managed/conflicts root base-environment layer)) :target))))
-          (def profile (selection/profile generated/catalog base-environment layer []))
-          (def status (mise/apply foreground-runner root profile base-environment false))
-          (unless (= status 0)
-            (fail (string "mise bootstrap failed with status " status)))
-          (try
-            (managed/apply root base-environment layer)
-            ([err] (fail err)))
-          (when (and (= layer "remote")
-                     (not (find |(= $ :docker) (get parsed 2))))
-            (converge-docker))
-          (print (string "applied " layer)))))
-
-    "unapply"
-    (do
-      (def parsed (parse-takeover-args "unapply" args))
-      (def target (require-target (get parsed 0)))
-      (when (get parsed 1)
-        (print (string "would unapply " target))
-        (break))
-      (if (optional-component? target)
-        (do
-          (selection/remove generated/catalog base-environment (keyword target))
-          (print (string "unapplied " target)))
-        (do
-          (managed/unapply foreground-runner root base-environment target)
-          (when (= target "core")
-            (selection/save base-environment []))
-          (print (string "unapplied " target)))))
-
-    "adopt"
-    (do
-      (def parsed (parse-takeover-args "adopt" args))
-      (def layer (require-layer (get parsed 0)))
-      (if (get parsed 1)
-        (each entry (managed/conflicts root base-environment layer)
-          (print (string "would adopt " (get entry :target) " -> " (managed/backup-path entry))))
-        (do
-          (def profile (selection/profile generated/catalog base-environment layer []))
-          (def status (mise/apply foreground-runner root profile base-environment false))
-          (unless (= status 0) (fail (string "mise bootstrap failed with status " status)))
-          (managed/prepare foreground-runner root base-environment layer :adopt)
-          (managed/apply root base-environment layer)
-          (when (= layer "remote") (converge-docker))
-          (print (string "adopted and applied " layer)))))
-
-    "force"
-    (do
-      (def parsed (parse-takeover-args "force" args))
-      (def layer (require-layer (get parsed 0)))
-      (if (get parsed 1)
-        (each entry (managed/conflicts root base-environment layer)
-          (print (string "would replace " (get entry :target))))
-        (do
-          (def profile (selection/profile generated/catalog base-environment layer []))
-          (def status (mise/apply foreground-runner root profile base-environment false))
-          (unless (= status 0) (fail (string "mise bootstrap failed with status " status)))
-          (managed/prepare foreground-runner root base-environment layer :force)
-          (managed/apply root base-environment layer)
-          (when (= layer "remote") (converge-docker))
-          (print (string "forced and applied " layer)))))
-
-    "add"
-    (do
-      (when (< (length args) 3)
-        (fail "add requires a component"))
-      (def component (get args 2))
-      (unless (optional-component? component)
-        (fail (string "unknown optional component: " component
-                      " (optional components: " (catalog-names :optional) ")")))
-      (var dry-run? false)
-      (each arg (slice args 3)
-        (if (= "--dry-run" arg)
-          (set dry-run? true)
-          (fail (string "unknown argument: " arg))))
-      (if dry-run?
-        (print (string "would add " component))
-        (do
-          (def profile (selection/profile generated/catalog base-environment (current-layer) [(keyword component)]))
-          (def status (mise/apply foreground-runner root profile base-environment false))
-          (unless (= status 0)
-            (fail (string "mise bootstrap failed with status " status)))
-          (selection/add generated/catalog base-environment (keyword component))
-          (print (string "added " component)))))
+    "apply" (run-mutation command args)
+    "adopt" (run-mutation command args)
+    "force" (run-mutation command args)
+    "unapply" (run-mutation command args)
+    "add" (run-mutation command args)
 
     "shell-init" (do (reject-extra args 2) (print-shell-init))
 

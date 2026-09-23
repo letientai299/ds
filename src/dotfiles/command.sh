@@ -8,7 +8,7 @@ ds() {
 	*" --dry-run "* | *" --help "* | *" -h "*) return "$exit_status" ;;
 	esac
 	case "${1:-}:$exit_status" in
-	apply:0 | add:0 | adopt:0 | force:0 | unapply:0)
+	apply:0 | add:0 | adopt:0 | force:0 | unapply:0 | activate:0 | rollback:0)
 		if [ -x "$executable" ]; then
 			eval "$(command "$executable" shell-init)"
 		fi

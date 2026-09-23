@@ -19,6 +19,9 @@ because they run before `ds` exists on the machine: `src/install.sh` and
 | `ds force LAYER [--dry-run]`                               | Destructively replace conflicts, then converge          |
 | `ds add COMPONENT [--dry-run]`                             | Enable an optional component                            |
 | `ds unapply LAYER_OR_COMPONENT [--dry-run]`                | Remove managed state or preview removal                 |
+| `ds stage --source DIR --prefix DIR --manifest-sha256 HEX` | Verify and stage without activating                     |
+| `ds activate VERSION [--prefix DIR] [--dry-run]`           | Switch to a staged version                              |
+| `ds rollback [--prefix DIR] [--dry-run]`                   | Switch to the previous version                          |
 | `ds completion SHELL`                                      | Print catalog-based shell completions                   |
 | `ds shell`                                                 | Start an interactive Zsh with the current environment   |
 | `ds shell-init`                                            | Print the Zsh integration fragment                      |
@@ -32,8 +35,9 @@ rejected before any state changes.
 
 Commands accept `--help` before performing work. `ds help COMMAND` shows the
 same command-specific options, effects, and example. Unknown trailing arguments
-are rejected. `unapply --dry-run` reports the requested removal without
-changing files or selections.
+are rejected. Mutation previews show package convergence, exact file paths,
+backup destinations, selection changes, and activation from the same action
+plan used for execution. A blocked plan explains what must be resolved first.
 
 Enable catalog-derived completions in an interactive shell:
 
@@ -74,7 +78,8 @@ from a daemon that cannot be reached.
 
 ## Conflict operations
 
-Normal `apply` stops before managed-file changes if a target conflicts.
+Normal `apply` checks all managed-file conflicts and source availability before
+package changes. Adoption also checks every backup destination first.
 
 `adopt` moves each conflict to `<target>.ds-adopted`, applies the managed
 version, and lets `unapply` restore the original. Adoption fails rather than
@@ -108,7 +113,8 @@ ds push HOST LAYER \
   remote home. The default is `.local/share/ds`.
 - `--home` applies inside an isolated relative home beneath the remote home.
 - `--dry-run` delivers the snapshot and previews its layer application.
-- `--deliver-only` installs the versioned snapshot without applying a layer.
+- `--deliver-only` stages the versioned snapshot without applying or activating it.
+  `--dry-run` also leaves the active version unchanged.
 
 Push is available only from a controller checkout because delivered snapshots do
 not contain the controller transport scripts.

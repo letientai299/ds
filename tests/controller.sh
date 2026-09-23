@@ -44,8 +44,9 @@ second=$(
 [ "$first" = "$second" ] || fail 'same-content push was not idempotent'
 
 remote_prefix=$DS_FAKE_REMOTE_HOME/.local/share/ds-controller
-[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] ||
-	fail 'push did not point current at the delivered version'
+[ ! -L "$remote_prefix/current" ] || fail 'deliver-only activated the snapshot'
+"$first/ds" activate "$(basename "$first")" --prefix "$remote_prefix" >/dev/null
+[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] || fail 'activation failed'
 
 # Every earlier push delivered byte-identical content, so the content-addressed
 # version never changed and the upgrade path was never exercised.
@@ -61,8 +62,11 @@ upgraded=$(
 )
 [ "$upgraded" != "$first" ] || fail 'changed payload produced the same version'
 [ -x "$upgraded/ds" ] || fail 'upgrade push did not install ds'
-[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$upgraded")" ] ||
-	fail 'current did not follow the upgrade'
+[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] || fail 'staging changed current'
+"$first/ds" activate "$(basename "$upgraded")" --prefix "$remote_prefix" >/dev/null
+[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$upgraded")" ] || fail 'upgrade activation failed'
+"$upgraded/ds" rollback --prefix "$remote_prefix" >/dev/null
+[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] || fail 'rollback failed'
 [ -x "$remote_prefix/current/ds" ] || fail 'current does not resolve after the upgrade'
 
 preview=$(
@@ -72,6 +76,7 @@ preview=$(
 		--dry-run 2>"$work/preview.err"
 )
 [ "$preview" = "$first" ] || fail 'push-and-preview returned the wrong installed path'
+[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] || fail 'preview changed current'
 grep -q '^would apply core:$' "$work/preview.err" || fail 'controller did not invoke remote layer preview'
 [ -d "$DS_FAKE_REMOTE_HOME/.local/share/ds-controller-test-home" ] || fail 'controller did not create the isolated remote home'
 [ ! -e "$DS_FAKE_REMOTE_HOME/.local/share/ds-controller-test-home/.config" ] || fail 'remote layer preview wrote configuration'

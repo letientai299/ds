@@ -1,5 +1,24 @@
 (import scripts/lib/filesystem)
 (import scripts/lib/managed)
+(import scripts/lib/mutation)
+(import scripts/generated/layers :as generated)
+
+(defn apply [root environment layer]
+  (mutation/execute
+    (mutation/build generated/catalog root environment {:mode :apply :layer layer :components []})
+    (fn [_argv _env] 0) root environment (fn [] nil)))
+
+(defn prepare [runner root environment layer mode]
+  (unless (find |(= $ mode) [:adopt :force]) (error "invalid takeover mode"))
+  (mutation/execute
+    (filter |(find (fn [tag] (= tag (get $ :action))) [:takeover :blocked])
+            (mutation/files root environment layer mode))
+    runner root environment (fn [] nil)))
+
+(defn unapply [runner root environment layer]
+  (mutation/execute
+    (mutation/build generated/catalog root environment {:mode :unapply :layer layer})
+    runner root environment (fn [] nil)))
 
 (defn assert= [expected actual message]
   (unless (= expected actual)
@@ -46,8 +65,8 @@
 (spit existing-mise "existing mise\n")
 (os/chmod existing-mise 493)
 
-(managed/apply root environment "core")
-(managed/apply root environment "core")
+(apply root environment "core")
+(apply root environment "core")
 (assert= 0 (length (filter |(not= :present (get $ :state))
                             (managed/inspect root environment "core")))
          "apply converges all managed targets")
@@ -55,7 +74,7 @@
          "apply preserves user rc content")
 (assert= "existing mise\n" (string (slurp existing-mise)) "apply preserves existing mise")
 
-(managed/unapply runner root environment "core")
+(unapply runner root environment "core")
 (assert= "# user configuration\n"
          (string (slurp (string home "/.zshrc")))
          "unapply preserves user rc content")
@@ -77,12 +96,12 @@
          "existing dedicated file is a conflict")
 (defn real-runner [argv target-environment]
   (os/execute argv :pe target-environment))
-(managed/prepare real-runner root environment "core" :adopt)
-(managed/apply root environment "core")
+(prepare real-runner root environment "core" :adopt)
+(apply root environment "core")
 (assert= true
          (not= nil (os/stat (string home "/config/ds/shell.zsh.ds-adopted")))
          "adoption keeps a backup")
-(managed/unapply real-runner root environment "core")
+(unapply real-runner root environment "core")
 (assert= "user-owned\n"
          (string (slurp (string home "/config/ds/shell.zsh")))
          "unapply restores adopted content")
@@ -107,7 +126,7 @@
 (def user-gitconfig "[user]\n\tname = Real Person\n")
 
 (defn seed-perturbed-marker [marker-home marker-environment]
-  (managed/apply root marker-environment "core")
+  (apply root marker-environment "core")
   (def target (string marker-home "/.gitconfig"))
   (spit target (string user-gitconfig (slurp target)))
   # One stray space inside the block is enough to make marker-state report
@@ -128,7 +147,7 @@
            (get (first (filter |(= target (get $ :target))
                                (managed/conflicts root marker-env "core"))) :state)
            (string message ": perturbed block is a conflict"))
-  (managed/prepare real-runner root marker-env "core" mode)
+  (prepare real-runner root marker-env "core" mode)
   (def survived (string (slurp target)))
   (assert= true (not= nil (string/find "name = Real Person" survived))
            (string message ": user content survives"))
@@ -141,7 +160,7 @@
     (assert= "rw-------"
              (os/stat (string target ".ds-adopted") :permissions)
              (string message ": backup keeps the target mode")))
-  (managed/apply root marker-env "core")
+  (apply root marker-env "core")
   (assert= :present
            (get (first (filter |(= target (get $ :target))
                                (managed/inspect root marker-env "core"))) :state)
@@ -151,17 +170,17 @@
 # reports success and the following apply fails on the same conflict.
 (def truncated-home (seeded-home "marker-truncated"))
 (def truncated-env (marker-environment truncated-home))
-(managed/apply root truncated-env "core")
+(apply root truncated-env "core")
 (def truncated-target (string truncated-home "/.gitconfig"))
 (spit truncated-target (string user-gitconfig managed/rc-start "\n[include]\n"))
-(managed/prepare real-runner root truncated-env "core" :force)
+(prepare real-runner root truncated-env "core" :force)
 (assert= (string user-gitconfig "[include]\n")
          (string (slurp truncated-target))
          "truncated block loses its marker line and nothing else")
 
 (var unknown-mode-failed? false)
 (try
-  (managed/prepare real-runner root truncated-env "core" :replace)
+  (prepare real-runner root truncated-env "core" :replace)
   ([_err] (set unknown-mode-failed? true)))
 (assert= true unknown-mode-failed? "unknown takeover mode is rejected")
 
@@ -178,6 +197,7 @@
     (def file (string target relative))
     (filesystem/ensure-parent file)
     (spit file (string version "\n")))
+  (os/chmod (string target "/ds") 493)
   target)
 
 (def upgrade-home (string home "/upgrade"))
@@ -191,7 +211,7 @@
    "DS_NVIM_SOURCE" (string upgrade-home "/nvim-source")})
 
 (def root-a (version-root "0.0.1-a"))
-(managed/apply root-a upgrade-environment "core")
+(apply root-a upgrade-environment "core")
 (assert= 0
          (length (filter |(not= :present (get $ :state))
                          (managed/inspect root-a upgrade-environment "core")))
@@ -205,7 +225,7 @@
 (assert= 0
          (length (managed/conflicts root-b upgrade-environment "core"))
          "a newer version does not conflict with the links of the previous one")
-(managed/apply root-b upgrade-environment "core")
+(apply root-b upgrade-environment "core")
 (assert= 0
          (length (filter |(not= :present (get $ :state))
                          (managed/inspect root-b upgrade-environment "core")))

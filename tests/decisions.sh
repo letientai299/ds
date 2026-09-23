@@ -33,6 +33,60 @@ printf '%s\n' "$*" >>"$DS_TEST_LOG"
 exit "${DS_TEST_EXIT:-0}"
 SH
 chmod 0755 "$DS_MISE"
+prefix=$work/prefix
+for version in one two; do
+	candidate=$prefix/versions/$version
+	mkdir -p "$candidate/src"
+	cp "$root/ds" "$candidate/ds"
+	cp -R "$root/src/scripts" "$root/src/mise" "$root/src/dotfiles" "$candidate/src/"
+done
+one=$prefix/versions/one/ds
+two=$prefix/versions/two/ds
+"$one" apply core --dry-run >"$work/plan"
+[ ! -e "$prefix/current" ] || fail 'preview activated'
+grep -q 'activate .*versions/one' "$work/plan" || fail 'activation absent from plan'
+"$one" apply core >/dev/null
+[ "$(readlink "$prefix/current")" = versions/one ] || fail 'apply did not activate'
+: >"$DS_TEST_LOG"
+if DS_TEST_EXIT=9 "$two" apply core >"$work/out" 2>"$work/err"; then fail 'failed packages activated'; fi
+[ "$(readlink "$prefix/current")" = versions/one ] || fail 'package failure changed current'
+[ ! -e "$prefix/.mutation-lock" ] || fail 'failure left lock'
+(cd "$work" && "$one" activate two --prefix prefix --dry-run >/dev/null)
+[ "$(readlink "$prefix/current")" = versions/one ] || fail 'activation preview wrote'
+(cd "$work" && "$one" activate two --prefix prefix >/dev/null)
+[ "$(readlink "$prefix/previous")" = versions/one ] || fail 'previous missing'
+"$two" rollback >/dev/null
+[ "$(readlink "$prefix/current")" = versions/one ] || fail 'rollback failed'
+mkdir "$prefix/.mutation-lock"
+if "$two" activate two >"$work/out" 2>"$work/err"; then fail 'busy activation succeeded'; fi
+rmdir "$prefix/.mutation-lock"
+[ "$(readlink "$prefix/current")" = versions/one ] || fail 'busy activation changed current'
+for invalid in . .. ../one missing; do
+	if "$one" activate "$invalid" >"$work/out" 2>"$work/err"; then fail "invalid version accepted: $invalid"; fi
+done
+rm "$XDG_CONFIG_HOME/ds/gitignore"
+printf '%s\n' custom >"$XDG_CONFIG_HOME/ds/gitignore"
+printf '%s\n' backup >"$XDG_CONFIG_HOME/ds/gitignore.ds-adopted"
+: >"$DS_TEST_LOG"
+"$two" adopt core --dry-run >"$work/plan"
+grep -q 'backup exists' "$work/plan" || fail 'backup conflict missing from plan'
+if "$two" adopt core >"$work/out" 2>"$work/err"; then fail 'backup overwritten'; fi
+[ ! -s "$DS_TEST_LOG" ] || fail 'packages ran before conflict preflight'
+[ "$(cat "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted")" = backup ] || fail 'backup damaged'
+rm "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted"
+"$one" adopt core >/dev/null
+"$one" unapply core --dry-run >"$work/plan"
+grep -q "restore $XDG_CONFIG_HOME/ds/gitignore.ds-adopted" "$work/plan" || fail 'restore absent from plan'
+"$one" unapply core >/dev/null
+[ "$(cat "$XDG_CONFIG_HOME/ds/gitignore")" = custom ] || fail 'original not restored'
+
+mkdir -p "$work/dangling"
+ln -s "$work/untouched" "$work/dangling/.zshrc"
+: >"$DS_TEST_LOG"
+if HOME="$work/dangling" XDG_CONFIG_HOME="$work/dangling/config" "$root/ds" apply core >"$work/out" 2>"$work/err"; then fail 'dangling rc link accepted'; fi
+[ ! -e "$work/untouched" ] || fail 'apply followed dangling rc link'
+[ ! -s "$DS_TEST_LOG" ] || fail 'packages ran before dangling-link conflict'
+
 "$root/ds" status core --json >"$work/status.json"
 check_json -e '.schema == 1 and (.components | length > 0) and (.files | length > 0)' "$work/status.json" >/dev/null
 status=0

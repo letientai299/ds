@@ -1,5 +1,35 @@
 # Try ds in Docker
 
+`ds docker` opens a provisioned Ubuntu container with your current directory
+mounted read-write at `/work`:
+
+```sh
+ds docker
+```
+
+The first run builds from `ubuntu:latest` and installs `core`, including `nnn`.
+Later runs reuse the local image without rebuilding or downloading packages.
+`exit` removes the container. Edits under `/work` remain on the host; changes
+elsewhere in the container are discarded. The shell runs as root, so files
+created in `/work` may be root-owned on Linux hosts.
+
+Refresh Ubuntu, packages, and the checkout configuration explicitly:
+
+```sh
+ds docker --rebuild
+```
+
+The image captures this checkout when built; source edits require a rebuild.
+The command needs the checkout's pinned Linux runtimes and sibling configuration
+repositories, just like `mise run try`. Docker must access the current directory
+on the host. For scripted runs, pass a command after `--`:
+
+```sh
+ds docker -- ds status core --check
+```
+
+## Uncached demo
+
 `src/try.sh` builds a snapshot, applies a layer inside a throwaway
 [container][docker], and hands over an interactive login Zsh. Nothing touches
 your own home, and the container disappears on exit.

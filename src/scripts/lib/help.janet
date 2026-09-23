@@ -13,6 +13,7 @@
    "completion" ["bash|zsh" "Print shell completion using this catalog." "source <(ds completion zsh)"]
    "shell" ["" "Try core in Zsh without applying dotfiles or packages." "exec ds shell"]
    "shell-init" ["" "Print shell integration." "eval \"$(ds shell-init)\""]
+   "docker" ["[--rebuild] [-- COMMAND [ARG...]]" "Cached Ubuntu core shell; current directory mounts at /work." "ds docker"]
    "docker-rootful" ["--approve-rootful --grant-docker-group" "Provision rootful Docker and grant root-equivalent group access." "ds docker-rootful --approve-rootful --grant-docker-group"]
    "push" ["HOST LAYER [--platform NAME] [--prefix PATH] [--home PATH] [--dry-run|--deliver-only]" "Deliver from a checkout, then apply or preview. Deliver-only leaves current unchanged." "ds push host core --dry-run"]})
 
@@ -26,7 +27,9 @@
 
 (defn complete [shell catalog controller?]
   (unless (find |(= $ shell) ["bash" "zsh"]) (error "completion requires bash or zsh"))
-  (def names (string/join (sort (filter |(or controller? (not= $ "push")) (keys commands))) " "))
+  (def names (string/join (sort (filter (fn [name]
+                                        (or controller? (not (find |(= $ name) ["push" "docker"]))))
+                                      (keys commands))) " "))
   (def layers (string/join (map string (sort (keys (get catalog :layers)))) " "))
   (def optional (string/join (map string (get catalog :optional)) " "))
   (print "_ds_complete() {")
@@ -42,6 +45,7 @@
   (print (string "      adopt|force) choices='" layers " --dry-run --help' ;;"))
   (print (string "      add) choices='" optional " --dry-run --help' ;;"))
   (print "      completion) choices='bash zsh --help' ;;")
+  (print "      docker) choices='--rebuild --help --' ;;")
   (print "      activate|rollback) choices='--prefix --dry-run --help' ;;")
   (print "      stage) choices='--source --prefix --manifest-sha256 --verify-only --help' ;;")
   (print (string "      push) choices='" layers " --platform --prefix --home --dry-run --deliver-only --help' ;;"))

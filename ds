@@ -21,6 +21,12 @@ ds_src=$ds_root/src
 os=$(uname -s)
 arch=$(uname -m)
 
+if [ "${1:-}" = docker ]; then
+	[ -x "$ds_src/bundle/docker.sh" ] || die 'docker requires a controller checkout'
+	shift
+	exec "$ds_src/bundle/docker.sh" "$@"
+fi
+
 if [ "${1:-}" = push ]; then
 	[ -x "$ds_src/bundle/controller.sh" ] || die 'push is available only from a controller checkout'
 	shift

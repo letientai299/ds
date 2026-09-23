@@ -30,6 +30,11 @@ target does not need those repositories.
 
 ## Try it first
 
+With the global launcher linked to this checkout, run `ds docker` from any
+project directory. It builds a reusable Ubuntu image with `core` installed,
+mounts the current directory at `/work`, and removes the container on exit.
+Use `ds docker --rebuild` to refresh the image and capture checkout changes.
+
 Nothing is written to your home. The demo builds a snapshot, applies it inside a
 throwaway container, and hands over an interactive Zsh:
 

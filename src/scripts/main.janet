@@ -54,7 +54,8 @@
      "  docker-rootful           provision rootful Docker behind two approval flags"]
     (emit line))
   (when (os/stat (string root "/src/bundle/controller.sh"))
-    (emit "  push HOST LAYER          deliver and apply from a controller checkout"))
+    (emit "  push HOST LAYER          deliver and apply from a controller checkout")
+    (emit "  docker [--rebuild]       cached Ubuntu core shell with /work mounted"))
   (each line
     [""
      "options:"

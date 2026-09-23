@@ -12,6 +12,7 @@
 (import scripts/lib/planner)
 (import scripts/lib/platform)
 (import scripts/lib/selection)
+(import scripts/lib/shell)
 
 (layers/validate generated/catalog)
 
@@ -44,7 +45,7 @@
      "  force LAYER              destructively replace conflicting targets, then converge"
      "  add COMPONENT            enable an optional component"
      "  unapply LAYER|COMPONENT  remove managed state; supports --dry-run"
-     "  shell                    start an interactive Zsh with the current environment"
+     "  shell                    start a trial Zsh; default without arguments"
      "  shell-init               print the Zsh integration fragment"
      "  stage                    verify and stage a snapshot"
      "  activate VERSION         switch to a staged version"
@@ -392,8 +393,8 @@
 
 (defn main [& args]
   (when (< (length args) 2)
-    (usage eprint)
-    (os/exit 1))
+    (try (shell/start root base-environment generated/catalog)
+         ([err] (fail err))))
   (def command (get args 1))
   (when (and (has-key? help/commands command)
              (find |(or (= $ "--help") (= $ "-h")) (slice args 2)))
@@ -451,8 +452,8 @@
     "shell"
     (do
       (reject-extra args 2)
-      (def status (os/execute ["zsh" "-i"] :pe base-environment))
-      (os/exit status))
+      (try (shell/start root base-environment generated/catalog)
+           ([err] (fail err))))
 
     "docker-rootful"
     (do

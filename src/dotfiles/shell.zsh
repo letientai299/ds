@@ -9,14 +9,14 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 # keeps the first occurrence, which leaves the ds entries in front.
 typeset -gU path PATH
 export PATH="$HOME/.local/bin:$XDG_DATA_HOME/mise/shims:$PATH"
-_ds_root="${${:-$HOME/.local/bin/ds}:A:h}"
+_ds_root="${DS_SHELL_ROOT:-${${:-$HOME/.local/bin/ds}:A:h}}"
 if [[ "${_ds_root:h:t}" == versions ]]; then
   _ds_root="${_ds_root:h:h}/current"
 fi
-export MISE_CACHE_DIR="$XDG_CACHE_HOME/mise"
+export MISE_CACHE_DIR="${MISE_CACHE_DIR:-$XDG_CACHE_HOME/mise}"
 export MISE_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise"
-export MISE_DATA_DIR="$XDG_DATA_HOME/mise"
-export MISE_STATE_DIR="$XDG_STATE_HOME/mise"
+export MISE_DATA_DIR="${MISE_DATA_DIR:-$XDG_DATA_HOME/mise}"
+export MISE_STATE_DIR="${MISE_STATE_DIR:-$XDG_STATE_HOME/mise}"
 export MISE_SYSTEM_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise-system"
 export MISE_OVERRIDE_CONFIG_FILENAMES=mise.toml
 export MISE_GLOBAL_CONFIG_ROOT="$_ds_root/src/mise"

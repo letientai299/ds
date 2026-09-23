@@ -42,6 +42,29 @@ how to try the `remote` layer, and how to run the demo from a checkout.
 
 ## Quick start
 
+For daily use from a checkout, link the launcher once:
+
+```sh
+mkdir -p ~/.local/bin
+ln -s "$PWD/ds" ~/.local/bin/ds
+```
+
+From any working directory, replace the current shell with the trial environment:
+
+```sh
+exec ~/.local/bin/ds
+```
+
+`ds shell` does the same; omit `exec` to return with `exit`. The trial uses
+`core`, retains your home and working directory, and loads this checkout's Zsh,
+Git, and Neovim configuration. It reuses installed tools without installing
+packages or editing your startup files. Other application configurations remain
+available through links, so their edits still affect the originals. Trial state
+and history live under `${XDG_STATE_HOME:-~/.local/state}/ds/shell`.
+Open a new terminal to return to your normal setup. Use `ds --help` for commands.
+
+### Install a release
+
 Install the latest release into your own home. No checkout, no Git, and no
 language runtime on the machine:
 

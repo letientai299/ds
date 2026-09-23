@@ -11,7 +11,7 @@
    "activate" ["VERSION [--prefix DIR] [--dry-run]" "Atomically switch current to a staged version; retain previous. Packages and files are unchanged." "ds activate ds-VERSION --dry-run"]
    "rollback" ["[--prefix DIR] [--dry-run]" "Switch current to previous; packages and managed-file contents are not rolled back." "ds rollback --dry-run"]
    "completion" ["bash|zsh" "Print shell completion using this catalog." "source <(ds completion zsh)"]
-   "shell" ["" "Start interactive Zsh." "ds shell"]
+   "shell" ["" "Try core in Zsh without applying dotfiles or packages." "exec ds shell"]
    "shell-init" ["" "Print shell integration." "eval \"$(ds shell-init)\""]
    "docker-rootful" ["--approve-rootful --grant-docker-group" "Provision rootful Docker and grant root-equivalent group access." "ds docker-rootful --approve-rootful --grant-docker-group"]
    "push" ["HOST LAYER [--platform NAME] [--prefix PATH] [--home PATH] [--dry-run|--deliver-only]" "Deliver from a checkout, then apply or preview. Deliver-only leaves current unchanged." "ds push host core --dry-run"]})

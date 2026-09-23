@@ -5,8 +5,7 @@
     (error (string message ": expected " expected ", got " actual))))
 
 (defn facts [& pairs]
-  (merge {:ready? false
-          :engine-ready? false
+  (merge {:engine-ready? false
           :rootless? false
           :linger? false
           :os :linux
@@ -16,7 +15,10 @@
           :runtime? true}
          (table ;pairs)))
 
-(assert= :reuse (docker/plan (facts :ready? true)) "existing daemon wins")
+(assert= :reuse (docker/plan (facts :engine-ready? true)) "existing rootful daemon wins")
+(assert= :reuse
+         (docker/plan (facts :engine-ready? true :rootless? true :linger? true))
+         "rootless daemon with linger wins")
 (assert= :needs-linger
          (docker/plan (facts :engine-ready? true :rootless? true))
          "rootless daemon without linger is incomplete")
@@ -29,10 +31,20 @@
 (assert= :missing-runtime (docker/plan (facts :runtime? false)) "login runtime is required")
 (assert= :install-rootless (docker/plan (facts)) "satisfied prerequisites install")
 
-(assert= true
-         (not= nil (docker/subid-range? "user:100000:65536\n" "user" "1000"))
-         "valid user range")
-(assert= nil (docker/subid-range? "user:100000:65535\n" "user" "1000") "short range")
+(def subid-cases
+  [["user:100000:65536\n" true "valid user range"]
+   ["1000:100000:65536\n" true "range matched by uid"]
+   ["user:100000:65535\n" false "short range"]
+   ["other:100000:65536\n" false "range belongs to another user"]
+   ["user:100000:abc\n" false "non-numeric count"]
+   ["user:100000:65536\r\n" false "CRLF-terminated count"]
+   ["user:100000\n" false "truncated record"]
+   ["" false "empty file"]])
+
+(each [contents expected message] subid-cases
+  (assert= expected
+           (not= nil (docker/subid-range? contents "user" "1000"))
+           (string "subid range: " message)))
 
 (def calls @[])
 (defn runner [argv _environment]

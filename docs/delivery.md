@@ -19,6 +19,9 @@ ds-linux-arm64-musl.tar.gz   ds-macos-arm64.tar.gz   install.sh
 ds-linux-x64-musl.tar.gz     ds-macos-x64.tar.gz     try.sh
 ```
 
+Packing writes a `.sha256` sidecar beside each archive, so a release carries
+four more assets than the names above.
+
 Build every archive from a checkout:
 
 ```sh
@@ -109,9 +112,10 @@ When a snapshot is served over HTTPS using its directory layout:
 ```
 
 Pull supports Curl and Wget, validates safe manifest paths and file modes, and
-checks every payload digest when a SHA-256 utility is available. If the target
-has no SHA-256 command, pull emits a warning and relies on TLS for transport
-integrity.
+checks the manifest and every payload digest against `--manifest-sha256` before
+running the delivered `bootstrap.sh`. Because that pin is mandatory, pull fails
+when the target has no SHA-256 command rather than falling back to transport
+trust. Its staging directory is removed on exit, including on failure.
 
 ## Installation layout
 
@@ -121,7 +125,15 @@ Snapshots install beneath:
 ${XDG_DATA_HOME:-$HOME/.local/share}/ds/versions/<version>/
 ```
 
-Incoming transfer data remains separate from immutable version directories.
+Bootstrap stages an install beside its version directory and publishes it with
+a same-directory rename, so a version directory is either absent or complete.
+Pull removes its incoming transfer data on exit. SSH push retains its incoming
+snapshot under `<prefix>/incoming/<version>`.
+
+Bootstrap then points `<prefix>/current` at the version it installed. Managed
+links resolve through that symlink rather than through a version directory, so
+delivering a new snapshot does not conflict with the links the previous one
+left behind.
 Package and tool caches use their normal XDG/mise locations rather than the
 version directory.
 

@@ -20,5 +20,7 @@ else
 fi
 
 $privilege dnf -y install dnf-plugins-core epel-release
-$privilege dnf config-manager --set-enabled crb
+# dnf5 (Fedora 41+, RHEL 10) removed --set-enabled in favour of setopt.
+$privilege dnf config-manager --set-enabled crb 2>/dev/null ||
+	$privilege dnf config-manager setopt crb.enabled=1
 $privilege dnf -y makecache

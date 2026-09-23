@@ -13,8 +13,10 @@ Components have three ownership modes:
 - `mise`: installed at a pinned version through the selected mise profile;
 - `runtime`: delivered as part of the snapshot itself.
 
-Layer order is deterministic, duplicate command ownership is rejected, and an
-unknown component or dependency cycle fails validation.
+Layer order is deterministic. Validation rejects a layer — including the
+`optional` list — that names an unknown component or repeats one, and rejects a
+command claimed by two components. There is no dependency graph between
+components; a layer is an ordered list, not a DAG.
 
 ## Runtime boundary
 
@@ -42,6 +44,13 @@ from mutating another dotfiles repository.
 
 An existing executable `~/.local/bin/mise` satisfies the managed mise command;
 fresh hosts receive a link to the pinned delivered runtime.
+
+Version directories are immutable, so managed links never point into one
+directly: a delivered install links through `<prefix>/current`, a relative
+symlink that bootstrap publishes and that convergence re-points at the version
+being applied. Without it every link a previous version created would conflict
+with the next one, and upgrading would be impossible. A checkout has no
+`versions/` layout and links against the checkout itself.
 
 ## Docker planner
 
@@ -73,6 +82,8 @@ target.
 | `src/runtime/`             | Reproducible Janet builds and pinned mise downloads           |
 | `src/bundle/`              | Snapshot construction, packing, SSH push, controller, release |
 | `src/dotfiles/`            | Portable Zsh and Git fragments                                |
+| `src/lib/`                 | Shell helpers shared by controller-side scripts only          |
+| `src/THIRD-PARTY.md`       | Notices that ship with the redistributed binaries             |
 | `src/install.sh`           | Curl entrypoint that installs a published release             |
 | `src/try.sh`               | Throwaway-container demo of a layer                           |
 | `src/pull.sh`              | HTTPS transport for a served snapshot directory               |

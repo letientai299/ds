@@ -7,12 +7,19 @@
       (def fields (string/split ":" line))
       (and (= 3 (length fields))
            (or (= user (get fields 0)) (= uid (get fields 0)))
-           (>= (scan-number (get fields 2)) 65536)))
+           # scan-number yields nil for a non-numeric or CRLF-terminated count,
+           # and Janet orders nil above every number, so >= alone accepts it.
+           (let [count (scan-number (get fields 2))]
+             (and (number? count) (>= count 65536)))))
     (string/split "\n" contents)))
+
+(defn ready? [facts]
+  (and (get facts :engine-ready?)
+       (or (not (get facts :rootless?)) (get facts :linger?))))
 
 (defn plan [facts]
   (cond
-    (get facts :ready?) :reuse
+    (ready? facts) :reuse
     (and (get facts :engine-ready?)
          (get facts :rootless?)
          (not (get facts :linger?))) :needs-linger

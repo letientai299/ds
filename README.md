@@ -13,9 +13,12 @@ Linux][rocky], and macOS.
 
 | Layer    | Contents                                                         |
 | -------- | ---------------------------------------------------------------- |
-| `core`   | Git, Curl, Zsh, Neovim, fd, FZF, ripgrep, nnn, jq, and xh        |
+| `core`   | mise, Git, Curl, Zsh, Neovim, fd, FZF, ripgrep, nnn, jq, and xh  |
 | `remote` | `core` plus Tmux, [Docker][docker] readiness, Zoxide, Bat, Delta |
 | optional | Starship, enabled independently with `ds add starship`           |
+
+`src/catalog.toml` is the source of truth for this table, and `ds status LAYER`
+prints what a layer actually resolves to on a given machine.
 
 Neovim and Tmux configuration come from sibling `nvim.conf` and `tmux.conf`
 checkouts by default. A delivered snapshot contains Git-exported copies, so the
@@ -30,7 +33,7 @@ throwaway container, and hands over an interactive Zsh:
 curl -fsSL https://raw.githubusercontent.com/letientai299/ds/main/src/try.sh | sh
 ```
 
-See [Try ds in Docker](docs/try.md) for what to look at once the prompt appears,
+See [Try ds in Docker][try] for what to look at once the prompt appears,
 how to try the `remote` layer, and how to run the demo from a checkout.
 
 ## Quick start
@@ -55,7 +58,7 @@ curl -fsSL https://github.com/letientai299/ds/releases/latest/download/install.s
 ~/.local/share/ds/versions/*/ds apply core --dry-run
 ```
 
-Installer options are documented in [Gitless delivery](docs/delivery.md).
+Installer flags are documented in [Getting started and recovery][getting-started]; the release layout is in [Gitless delivery][delivery].
 
 Normal apply refuses conflicting managed targets. To preserve and replace
 conflicts, preview adoption first:
@@ -65,8 +68,10 @@ ds adopt core --dry-run
 ds adopt core
 ```
 
-Adoption moves each conflict to `<target>.ds-adopted`; `ds unapply` restores
-that backup. `ds force` is destructive and does not create backups.
+Adoption backs each conflict up to `<target>.ds-adopted` before replacing it.
+Marked blocks in `~/.zshrc` and `~/.gitconfig` are rewritten in place instead,
+so the rest of those files survives either takeover. See
+[Conflict operations][conflict-ops].
 
 ## Remote delivery
 
@@ -84,8 +89,8 @@ Apply to the normal remote home after reviewing the preview:
 
 The controller probes the target platform, creates a content-addressed bundle,
 transfers it over SSH, verifies it, and applies the selected layer. The target
-needs only POSIX `sh`, `mkdir`, `cat`, and `chmod` for delivery, plus `uname`
-for automatic platform detection.
+needs only POSIX `sh`, `mkdir`, `cat`, `chmod`, `rm`, `mv`, and `ln` for delivery,
+plus `uname` for automatic platform detection.
 
 ## Working on ds
 
@@ -114,18 +119,32 @@ mise run verify
 `e2e:all` launches every E2E target concurrently. The broader `verify` task also
 checks runtime reproducibility and platform execution.
 
+## License
+
+[MIT][license]. Snapshots redistribute the pinned Janet and mise binaries; their
+notices ship with every archive in [`src/THIRD-PARTY.md`][third-party].
+
 ## Documentation
 
-- [Try ds in Docker](docs/try.md)
-- [Getting started and recovery](docs/getting-started.md)
-- [Command reference](docs/cli.md)
-- [Gitless delivery](docs/delivery.md)
-- [Architecture](docs/architecture.md)
-- [Testing](docs/testing.md)
+- [Try ds in Docker][try]
+- [Getting started and recovery][getting-started]
+- [Command reference][cli]
+- [Gitless delivery][delivery]
+- [Architecture][architecture]
+- [Testing][testing]
 
 [alpine]: https://alpinelinux.org/
+[architecture]: docs/architecture.md
+[cli]: docs/cli.md
+[conflict-ops]: docs/cli.md#conflict-operations
+[delivery]: docs/delivery.md
 [docker]: https://www.docker.com/
+[getting-started]: docs/getting-started.md
 [janet]: https://janet-lang.org/
+[license]: LICENSE
 [mise]: https://mise.jdx.dev/
 [rocky]: https://rockylinux.org/
+[testing]: docs/testing.md
+[third-party]: src/THIRD-PARTY.md
+[try]: docs/try.md
 [ubuntu]: https://ubuntu.com/

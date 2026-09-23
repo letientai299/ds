@@ -1,16 +1,13 @@
-(defn safe-relative? [path]
-  (and
-    (> (length path) 0)
-    (not= (first path) (chr "/"))
-    (all (fn [part] (and (> (length part) 0) (not= part ".") (not= part "..")))
-         (string/split "/" path))))
-
-(defn rooted-path [root relative]
-  (unless (safe-relative? relative)
-    (error (string "unsafe relative path: " relative)))
-  (if (= (last root) (chr "/"))
-    (string root relative)
-    (string root "/" relative)))
-
-(defn exists-in? [root relative exists?]
-  (exists? (rooted-path root relative)))
+# Creates every missing parent directory of an absolute target path.
+# Both former copies of this walk prefixed "/" to each segment, so a relative
+# target silently walked from the filesystem root; reject that instead.
+(defn ensure-parent [target]
+  (unless (string/has-prefix? "/" target)
+    (error (string "target path must be absolute: " target)))
+  (def parts (string/split "/" target))
+  (var current "")
+  (each part (slice parts 0 -2)
+    (unless (empty? part)
+      (set current (string current "/" part))
+      (os/mkdir current)))
+  true)

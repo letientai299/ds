@@ -47,6 +47,25 @@ case "$prefix" in
 esac
 command -v "$ssh_command" >/dev/null 2>&1 || die "SSH command is missing: $ssh_command"
 
+# A snapshot carries a few hundred payload files and each one used to cost its
+# own handshake, so every push multiplexes them over a single master connection.
+control_dir=$(mktemp -d "${TMPDIR:-/tmp}/ds-push.XXXXXX")
+ssh_run() {
+	"$ssh_command" -o ControlMaster=auto -o ControlPersist=60 \
+		-o "ControlPath=\"$control_dir/%C\"" "$@"
+}
+
+shutdown_master() {
+	ssh_run -O exit "$host" >/dev/null 2>&1 || true
+	rm -rf "$control_dir"
+}
+trap shutdown_master EXIT
+trap 'exit 143' HUP INT TERM
+
+remote() {
+	ssh_run "$host" "$1"
+}
+
 manifest_sha=$(sed -n '1p' "$snapshot/manifest.sha256")
 version=$(
 	"$root/src/bootstrap.sh" \
@@ -58,22 +77,25 @@ remote_prefix=\$HOME/$prefix
 remote_source=$remote_prefix/incoming/$version
 remote_install=$remote_prefix/versions/$version
 
-if "$ssh_command" "$host" "test -x \"$remote_install/ds\"" >/dev/null 2>&1; then
-	"$ssh_command" "$host" "printf '%s\\n' \"$remote_install\""
+if remote "test -x \"$remote_install/ds\"" >/dev/null 2>&1; then
+	remote "printf '%s\\n' \"$remote_install\""
 	exit 0
 fi
 
-"$ssh_command" "$host" "mkdir -p \"$remote_source\"; cat >\"$remote_source/manifest.tsv\"; chmod 0644 \"$remote_source/manifest.tsv\"" \
+remote "mkdir -p \"$remote_source\"; cat >\"$remote_source/manifest.tsv\"; chmod 0644 \"$remote_source/manifest.tsv\"" \
 	<"$snapshot/manifest.tsv"
 
 tab=$(printf '\t')
 while IFS="$tab" read -r record mode _expected_sha256 path _extra; do
 	[ "$record" = file ] || continue
+	case "$mode" in 0644 | 0755) ;; *) die "invalid mode for $path" ;; esac
+	case "$path" in
+	'' | /* | ../* | */../* | */.. | *[!0-9A-Za-z._/-]*) die "unsafe bundle path: $path" ;;
+	esac
 	remote_file=$remote_source/files/$path
 	remote_dir=${remote_file%/*}
-	"$ssh_command" "$host" "mkdir -p \"$remote_dir\"; cat >\"$remote_file\"; chmod \"$mode\" \"$remote_file\"" \
+	remote "mkdir -p \"$remote_dir\"; cat >\"$remote_file\"; chmod \"$mode\" \"$remote_file\"" \
 		<"$snapshot/files/$path"
 done <"$snapshot/manifest.tsv"
 
-"$ssh_command" "$host" \
-	"\"$remote_source/files/src/bootstrap.sh\" --source \"$remote_source\" --prefix \"$remote_prefix\" --manifest-sha256 \"$manifest_sha\""
+remote "\"$remote_source/files/src/bootstrap.sh\" --source \"$remote_source\" --prefix \"$remote_prefix\" --manifest-sha256 \"$manifest_sha\""

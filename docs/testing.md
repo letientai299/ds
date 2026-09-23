@@ -8,8 +8,12 @@ mise run e2e:all
 mise run verify
 ```
 
-`check` runs ShellCheck, C syntax checks, TOML formatting, generated-data
-validation, Janet compile checks, unit tests, and shell contracts. The contract
+`check` chains three narrower tasks, so the first failure stops the run:
+`check:static` (ShellCheck, `shfmt -d`, C syntax and format checks, TOML
+formatting, generated-data validation), `check:unit` (Janet compile checks and
+unit tests), and `check:contract` (the delivery contract). The first two
+together take a few seconds and are the inner loop; run them directly while
+iterating. The contract
 covers all four delivery transports end to end: the release installer, the
 served-directory pull with both Curl and Wget, the SSH push, and a manual
 archive. It also asserts that reinstalling the same release is idempotent and
@@ -32,6 +36,18 @@ matrix.
 | `e2e:docker-readiness` | Existing engine, Buildx, Compose, pinned pull/run, and tiny image build/run        |
 | `e2e:macos`            | No-write isolated-home previews and Homebrew package selection                     |
 | `e2e:rocky`            | DNF, CRB/EPEL preparation, tools, and double-apply convergence                     |
+
+## Target preflight
+
+`mise run preflight` reports whether a machine can receive a push: the delivery
+utilities, the Docker prerequisites, and the rootless subordinate-ID ranges.
+With no argument it inspects the local machine; pass an SSH host to inspect that
+host instead, which needs nothing installed there beforehand.
+
+```sh
+mise run preflight
+mise run preflight my-host
+```
 
 ## Docker-readiness scope
 
@@ -66,7 +82,7 @@ bytes, cache use, and component disk size without setting release thresholds.
 
 `mise run try` opens a shell in a container with a layer applied, which covers
 the look and feel questions a test suite cannot assert. See
-[Try ds in Docker](try.md).
+[Try ds in Docker][try].
 
 Containers cannot prove:
 
@@ -76,3 +92,5 @@ Containers cannot prove:
 - a real-home adoption matches the user's intended backup boundary.
 
 Keep those results separate from automated E2E evidence.
+
+[try]: try.md

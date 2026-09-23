@@ -11,7 +11,7 @@ curl -fsSL https://raw.githubusercontent.com/letientai299/ds/main/src/try.sh | s
 ```
 
 The container installs the latest release with
-[`src/install.sh`](../src/install.sh), applies `core`, then opens Zsh. Only
+[`src/install.sh`][install-sh], applies `core`, then opens Zsh. Only
 Docker is needed on the host.
 
 ## From a checkout
@@ -22,7 +22,7 @@ mise run try
 
 This packs the working tree into a snapshot instead of downloading a release, so
 it reflects uncommitted changes. It needs the pinned runtimes; see the working
-notes in the [README](../README.md). Force either payload source explicitly:
+notes in the [README][readme]. Force either payload source explicitly:
 
 ```sh
 ./src/try.sh --source checkout
@@ -32,7 +32,7 @@ notes in the [README](../README.md). Force either payload source explicitly:
 ## What to look at
 
 Once the prompt appears, the container is a normal target: the managed `.zshrc`
-marker has loaded [`src/dotfiles/shell.zsh`](../src/dotfiles/shell.zsh), and
+marker has loaded [`src/dotfiles/shell.zsh`][shell-zsh], and
 every layer component is on `PATH`.
 
 ```sh
@@ -86,7 +86,11 @@ command has to source the fragment itself:
 
 A container cannot show everything. Clipboard integration, a rootless Docker
 service surviving a real logout, and how the configuration feels over days of
-use are all outside its reach. See [Testing](testing.md) for the full list of
+use are all outside its reach. See [Testing][testing] for the full list of
 manual boundaries.
 
 [docker]: https://www.docker.com/
+[install-sh]: ../src/install.sh
+[readme]: ../README.md
+[shell-zsh]: ../src/dotfiles/shell.zsh
+[testing]: testing.md

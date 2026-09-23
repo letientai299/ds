@@ -20,21 +20,13 @@
 (assert= :blocked (get (first (planner/diff conflict)) :action) "conflicts block apply")
 
 (def fake-root "/isolated/home")
-(def observed @[])
-(defn fake-exists [path]
-  (array/push observed path)
-  (= path "/isolated/home/.config/ds/config"))
-(assert= true
-         (filesystem/exists-in? fake-root ".config/ds/config" fake-exists)
-         "filesystem probe uses injected root")
-(assert= 1 (length observed) "filesystem probe count")
-(assert= "/isolated/home/.config/ds/config" (first observed) "filesystem probe stays isolated")
 
-(var unsafe-failed? false)
+# A relative target would make the walk start at the filesystem root.
+(var relative-failed? false)
 (try
-  (filesystem/rooted-path fake-root "../real-home")
-  ([_err] (set unsafe-failed? true)))
-(assert= true unsafe-failed? "filesystem root rejects traversal")
+  (filesystem/ensure-parent "relative/target")
+  ([_err] (set relative-failed? true)))
+(assert= true relative-failed? "ensure-parent rejects a relative target")
 
 (def calls @[])
 (defn fake-runner [argv environment]

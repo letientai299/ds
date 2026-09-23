@@ -12,26 +12,8 @@ root=$(CDPATH='' cd "$root" && pwd)
 dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
 target=${1:-}
 
-if command -v sha256sum >/dev/null 2>&1; then
-	checksum_kind=sha256sum
-elif command -v shasum >/dev/null 2>&1; then
-	checksum_kind=shasum
-else
-	die 'a SHA-256 utility is required'
-fi
-
-sha256_file() {
-	case "$checksum_kind" in
-	sha256sum) sha256sum "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	shasum) shasum -a 256 "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	esac
-}
+# shellcheck source=src/lib/checksum.sh
+. "$root/src/lib/checksum.sh"
 
 fetch_one() {
 	platform=$1
@@ -60,7 +42,9 @@ fetch_one() {
 	actual=$(sha256_file "$archive")
 	[ "$actual" = "$expected" ] || die "cached checksum mismatch: $platform"
 
-	stage=$(mktemp -d "$dist/.mise-$platform.XXXXXX")
+	# The binary is copied out of the stage, never moved, so the stage does not
+	# need to share a filesystem with $dist.
+	stage=$(mktemp -d "${TMPDIR:-/tmp}/ds-mise-$platform.XXXXXX")
 	trap 'rm -rf "$stage"' EXIT HUP INT TERM
 	tar -xJf "$archive" -C "$stage"
 	binary=$(find "$stage" -type f -name mise -print | sed -n '1p')

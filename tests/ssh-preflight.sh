@@ -1,6 +1,16 @@
 #!/bin/sh
 
+# Reports whether a machine can receive a ds push: the delivery utilities, the
+# Docker prerequisites, and the rootless subordinate-ID ranges.
+#
+# With no argument it reports this machine. With a host it pipes itself to that
+# host over SSH, so a target needs nothing installed beforehand.
+
 set -eu
+
+if [ "$#" -gt 0 ]; then
+	exec ssh "$1" sh -s <"$0"
+fi
 
 has_command() {
 	if command -v "$1" >/dev/null 2>&1; then

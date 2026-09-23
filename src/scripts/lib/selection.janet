@@ -1,3 +1,4 @@
+(import scripts/lib/filesystem)
 (import scripts/lib/layers)
 
 (defn config-home [environment]
@@ -15,29 +16,24 @@
       (def name (string/trim line))
       (unless (empty? name)
         (def component (keyword name))
-        (unless (layers/optional-component? catalog component)
-          (error (string "unknown selected component: " name)))
-        (unless (find |(= $ component) result)
-          (array/push result component)))))
+        # This file is written by an earlier version of ds and read by every
+        # command. A name that a later catalog dropped must not turn `ds add`
+        # or `ds status` into a crash with no way to clear the file.
+        (if-not (layers/optional-component? catalog component)
+          (eprint (string "ds: ignoring unknown selected component: " name))
+          (unless (find |(= $ component) result)
+            (array/push result component))))))
   result)
 
 (defn selected? [catalog environment component]
   (not= nil (find |(= $ component) (selected catalog environment))))
-
-(defn ensure-parent [target]
-  (def parts (string/split "/" target))
-  (var current "")
-  (each part (slice parts 0 (- (length parts) 1))
-    (unless (empty? part)
-      (set current (string current "/" part))
-      (os/mkdir current))))
 
 (defn save [environment components]
   (def target (state-path environment))
   (if (empty? components)
     (when (os/stat target) (os/rm target))
     (do
-      (ensure-parent target)
+      (filesystem/ensure-parent target)
       (spit target (string (string/join (map string components) "\n") "\n"))))
   true)
 

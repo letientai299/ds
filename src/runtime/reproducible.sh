@@ -17,26 +17,8 @@ mkdir -p "$dist"
 cp -R "$source_dist/src" "$dist/src"
 export DS_RUNTIME_DIST="$dist"
 
-if command -v sha256sum >/dev/null 2>&1; then
-	checksum_kind=sha256sum
-elif command -v shasum >/dev/null 2>&1; then
-	checksum_kind=shasum
-else
-	die 'a SHA-256 utility is required'
-fi
-
-sha256_file() {
-	case "$checksum_kind" in
-	sha256sum) sha256sum "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	shasum) shasum -a 256 "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	esac
-}
+# shellcheck source=src/lib/checksum.sh
+. "$root/src/lib/checksum.sh"
 
 matrix_checksums() {
 	for platform in macos-arm64 macos-x64 linux-arm64-musl linux-x64-musl; do
@@ -45,6 +27,11 @@ matrix_checksums() {
 		printf '%s\t%s\n' "$platform" "$(sha256_file "$binary")"
 	done
 }
+
+# Without this the Linux halves of both passes are BuildKit cache hits and the
+# comparison is sha256(x) == sha256(x). The toolchain stage stays cached, so a
+# mirror update cannot turn this check red on its own.
+export DS_RUNTIME_BUILD_FLAGS="--no-cache-filter build"
 
 "$root/src/runtime/build.sh" all >/dev/null
 before=$(matrix_checksums)

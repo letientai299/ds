@@ -57,11 +57,6 @@
   (def mise (binary root target-environment))
   (process/execute runner (bootstrap-argv mise root dry-run?) target-environment))
 
-(defn has-tool? [runner root layer base-environment command]
-  (def target-environment (environment base-environment root layer))
-  (def mise (binary root target-environment))
-  (= 0 (process/execute runner [mise "-C" (config-root root) "which" command] target-environment)))
-
 (defn tool-installed? [root layer base-environment tool]
   (def target-environment (environment base-environment root layer))
   (def data-dir (get target-environment "MISE_DATA_DIR"))

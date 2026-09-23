@@ -51,26 +51,8 @@ esac
 [ -n "$output" ] || die '--output is required'
 [ ! -e "$output" ] || die "output already exists: $output"
 
-if command -v sha256sum >/dev/null 2>&1; then
-	checksum_kind=sha256sum
-elif command -v shasum >/dev/null 2>&1; then
-	checksum_kind=shasum
-else
-	die 'a SHA-256 utility is required'
-fi
-
-sha256_file() {
-	case "$checksum_kind" in
-	sha256sum) sha256sum "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	shasum) shasum -a 256 "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	esac
-}
+# shellcheck source=src/lib/checksum.sh
+. "$root/src/lib/checksum.sh"
 
 # A snapshot mirrors the checkout layout: the `ds` launcher at the root and
 # every payload under `src/`, so DS_ROOT means the same thing in both.
@@ -86,6 +68,9 @@ cp "$root/src/bootstrap.sh" "$payload/bootstrap.sh"
 cp "$root/ds" "$files/ds"
 cp "$root/src/mise/mise.toml" "$payload/mise/mise.toml"
 cp "$root/src/catalog.toml" "$payload/catalog.toml"
+# MIT requires the notice to travel with the redistributed Janet and mise
+# binaries, so it becomes a manifest entry like any other payload file.
+cp "$root/src/THIRD-PARTY.md" "$payload/THIRD-PARTY.md"
 [ ! -f "$root/src/mise/mise.remote.toml" ] || cp "$root/src/mise/mise.remote.toml" "$payload/mise/mise.remote.toml"
 [ ! -f "$root/src/mise/mise.starship.toml" ] || cp "$root/src/mise/mise.starship.toml" "$payload/mise/mise.starship.toml"
 cp -R "$root/src/scripts/." "$payload/scripts/"
@@ -108,6 +93,9 @@ tab=$(printf '\t')
 printf 'ds-bundle-v1%s%s\n' "$tab" "$version" >"$output/manifest.tsv"
 find "$files" -type f -print | LC_ALL=C sort | while IFS= read -r source; do
 	path=${source#"$files/"}
+	# push.sh interpolates this path into a remote shell command, so restrict
+	# the character class at production rather than at every consumer.
+	case "$path" in *[!0-9A-Za-z._/-]*) die "unsafe bundle path: $path" ;; esac
 	mode=0644
 	[ -x "$source" ] && mode=0755
 	digest=$(sha256_file "$source")

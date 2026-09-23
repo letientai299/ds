@@ -2,7 +2,7 @@
 
 ## Look before installing
 
-[Try ds in Docker](try.md) applies a layer inside a throwaway container and
+[Try ds in Docker][try] applies a layer inside a throwaway container and
 opens a shell in it. Nothing is written to your home, so it answers "what does
 this feel like" without a decision.
 
@@ -15,7 +15,8 @@ a preinstalled downloader on the target:
 curl -fsSL https://github.com/letientai299/ds/releases/latest/download/install.sh | sh
 ```
 
-Useful flags, all also available as `DS_`-prefixed environment variables:
+Useful flags. All except `--no-apply` also read a `DS_`-prefixed environment
+variable:
 
 | Flag                | Effect                                                    |
 | ------------------- | --------------------------------------------------------- |
@@ -46,11 +47,14 @@ The first command installs development tooling from `.config/mise/config.toml`,
 which also defines every task. Runtime tasks build Janet and fetch mise for
 macOS and Linux, ARM64 and x64.
 
-A checkout expects these configuration sources:
+A checkout expects these configuration sources, each a Git checkout with a
+`HEAD` to export:
 
 - `../nvim.conf`, or a path supplied through `DS_NVIM_SOURCE`;
-- `../tmux.conf`, or a path supplied through `DS_TMUX_SOURCE` for `remote`.
+- `../tmux.conf`, or a path supplied through `DS_TMUX_SOURCE`.
 
+Both are required for any snapshot build, whatever layer you intend to apply, so
+`mise run try`, `mise run release`, and `ds push` all fail without them.
 Delivery bundles contain committed Git exports of both sources.
 
 ## Apply core safely
@@ -82,13 +86,13 @@ If a conflict should be preserved and replaced, use adoption:
 ./ds adopt core
 ```
 
-Each conflicting target moves to `<target>.ds-adopted`. Adoption never follows a
-linked Zsh rc into another repository.
+Each conflicting target is backed up to `<target>.ds-adopted` before it is
+replaced. Adoption never follows a linked Zsh rc into another repository.
 
 ## Use the remote layer
 
-`remote` includes every `core` component and adds Tmux, Docker readiness,
-Zoxide, Bat, and Delta:
+`remote` includes every `core` component and adds the tools listed under
+[Layers][layers]:
 
 ```sh
 ./ds apply remote --dry-run
@@ -135,3 +139,6 @@ disk.
 
 Avoid `ds force` unless discarding each reported conflict is intentional. It
 removes conflicting targets without backups.
+
+[layers]: ../README.md#layers
+[try]: try.md

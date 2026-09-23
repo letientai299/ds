@@ -1,0 +1,34 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A push while an earlier run is still going supersedes it.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # Both host families ship a runtime, and check:static is Darwin-guarded, so
+    # the C compile and format checks only ever run on macOS.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+
+      # The sibling Neovim and Tmux checkouts that build.sh git-exports are not
+      # part of this repository, so tests/contract.sh cannot build a snapshot
+      # here. check:unit is everything that does not need them.
+      - uses: jdx/mise-action@v4
+
+      - run: mise run check:unit

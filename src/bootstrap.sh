@@ -128,15 +128,37 @@ if [ "$verify_only" = true ]; then
 fi
 
 install_root=$prefix/versions/$version
-[ ! -e "$install_root" ] || die "version is already installed: $version"
-mkdir -p "$install_root"
+[ ! -e "$install_root" ] || die "version is already installed: $version (remove $install_root to reinstall)"
+
+# Version identities are content-addressed, so a half-written install can never
+# be superseded by a retry. Stage beside the target and publish with a
+# same-directory rename so an interrupted copy leaves nothing behind.
+# Dot-prefixed so a staging directory left by SIGKILL cannot be picked up by
+# the documented `versions/*/ds` glob, and a sibling of $install_root so the
+# publishing rename stays within one directory.
+staging=$prefix/versions/.$version.incoming.$$
+rm -rf "$staging"
+trap 'rm -rf "$staging"' EXIT
+# A signal handler that only cleans up returns to the copy loop, which would
+# then recreate and publish a truncated tree. Terminate instead.
+trap 'exit 143' HUP INT TERM
+mkdir -p "$staging"
 
 while IFS="$tab" read -r record mode _expected_sha256 path _extra; do
 	[ "$record" = file ] || continue
-	destination=$install_root/$path
+	destination=$staging/$path
 	mkdir -p "${destination%/*}"
 	cat "$source_dir/files/$path" >"$destination"
 	chmod "$mode" "$destination"
 done <"$source_dir/manifest.tsv"
 
-printf '%s\n' "$prefix/versions/$version"
+mv "$staging" "$install_root"
+trap - EXIT HUP INT TERM
+
+# Managed links point at $prefix/current rather than at an immutable version
+# directory, so that installing a new version does not conflict with the links
+# the previous one left behind. Relative, so the prefix stays relocatable.
+rm -f "$prefix/current"
+ln -s "versions/$version" "$prefix/current"
+
+printf '%s\n' "$install_root"

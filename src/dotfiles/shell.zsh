@@ -3,6 +3,11 @@ export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+# shell-init re-sources this file from inside the `ds` function, so the
+# declaration has to be global: a function-local PATH starts empty, and the
+# export below would then leave a trailing colon that puts $PWD on PATH. -U
+# keeps the first occurrence, which leaves the ds entries in front.
+typeset -gU path PATH
 export PATH="$HOME/.local/bin:$XDG_DATA_HOME/mise/shims:$PATH"
 export DS_ROOT="${${:-$HOME/.local/bin/ds}:A:h}"
 export MISE_CACHE_DIR="$XDG_CACHE_HOME/mise"

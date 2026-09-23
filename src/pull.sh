@@ -69,12 +69,14 @@ wget)
 	;;
 esac
 
+# --manifest-sha256 is mandatory here, so a target without a digest tool cannot
+# honour the pin it was given. Fail rather than degrade to transport trust.
 if command -v sha256sum >/dev/null 2>&1; then
 	checksum_kind=sha256sum
 elif command -v shasum >/dev/null 2>&1; then
 	checksum_kind=shasum
 else
-	checksum_kind=
+	die 'sha256sum or shasum is required'
 fi
 
 sha256_file() {
@@ -91,14 +93,13 @@ sha256_file() {
 }
 
 source_dir=$prefix/incoming/pull-$$
+rm -rf "$source_dir"
+trap 'rm -rf "$source_dir"' EXIT
+trap 'exit 143' HUP INT TERM
 mkdir -p "$source_dir/files"
 download "$url/manifest.tsv" "$source_dir/manifest.tsv"
-if [ -n "$checksum_kind" ]; then
-	actual_manifest_sha256=$(sha256_file "$source_dir/manifest.tsv")
-	[ "$actual_manifest_sha256" = "$expected_manifest_sha256" ] || die 'manifest checksum mismatch'
-else
-	printf '%s\n' 'ds pull: warning: target has no SHA-256 utility; TLS verification is authoritative' >&2
-fi
+actual_manifest_sha256=$(sha256_file "$source_dir/manifest.tsv")
+[ "$actual_manifest_sha256" = "$expected_manifest_sha256" ] || die 'manifest checksum mismatch'
 
 tab=$(printf '\t')
 header_read=false
@@ -120,6 +121,8 @@ while IFS="$tab" read -r record mode expected_sha256 path extra; do
 		mkdir -p "${destination%/*}"
 		download "$url/files/$path" "$destination"
 		chmod "$mode" "$destination"
+		actual_sha256=$(sha256_file "$destination")
+		[ "$actual_sha256" = "$expected_sha256" ] || die "checksum mismatch: $path"
 		;;
 	'') ;;
 	*) die "unknown manifest record: $record" ;;

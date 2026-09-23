@@ -1,3 +1,4 @@
+(import scripts/lib/filesystem)
 (import scripts/lib/mise)
 
 (def rc-start "# >>> ds managed >>>")
@@ -6,14 +7,31 @@
 (defn path [home relative]
   (string home "/" relative))
 
-(defn mkdir-parent [_runner _environment target]
-  (def parts (string/split "/" target))
-  (var current "")
-  (each part (slice parts 0 (- (length parts) 1))
-    (unless (empty? part)
-      (set current (string current "/" part))
-      (os/mkdir current)))
-  true)
+(defn parent-directory [path]
+  (def index (last (string/find-all "/" path)))
+  (if (and index (> index 0)) (slice path 0 index) path))
+
+(defn basename [path]
+  (last (string/split "/" path)))
+
+# A version directory is immutable and its name changes with every release, so
+# a link built from it conflicts with itself the next time a version lands.
+# A delivered install therefore links through a stable `<prefix>/current`
+# indirection; a checkout has no versions/ layout and keeps using its own root.
+(defn delivered? [root]
+  (= "versions" (basename (parent-directory root))))
+
+(defn link-root [root]
+  (if (delivered? root)
+    (string (parent-directory (parent-directory root)) "/current")
+    root))
+
+(defn point-current [root]
+  (when (delivered? root)
+    (def link (link-root root))
+    (when (os/lstat link) (os/rm link))
+    # Relative, so the whole prefix stays relocatable.
+    (os/link (string "versions/" (basename root)) link true)))
 
 (defn same-link? [target source]
   (and (= :link (os/lstat target :mode)) (= source (os/readlink target))))
@@ -70,32 +88,65 @@
         (or (string/find rc-start contents) (string/find rc-end contents)) :conflict
         :else :missing))))
 
+(defn first-marker [contents]
+  (def start (string/find rc-start contents))
+  (def end (string/find rc-end contents))
+  (cond
+    (nil? start) end
+    (nil? end) start
+    (min start end)))
+
+# Removes every managed region, tolerating a block whose end marker was lost to
+# a hand edit, an orphaned end marker, and repeated blocks. Anything left behind
+# keeps marker-state at :conflict, so apply would fail right after prepare
+# reported success.
+(defn strip-marker-block [contents]
+  (var remaining contents)
+  (var from (first-marker remaining))
+  (while from
+    (def found (string/find rc-end remaining from))
+    (def next-start (string/find rc-start remaining (+ from 1)))
+    # A start marker whose end marker was lost must consume its own line and no
+    # more. Everything below it is user content, and force keeps no backup.
+    (def stop
+      (if (and found (or (nil? next-start) (< found next-start)))
+        (+ found (length rc-end))
+        (or (string/find "\n" remaining from) (length remaining))))
+    (def tail (slice remaining stop))
+    (set remaining
+         (string (slice remaining 0 from)
+                 (if (string/has-prefix? "\n" tail) (slice tail 1) tail)))
+    (set from (first-marker remaining)))
+  remaining)
+
 (defn source-root [root environment name]
-  (def configured
-    (or (get environment (string "DS_" (string/ascii-upper name) "_SOURCE"))
-        (let [sibling (string root "/../" name ".conf")
-              bundled (string root "/src/vendor/" name ".conf")]
-          (if (os/stat sibling) sibling bundled))))
-  (if (os/stat configured) (os/realpath configured) configured))
+  (def configured (get environment (string "DS_" (string/ascii-upper name) "_SOURCE")))
+  (cond
+    configured (if (os/stat configured) (os/realpath configured) configured)
+    # A checkout keeps its sibling checkouts resolved to a concrete path.
+    (os/stat (string root "/../" name ".conf")) (os/realpath (string root "/../" name ".conf"))
+    # The bundled copy stays expressed through `root`, which is already stable.
+    (string root "/src/vendor/" name ".conf")))
 
 (defn entries [root environment layer]
   (def home (or (get environment "HOME") (error "HOME is required")))
   (def config-home (or (get environment "XDG_CONFIG_HOME") (path home ".config")))
+  (def base (link-root root))
   (def core
-    @[{:kind :link :target (path home ".local/bin/ds") :source (string root "/ds")}
-     {:kind :command-link :target (path home ".local/bin/mise") :source (mise/binary root environment)}
-     {:kind :link :target (path config-home "ds/shell.zsh") :source (string root "/src/dotfiles/shell.zsh")}
-     {:kind :link :target (path config-home "ds/gitconfig") :source (string root "/src/dotfiles/gitconfig")}
-     {:kind :link :target (path config-home "ds/gitignore") :source (string root "/src/dotfiles/gitignore")}
-     {:kind :link :target (path config-home "ds/mise/config.toml") :source (string root "/src/mise/mise.toml")}
-     {:kind :link :target (path config-home "ds/mise/config.remote.toml") :source (string root "/src/mise/mise.remote.toml")}
-     {:kind :link :target (path config-home "ds/mise/config.starship.toml") :source (string root "/src/mise/mise.starship.toml")}
+    @[{:kind :link :target (path home ".local/bin/ds") :source (string base "/ds")}
+     {:kind :command-link :target (path home ".local/bin/mise") :source (mise/binary base environment)}
+     {:kind :link :target (path config-home "ds/shell.zsh") :source (string base "/src/dotfiles/shell.zsh")}
+     {:kind :link :target (path config-home "ds/gitconfig") :source (string base "/src/dotfiles/gitconfig")}
+     {:kind :link :target (path config-home "ds/gitignore") :source (string base "/src/dotfiles/gitignore")}
+     {:kind :link :target (path config-home "ds/mise/config.toml") :source (string base "/src/mise/mise.toml")}
+     {:kind :link :target (path config-home "ds/mise/config.remote.toml") :source (string base "/src/mise/mise.remote.toml")}
+     {:kind :link :target (path config-home "ds/mise/config.starship.toml") :source (string base "/src/mise/mise.starship.toml")}
      {:kind :layer :target (path config-home "ds/layer") :contents layer}
-     {:kind :link :target (path config-home "nvim") :source (source-root root environment "nvim")}
+     {:kind :link :target (path config-home "nvim") :source (source-root base environment "nvim")}
      {:kind :marker :target (path home ".zshrc") :line (string "source \"" config-home "/ds/shell.zsh\"")}
      {:kind :marker :target (path home ".gitconfig") :line (string "[include]\n\tpath = " config-home "/ds/gitconfig")}])
   (if (= layer "remote")
-    (let [tmux-source (source-root root environment "tmux")]
+    (let [tmux-source (source-root base environment "tmux")]
       (array/concat core
                     @[{:kind :link :target (path config-home "tmux") :source tmux-source}
                      {:kind :link :target (path home ".local/bin/tm") :source (string tmux-source "/tm")}]))
@@ -117,57 +168,83 @@
 (defn backup-path [entry]
   (string (get entry :target) ".ds-adopted"))
 
+# A marker target is a user-owned rc file that ds only ever appends a block to,
+# so a takeover must remove the block and nothing else. Moving or deleting the
+# whole file would discard everything the user wrote around it.
+(defn takeover-marker [entry mode]
+  (def target (get entry :target))
+  (def contents (string (slurp target)))
+  (when (= mode :adopt)
+    (def backup (backup-path entry))
+    (when (os/lstat backup)
+      (error (string "adoption backup already exists: " backup)))
+    (spit backup contents)
+    (os/chmod backup (os/stat target :permissions)))
+  (def remaining (strip-marker-block contents))
+  (if (empty? remaining)
+    (os/rm target)
+    (spit target remaining)))
+
+(defn marker-file? [entry]
+  (and (= :marker (get entry :kind))
+       (not= :link (os/lstat (get entry :target) :mode))))
+
 (defn prepare [runner root environment layer mode]
+  (unless (or (= mode :adopt) (= mode :force))
+    (error (string "unknown takeover mode: " mode)))
   (each entry (conflicts root environment layer)
     (def target (get entry :target))
-    (case mode
-      :adopt
+    (cond
+      (marker-file? entry) (takeover-marker entry mode)
+
+      (= mode :adopt)
       (do
         (def backup (backup-path entry))
         (when (os/lstat backup)
           (error (string "adoption backup already exists: " backup)))
         (unless (= 0 (runner ["mv" "--" target backup] environment))
           (error (string "could not adopt: " target))))
-      :force
-      (unless (= 0 (runner ["rm" "-rf" "--" target] environment))
-        (error (string "could not replace: " target)))
-      (error (string "unknown takeover mode: " mode)))))
 
-(defn apply-entry [runner environment entry]
+      (unless (= 0 (runner ["rm" "-rf" "--" target] environment))
+        (error (string "could not replace: " target))))))
+
+(defn link-kind? [kind]
+  (or (= :link kind) (= :command-link kind)))
+
+(defn apply-entry [entry]
   (def target (get entry :target))
-  (case (get entry :kind)
-    :link
-    (unless (= :present (state entry))
+  (when (= :present (state entry)) (break))
+  (def kind (get entry :kind))
+  (cond
+    (link-kind? kind)
+    (do
       (unless (os/stat (get entry :source))
         (error (string "managed source is unavailable: " (get entry :source))))
-      (mkdir-parent runner environment target)
+      (filesystem/ensure-parent target)
       (os/link (get entry :source) target true))
-    :command-link
-    (unless (= :present (state entry))
-      (unless (os/stat (get entry :source))
-        (error (string "managed source is unavailable: " (get entry :source))))
-      (mkdir-parent runner environment target)
-      (os/link (get entry :source) target true))
-    :marker
-    (unless (= :present (state entry))
-      (mkdir-parent runner environment target)
+
+    (= :marker kind)
+    (do
+      (filesystem/ensure-parent target)
       (def contents (if (os/stat target) (slurp target) ""))
       (def separator (if (or (empty? contents) (string/has-suffix? "\n" contents)) "" "\n"))
       (spit target (string contents separator (marker-block (get entry :line)))))
-    :layer
-    (unless (= :present (state entry))
-      (mkdir-parent runner environment target)
+
+    (= :layer kind)
+    (do
+      (filesystem/ensure-parent target)
       (spit target (string (get entry :contents) "\n")))))
 
-(defn apply [runner root environment layer]
+(defn apply [root environment layer]
+  (point-current root)
   (def blocked (conflicts root environment layer))
   (unless (empty? blocked)
     (error (string "managed-file conflict: " (get (first blocked) :target))))
   (each entry (entries root environment layer)
-    (apply-entry runner environment entry))
+    (apply-entry entry))
   (def home (get environment "HOME"))
   (def state-home (or (get environment "XDG_STATE_HOME") (path home ".local/state")))
-  (mkdir-parent runner environment (path state-home "zsh/history")))
+  (filesystem/ensure-parent (path state-home "zsh/history")))
 
 (defn remove-marker [target line]
   (when (and (os/stat target) (not= :link (os/lstat target :mode)))
@@ -177,13 +254,15 @@
       (def remaining (string/replace block "" contents))
       (if (empty? remaining) (os/rm target) (spit target remaining)))))
 
+(defn release-link [entry]
+  (when (same-link? (get entry :target) (get entry :source))
+    (os/rm (get entry :target))))
+
 (defn unapply [runner root environment layer]
   (each entry (reverse (entries root environment layer))
     (case (get entry :kind)
-      :link (when (same-link? (get entry :target) (get entry :source))
-              (os/rm (get entry :target)))
-      :command-link (when (same-link? (get entry :target) (get entry :source))
-                      (os/rm (get entry :target)))
+      :link (release-link entry)
+      :command-link (release-link entry)
       :marker (remove-marker (get entry :target) (get entry :line))
       :layer (when (and (os/stat (get entry :target))
                         (find |(= $ (string/trim (string (slurp (get entry :target))))) ["core" "remote"]))

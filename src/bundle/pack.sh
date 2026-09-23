@@ -2,6 +2,11 @@
 
 set -eu
 
+# `touch -t` interprets its stamp in the caller's local timezone, so an
+# unpinned TZ makes the normalized mtimes -- and therefore the archive digest
+# -- depend on where the release was built.
+export TZ=UTC0
+
 die() {
 	printf '%s\n' "ds pack: $*" >&2
 	exit 1
@@ -42,26 +47,8 @@ case "$output" in /*) ;; *) output=$PWD/$output ;; esac
 [ ! -e "$output" ] || die "output already exists: $output"
 [ ! -e "$output.sha256" ] || die "checksum output already exists: $output.sha256"
 
-if command -v sha256sum >/dev/null 2>&1; then
-	checksum_kind=sha256sum
-elif command -v shasum >/dev/null 2>&1; then
-	checksum_kind=shasum
-else
-	die 'a SHA-256 utility is required'
-fi
-
-sha256_file() {
-	case "$checksum_kind" in
-	sha256sum) sha256sum "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	shasum) shasum -a 256 "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	esac
-}
+# shellcheck source=src/lib/checksum.sh
+. "$root/src/lib/checksum.sh"
 
 manifest_sha=$(sed -n '1p' "$snapshot/manifest.sha256")
 version=$(

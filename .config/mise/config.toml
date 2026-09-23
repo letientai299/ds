@@ -5,6 +5,7 @@ shfmt = "3.13.1"
 taplo = "0.10.0"
 
 [env]
+DS_SHELL_SOURCES = "ds src/bootstrap.sh src/pull.sh src/install.sh src/try.sh src/lib/*.sh src/bundle/*.sh src/runtime/*.sh src/scripts/*.sh tests/*.sh"
 DS_ALPINE_IMAGE = "alpine@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40"
 DS_JANET_HEADER_SHA256 = "b82d7415df6826bdc3207624c56425bbfa5d783b88658330e58413f1f562f3e5"
 DS_JANET_SHELL_SHA256 = "63c964253bbed159ecb1df890202278402f556260f56ee8014ce50bfbd6f2834"
@@ -16,24 +17,39 @@ DS_ROCKY_IMAGE = "rockylinux@sha256:d7be1c094cc5845ee815d4632fe377514ee6ebcf8efa
 DS_UBUNTU_IMAGE = "ubuntu@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea"
 
 [tasks.fmt]
-description = "Format shell and Janet sources"
+description = "Format shell, C, and TOML sources"
 run = [
-  "shfmt -w ds src/bootstrap.sh src/pull.sh src/install.sh src/try.sh src/bundle/*.sh src/runtime/*.sh src/scripts/*.sh tests/*.sh",
+  "shfmt -w $DS_SHELL_SOURCES",
   "if [ \"$(uname -s)\" = Darwin ]; then xcrun clang-format -i src/runtime/normalize-macho.c; fi",
   "taplo fmt .config/mise/config.toml src/catalog.toml src/mise/*.toml",
 ]
+
+[tasks.preflight]
+description = "Report delivery and Docker capabilities here, or on an SSH host"
+run = "tests/ssh-preflight.sh"
 
 [tasks.generate]
 description = "Regenerate the resolved Janet catalog from canonical TOML"
 run = "src/scripts/generate.sh --write"
 
-[tasks.check]
-description = "Run static, unit, and contract checks"
+# Split so the inner loop is seconds rather than minutes, and chained through
+# depends rather than aggregated, because mise runs dependencies in parallel and
+# a flat aggregator would pay the contract cost even when the lint fails.
+[tasks."check:static"]
+description = "Lint and format-check shell, C, TOML, and the generated catalog"
 run = [
-  "shellcheck ds src/bootstrap.sh src/pull.sh src/install.sh src/try.sh src/bundle/*.sh src/runtime/*.sh src/scripts/*.sh tests/*.sh",
+  "shellcheck -x $DS_SHELL_SOURCES",
+  "shfmt -d $DS_SHELL_SOURCES",
   "if [ \"$(uname -s)\" = Darwin ]; then xcrun clang -std=c99 -Wall -Wextra -Werror -fsyntax-only src/runtime/normalize-macho.c; fi",
+  "if [ \"$(uname -s)\" = Darwin ]; then xcrun clang-format --dry-run -Werror src/runtime/normalize-macho.c; fi",
   "taplo fmt --check .config/mise/config.toml src/catalog.toml src/mise/*.toml",
   "src/scripts/generate.sh --check",
+]
+
+[tasks."check:unit"]
+depends = ["check:static"]
+description = "Run Janet lints and unit tests"
+run = [
   "JANET_PATH=$PWD/src janet -x strict src/scripts/generated/layers.janet",
   "JANET_PATH=$PWD/src janet -x strict src/scripts/generated/support.janet",
   "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/layers.janet",
@@ -52,10 +68,21 @@ run = [
   "JANET_PATH=$PWD/src janet -x strict tests/docker.janet",
   "tests/managed.sh",
   "tests/rootful.sh",
+  "sh tests/runtime-build.sh",
+  "sh tests/shell-init.sh",
   "JANET_PATH=$PWD/src janet -x strict tests/platform.janet",
   "selection_home=$(mktemp -d ${TMPDIR:-/tmp}/ds-selection.XXXXXX); trap 'rm -rf \"$selection_home\"' EXIT; DS_TEST_HOME=$selection_home JANET_PATH=$PWD/src janet -x strict tests/selection.janet",
-  "DS_ROOT=$PWD DS_JANET=$(command -v janet) tests/contract.sh",
 ]
+
+[tasks."check:contract"]
+depends = ["check:unit"]
+description = "Run the Gitless delivery contract end to end"
+run = "DS_ROOT=$PWD DS_JANET=$(command -v janet) tests/contract.sh"
+
+[tasks.check]
+depends = ["check:contract"]
+description = "Run static, unit, and contract checks"
+run = "printf '%s\\n' 'check: ok'"
 
 [tasks.try]
 depends = ["runtime:build", "runtime:fetch-mise"]

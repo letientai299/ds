@@ -92,6 +92,49 @@ HOME=$work/dry-optional \
 grep -q '^would add starship$' "$work/optional.out" || fail 'optional dry-run is missing'
 [ ! -e "$work/dry-optional" ] || fail 'optional dry-run wrote to the isolated home'
 
+mkdir -p "$work/selected-home/config/ds"
+printf '%s\n' starship >"$work/selected-home/config/ds/components"
+HOME=$work/selected-home \
+	XDG_CONFIG_HOME=$work/selected-home/config \
+	XDG_STATE_HOME=$work/selected-home/state \
+	DS_ROOT=$root DS_JANET=$janet DS_MISE=$mise \
+	"$root/ds" apply core --dry-run >"$work/selected.out"
+grep -q '^  starship$' "$work/selected.out" || fail 'preview omitted selected Starship'
+[ "$(cat "$work/selected-home/config/ds/components")" = starship ] || fail 'preview changed selections'
+[ ! -e "$work/selected-home/.local" ] || fail 'preview wrote managed links'
+
+for spelling in help --help -h; do
+	DS_ROOT=$root DS_JANET=$janet DS_MISE=$mise "$root/ds" "$spelling" \
+		>"$work/help.out" 2>"$work/help.err" || fail "ds $spelling exited non-zero"
+	grep -q '^usage: ds ' "$work/help.out" || fail "ds $spelling printed no usage to stdout"
+	grep -q '^layers: core, remote$' "$work/help.out" || fail "ds $spelling omits the catalog layers"
+	[ ! -s "$work/help.err" ] || fail "ds $spelling wrote to stderr"
+done
+
+# Every rejected form must fail before touching the home it was pointed at.
+reject() {
+	description=$1
+	shift
+	HOME=$work/reject-home \
+		XDG_CONFIG_HOME=$work/reject-home/config \
+		XDG_STATE_HOME=$work/reject-home/state \
+		DS_ROOT=$root DS_JANET=$janet DS_MISE=$mise \
+		"$root/ds" "$@" >"$work/reject.out" 2>"$work/reject.err" &&
+		fail "$description was accepted"
+	grep -q '^ds: ' "$work/reject.err" || fail "$description lacks a ds: diagnostic"
+	[ ! -e "$work/reject-home" ] || fail "$description wrote to the isolated home"
+}
+reject 'unapply with an unknown layer' unapply cor
+reject 'status with an unknown layer' status cor
+reject 'diff with an unknown layer' diff cor
+reject 'apply with an unknown layer' apply cor
+reject 'apply with an unskippable component' apply core --skip fzf
+reject 'adopt with --skip' adopt core --skip docker
+reject 'force with --skip' force core --skip docker
+reject 'add with a misspelled flag' add starship --dryrun
+reject 'add with a trailing argument' add starship extra
+reject 'an unknown command' bogus-command
+
 "$root/src/bundle/build.sh" \
 	--version 0.0.0-snapshot \
 	--platform "$platform" \
@@ -118,6 +161,13 @@ grep -q '^would apply core:$' "$work/snapshot.out" || fail 'installed snapshot d
 [ -f "$snapshot_root/src/vendor/nvim.conf/init.lua" ] || fail 'snapshot is missing nvim.conf'
 [ -f "$snapshot_root/src/vendor/tmux.conf/tmux.conf" ] || fail 'snapshot is missing tmux.conf'
 [ -f "$snapshot_root/src/dotfiles/shell.zsh" ] || fail 'snapshot is missing shell configuration'
+[ -f "$snapshot_root/src/THIRD-PARTY.md" ] || fail 'snapshot is missing third-party notices'
+grep -q '	src/THIRD-PARTY.md$' "$work/snapshot/manifest.tsv" ||
+	fail 'third-party notices are not covered by the manifest'
+[ -L "$work/snapshot-install/current" ] || fail 'bootstrap did not publish the current indirection'
+[ "$(readlink "$work/snapshot-install/current")" = versions/0.0.0-snapshot ] ||
+	fail 'current does not name the installed version relatively'
+[ -x "$work/snapshot-install/current/ds" ] || fail 'current does not resolve to a usable install'
 
 pull_root=$(
 	"$root/src/pull.sh" \
@@ -127,6 +177,22 @@ pull_root=$(
 )
 "$pull_root/ds" status core >"$work/pull.out"
 grep -q '^core: ' "$work/pull.out" || fail 'pull transport did not dispatch'
+
+[ -z "$(find "$work/pull-install/incoming" -mindepth 1 -maxdepth 1 2>/dev/null)" ] ||
+	fail 'pull left its staging directory behind'
+
+cp -R "$work/snapshot" "$work/corrupt-snapshot"
+printf '%s\n' 'corrupted' >>"$work/corrupt-snapshot/files/src/dotfiles/gitignore"
+if "$root/src/pull.sh" \
+	--url "file://$work/corrupt-snapshot" \
+	--prefix "$work/corrupt-pull-install" \
+	--manifest-sha256 "$snapshot_sha" >"$work/corrupt-pull.out" 2>"$work/corrupt-pull.err"; then
+	fail 'pull accepted a corrupted payload'
+fi
+grep -q 'checksum mismatch: src/dotfiles/gitignore' "$work/corrupt-pull.err" ||
+	fail 'pull did not name the corrupted payload'
+[ -z "$(find "$work/corrupt-pull-install/incoming" -mindepth 1 -maxdepth 1 2>/dev/null)" ] ||
+	fail 'failed pull left its staging directory behind'
 
 export DS_TEST_CURL
 DS_TEST_CURL=$(command -v curl)
@@ -149,23 +215,50 @@ grep -q '^core: ' "$work/wget-pull.out" || fail 'wget pull transport did not dis
 
 mkdir -p "$work/remote-home"
 export DS_FAKE_REMOTE_HOME="$work/remote-home"
+# shellcheck disable=SC2016 # The fake expands these at run time, not here.
 printf '%s\n' \
 	'#!/bin/sh' \
-	'shift' \
-	"HOME=\$DS_FAKE_REMOTE_HOME exec /bin/sh -c \"\$1\"" >"$work/fake-ssh"
+	'while [ "$#" -gt 0 ]; do case "$1" in -o) shift 2 ;; -O) exit 0 ;; *) break ;; esac; done' \
+	'[ "$#" -eq 2 ] || exit 2' \
+	'command=$2' \
+	"cd \"\$DS_FAKE_REMOTE_HOME\"" \
+	"HOME=\$DS_FAKE_REMOTE_HOME exec /bin/sh -c \"\$command\"" >"$work/fake-ssh"
 chmod 0755 "$work/fake-ssh"
+mkdir -p "$work/ssh temp"
 push_root=$(
-	DS_SSH=$work/fake-ssh "$root/src/bundle/push.sh" \
+	TMPDIR="$work/ssh temp" DS_SSH=$work/fake-ssh "$root/src/bundle/push.sh" \
 		--snapshot "$work/snapshot" \
 		--host fixture
 )
 "$push_root/ds" status core >"$work/push.out"
 grep -q '^core: ' "$work/push.out" || fail 'SSH push transport did not dispatch'
 
+# push.sh interpolates manifest paths into a remote command string, so the
+# fixture has to be internally consistent enough to reach that interpolation.
+inject_path='a";touch pwned;"b'
+mkdir -p "$work/inject/files"
+printf '%s\n' 'payload' >"$work/inject/files/$inject_path"
+inject_file_sha=$(shasum -a 256 "$work/inject/files/$inject_path" | awk '{print $1}')
+printf 'ds-bundle-v1%s0.0.0-inject\nfile%s0644%s%s%s%s\n' \
+	"$tab" "$tab" "$tab" "$inject_file_sha" "$tab" "$inject_path" >"$work/inject/manifest.tsv"
+shasum -a 256 "$work/inject/manifest.tsv" | awk '{print $1}' >"$work/inject/manifest.sha256"
+if DS_SSH=$work/fake-ssh "$root/src/bundle/push.sh" \
+	--snapshot "$work/inject" \
+	--host fixture >"$work/inject.out" 2>"$work/inject.err"; then
+	fail 'push accepted a manifest path with shell metacharacters'
+fi
+grep -q 'unsafe bundle path' "$work/inject.err" ||
+	fail 'push rejected the injected snapshot for the wrong reason'
+[ ! -e "$work/remote-home/pwned" ] || fail 'push executed an injected remote command'
+[ ! -e "$root/pwned" ] || fail 'push executed an injected command in the checkout'
+
 "$root/src/bundle/pack.sh" --snapshot "$work/snapshot" --output "$work/manual-1.tar.gz" >/dev/null
 "$root/src/bundle/pack.sh" --snapshot "$work/snapshot" --output "$work/manual-2.tar.gz" >/dev/null
 [ "$(shasum -a 256 "$work/manual-1.tar.gz" | awk '{print $1}')" = \
 	"$(shasum -a 256 "$work/manual-2.tar.gz" | awk '{print $1}')" ] || fail 'manual bundle is not reproducible'
+TZ=Asia/Tokyo "$root/src/bundle/pack.sh" --snapshot "$work/snapshot" --output "$work/manual-tz.tar.gz" >/dev/null
+[ "$(shasum -a 256 "$work/manual-1.tar.gz" | awk '{print $1}')" = \
+	"$(shasum -a 256 "$work/manual-tz.tar.gz" | awk '{print $1}')" ] || fail 'bundle digest depends on the builder timezone'
 mkdir -p "$work/manual"
 tar -xzf "$work/manual-1.tar.gz" -C "$work/manual"
 manual_root=$(

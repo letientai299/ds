@@ -17,26 +17,8 @@ root=$(CDPATH='' cd "$root" && pwd)
 source_dir=${DS_RUNTIME_DIST:-$root/dist/runtime}/src/janet-$DS_JANET_VERSION
 base_url=https://github.com/janet-lang/janet/releases/download/v$DS_JANET_VERSION
 
-if command -v sha256sum >/dev/null 2>&1; then
-	checksum_kind=sha256sum
-elif command -v shasum >/dev/null 2>&1; then
-	checksum_kind=shasum
-else
-	die 'a SHA-256 utility is required'
-fi
-
-sha256_file() {
-	case "$checksum_kind" in
-	sha256sum) sha256sum "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	shasum) shasum -a 256 "$1" | {
-		read -r digest _rest
-		printf '%s\n' "$digest"
-	} ;;
-	esac
-}
+# shellcheck source=src/lib/checksum.sh
+. "$root/src/lib/checksum.sh"
 
 fetch() {
 	name=$1

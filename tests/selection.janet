@@ -18,4 +18,16 @@
 (assert= false (selection/selected? generated/catalog environment :starship) "selection removes")
 (assert= nil (os/stat (selection/state-path environment)) "empty selection removes state file")
 
+# State written by another version must not turn every command into a crash,
+# because no command can clear the file once it does.
+(selection/save environment [:starship])
+(spit (selection/state-path environment) "starship\nretired-component\n")
+(assert= [:starship]
+         (tuple ;(selection/selected generated/catalog environment))
+         "unknown selected component is skipped, not fatal")
+(assert= "starship"
+         (selection/profile generated/catalog environment "core" [])
+         "profile ignores the unknown component")
+(selection/remove generated/catalog environment :starship)
+
 (print "selection: ok")

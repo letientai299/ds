@@ -5,6 +5,10 @@
     layer
     (error (string "unknown layer: " layer-name))))
 
+(defn known-layer?
+  [catalog layer-name]
+  (not= nil (get (get catalog :layers) (keyword layer-name))))
+
 (defn known-component?
   [catalog component]
   (has-key? (get catalog :components) component))

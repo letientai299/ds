@@ -19,6 +19,28 @@ target=${1:-}
 [ -f "$source_dir/janet.h" ] || die 'Janet header is missing; run runtime/fetch.sh first'
 [ -f "$source_dir/shell.c" ] || die 'Janet shell source is missing; run runtime/fetch.sh first'
 
+# Reuse the host compiler helper across targets.
+normalizer_path=
+normalizer_dir=
+temporary=
+stage=
+cleanup() {
+	[ -z "$temporary" ] || rm -f "$temporary"
+	[ -z "$stage" ] || rm -rf "$stage"
+	[ -z "$normalizer_dir" ] || rm -rf "$normalizer_dir"
+}
+trap cleanup EXIT
+trap 'exit 143' HUP INT TERM
+
+normalize_macho() {
+	if [ -z "$normalizer_path" ]; then
+		normalizer_dir=$(mktemp -d "${TMPDIR:-/tmp}/ds-runtime-build.XXXXXX")
+		normalizer_path=$normalizer_dir/normalize-macho
+		clang -std=c99 -Wall -Wextra -Werror \
+			"$root/src/runtime/normalize-macho.c" -o "$normalizer_path" >&2
+	fi
+}
+
 build_macos() {
 	platform=$1
 	case "$platform" in
@@ -32,21 +54,20 @@ build_macos() {
 	command -v shasum >/dev/null 2>&1 || die 'shasum is required for deterministic macOS UUIDs'
 	output_dir=$dist/bin/$platform
 	mkdir -p "$output_dir"
+	# janet.part stays inside the artifact directory so publishing is a
+	# same-filesystem rename; the host-arch normalizer has no such need.
 	temporary=$(mktemp "$output_dir/janet.part.XXXXXX")
-	normalizer=$(mktemp "$output_dir/normalize-macho.part.XXXXXX")
-	trap 'rm -f "$temporary" "$normalizer"' EXIT HUP INT TERM
-	clang -std=c99 -Wall -Wextra -Werror "$root/src/runtime/normalize-macho.c" -o "$normalizer"
+	normalize_macho
 	clang -std=c99 -O2 -DNDEBUG -DJANET_NO_DYNAMIC_MODULES \
 		-I"$source_dir" -arch "$architecture" -mmacosx-version-min=12.0 \
 		"$source_dir/janet.c" "$source_dir/shell.c" -lm -o "$temporary"
 	strip -x "$temporary"
 	uuid=$(printf '%s' "janet-$DS_JANET_VERSION-$platform" | shasum -a 256 | awk '{print substr($1, 1, 32)}')
-	"$normalizer" "$temporary" "$uuid"
+	"$normalizer_path" "$temporary" "$uuid"
 	codesign --force --sign - --identifier org.janet-lang.janet --timestamp=none "$temporary"
 	chmod 0755 "$temporary"
 	mv "$temporary" "$output_dir/janet"
-	rm -f "$normalizer"
-	trap - EXIT HUP INT TERM
+	temporary=
 }
 
 build_linux() {
@@ -60,17 +81,20 @@ build_linux() {
 	command -v docker >/dev/null 2>&1 || die 'Docker with Buildx is required for Linux runtime builds'
 	output_dir=$dist/bin/$platform
 	stage=$(mktemp -d "$dist/.build-$platform.XXXXXX")
-	trap 'rm -rf "$stage"' EXIT HUP INT TERM
+	# Without this the second reproducibility pass is served entirely from the
+	# BuildKit cache and the comparison comes out equal by construction.
+	# shellcheck disable=SC2086 # DS_RUNTIME_BUILD_FLAGS is an intentional word list.
 	docker buildx build \
 		--platform "$docker_platform" \
 		--file "$root/src/runtime/Dockerfile" \
 		--output "type=local,dest=$stage" \
+		${DS_RUNTIME_BUILD_FLAGS:-} \
 		"$source_dir"
 	mkdir -p "$output_dir"
 	chmod 0755 "$stage/janet"
 	mv "$stage/janet" "$output_dir/janet"
 	rm -rf "$stage"
-	trap - EXIT HUP INT TERM
+	stage=
 }
 
 build_one() {

@@ -94,7 +94,7 @@ while IFS="$tab" read -r record field2 field3 field4 extra; do
 		[ "$header_read" = false ] || die 'manifest has multiple headers'
 		[ -n "$field2" ] || die 'manifest version is empty'
 		[ -z "$field3$field4" ] || die 'manifest header has extra fields'
-		case "$field2" in *[!0-9A-Za-z._-]*) die 'manifest version contains unsafe characters' ;; esac
+		case "$field2" in .* | *[!0-9A-Za-z._-]*) die 'manifest version contains unsafe characters' ;; esac
 		version=$field2
 		header_read=true
 		;;
@@ -106,12 +106,8 @@ while IFS="$tab" read -r record field2 field3 field4 extra; do
 		case "$mode" in 0644 | 0755) ;; *) die "invalid mode for $path" ;; esac
 		case "$expected_sha256" in *[!0-9a-f]* | '') die "invalid checksum for $path" ;; esac
 		[ "${#expected_sha256}" -eq 64 ] || die "invalid checksum length for $path"
-		case "$path" in '' | /* | ../* | */../* | */..) die "unsafe bundle path: $path" ;; esac
+		case "$path" in '' | . | .. | *\\* | /* | ../* | */../* | */..) die "unsafe bundle path: $path" ;; esac
 		[ -f "$source_dir/files/$path" ] || die "bundle file is missing: $path"
-		if [ -n "$checksum_kind" ]; then
-			actual_sha256=$(sha256_file "$source_dir/files/$path")
-			[ "$actual_sha256" = "$expected_sha256" ] || die "checksum mismatch: $path"
-		fi
 		file_count=$((file_count + 1))
 		;;
 	'') ;;
@@ -121,6 +117,27 @@ done <"$source_dir/manifest.tsv"
 
 [ "$header_read" = true ] || die 'manifest header is missing'
 [ "$file_count" -gt 0 ] || die 'manifest contains no files'
+
+# Validate paths before feeding checksum records.
+if [ -n "$checksum_kind" ]; then
+	if ! (
+		cd "$source_dir/files"
+		while IFS="$tab" read -r record _mode digest path _extra; do
+			[ "$record" = file ] || continue
+			printf '%s  ./%s\n' "$digest" "$path"
+		done <../manifest.tsv | case "$checksum_kind" in
+		sha256sum) sha256sum -c - ;;
+		shasum) shasum -a 256 -c - ;;
+		esac >/dev/null 2>&1
+	) then
+		# Older checksum tools may lack check mode.
+		while IFS="$tab" read -r record _mode digest path _extra; do
+			[ "$record" = file ] || continue
+			actual_sha256=$(sha256_file "$source_dir/files/$path")
+			[ "$actual_sha256" = "$digest" ] || die "checksum mismatch: $path"
+		done <"$source_dir/manifest.tsv"
+	fi
+fi
 
 if [ "$verify_only" = true ]; then
 	printf '%s\n' "$version"
@@ -139,6 +156,7 @@ install_root=$prefix/versions/$version
 staging=$prefix/versions/.$version.incoming.$$
 rm -rf "$staging"
 trap 'rm -rf "$staging"' EXIT
+
 # A signal handler that only cleans up returns to the copy loop, which would
 # then recreate and publish a truncated tree. Terminate instead.
 trap 'exit 143' HUP INT TERM

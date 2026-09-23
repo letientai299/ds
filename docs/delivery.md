@@ -135,6 +135,10 @@ Bootstrap then points `<prefix>/current` at the version it installed. Managed
 links resolve through that symlink rather than through a version directory, so
 delivering a new snapshot does not conflict with the links the previous one
 left behind.
+Payload verification feeds all validated digest records to one checksum
+process. Tools without check mode fall back to individual checks. Hosts without
+a checksum tool retain the existing controller-verification warning; pull still
+requires a local checksum tool.
 Package and tool caches use their normal XDG/mise locations rather than the
 version directory.
 

@@ -70,6 +70,7 @@ run = [
   "tests/rootful.sh",
   "sh tests/runtime-build.sh",
   "sh tests/shell-init.sh",
+  "sh tests/checksum.sh",
   "sh tests/push.sh",
   "sh tests/try.sh",
   "JANET_PATH=$PWD/src janet -x strict tests/platform.janet",

@@ -23,6 +23,12 @@ remote_home=
 dry_run=false
 deliver_only=false
 
+case "$host" in -h | --help)
+	usage
+	exit 0
+	;;
+esac
+
 [ -n "$host" ] || {
 	usage
 	die 'host is required'

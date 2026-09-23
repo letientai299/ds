@@ -7,9 +7,14 @@ die() {
 	exit 1
 }
 
-script_dir=$(dirname -- "$0")
-script_dir=$(CDPATH='' cd "$script_dir" && pwd)
-ds_root=${DS_ROOT:-$script_dir}
+script_path=$0
+while [ -L "$script_path" ]; do
+	script_dir=$(CDPATH='' cd -P "$(dirname -- "$script_path")" && pwd)
+	script_path=$(readlink "$script_path")
+	case "$script_path" in /*) ;; *) script_path=$script_dir/$script_path ;; esac
+done
+script_dir=$(CDPATH='' cd -P "$(dirname -- "$script_path")" && pwd)
+ds_root=$script_dir
 # A checkout and a delivered snapshot share one layout: `ds` at the root and
 # every payload under `src/`.
 ds_src=$ds_root/src

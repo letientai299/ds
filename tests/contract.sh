@@ -30,7 +30,8 @@ cp "$root/ds" "$work/checkout/ds"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$1"' >"$work/checkout/dist/runtime/bin/$platform/janet"
 chmod 0755 "$work/checkout/ds" "$work/checkout/dist/runtime/bin/$platform/janet"
 checkout_dispatch=$(DS_JANET='' DS_ROOT=$work/checkout "$work/checkout/ds" status core)
-[ "$checkout_dispatch" = "$work/checkout/src/scripts/main.janet" ] || fail 'checkout launcher did not use the dist runtime fallback'
+checkout_root=$(CDPATH='' cd -P "$work/checkout" && pwd)
+[ "$checkout_dispatch" = "$checkout_root/src/scripts/main.janet" ] || fail 'checkout launcher did not use the dist runtime fallback'
 
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" fixture' >"$work/bundle/files/bin/fixture"
 fixture_sha=$(shasum -a 256 "$work/bundle/files/bin/fixture" | awk '{print $1}')

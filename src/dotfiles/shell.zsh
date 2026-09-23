@@ -9,15 +9,18 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 # keeps the first occurrence, which leaves the ds entries in front.
 typeset -gU path PATH
 export PATH="$HOME/.local/bin:$XDG_DATA_HOME/mise/shims:$PATH"
-export DS_ROOT="${${:-$HOME/.local/bin/ds}:A:h}"
+_ds_root="${${:-$HOME/.local/bin/ds}:A:h}"
+if [[ "${_ds_root:h:t}" == versions ]]; then
+  _ds_root="${_ds_root:h:h}/current"
+fi
 export MISE_CACHE_DIR="$XDG_CACHE_HOME/mise"
 export MISE_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise"
 export MISE_DATA_DIR="$XDG_DATA_HOME/mise"
 export MISE_STATE_DIR="$XDG_STATE_HOME/mise"
 export MISE_SYSTEM_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise-system"
 export MISE_OVERRIDE_CONFIG_FILENAMES=mise.toml
-export MISE_GLOBAL_CONFIG_ROOT="$DS_ROOT/src/mise"
-export MISE_TRUSTED_CONFIG_PATHS="$DS_ROOT/src/mise"
+export MISE_GLOBAL_CONFIG_ROOT="$_ds_root/src/mise"
+export MISE_TRUSTED_CONFIG_PATHS="$_ds_root/src/mise"
 typeset -a _ds_environments
 _ds_layer=core
 if [[ -r "$XDG_CONFIG_HOME/ds/layer" ]]; then
@@ -75,15 +78,8 @@ fi
 if (( ${_ds_environments[(Ie)starship]} )) && [[ -x "$_ds_starship" ]]; then
   eval "$("$_ds_starship" init zsh)"
 fi
-unset _ds_fzf _ds_zoxide _ds_starship _ds_layer _ds_component _ds_environments
-
-ds() {
-  command "$HOME/.local/bin/ds" "$@"
-  local exit_status=$?
-  case "$1:$exit_status" in
-    apply:0 | add:0) eval "$(command "$HOME/.local/bin/ds" shell-init)" ;;
-  esac
-  return $exit_status
-}
+export DS_DS="$_ds_root/ds"
+[[ ! -r "$_ds_root/src/dotfiles/command.sh" ]] || source "$_ds_root/src/dotfiles/command.sh"
+unset _ds_fzf _ds_zoxide _ds_starship _ds_layer _ds_component _ds_environments _ds_root
 
 [[ ! -r "$XDG_CONFIG_HOME/ds/local.zsh" ]] || source "$XDG_CONFIG_HOME/ds/local.zsh"

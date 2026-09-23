@@ -1,3 +1,7 @@
+(import scripts/lib/help)
+(import scripts/lib/inventory)
+(import scripts/lib/json)
+(import scripts/lib/process)
 (import scripts/generated/layers :as generated)
 (import scripts/lib/docker)
 (import scripts/lib/layers :as layers)
@@ -11,7 +15,7 @@
 
 (defn fail [message]
   (eprint (string "ds: " message))
-  (os/exit 1))
+  (os/exit 2))
 
 (def root (or (os/getenv "DS_ROOT") (error "DS_ROOT is required")))
 
@@ -37,9 +41,10 @@
      "  adopt LAYER              back up conflicting targets, then converge"
      "  force LAYER              destructively replace conflicting targets, then converge"
      "  add COMPONENT            enable an optional component"
-     "  unapply LAYER|COMPONENT  remove exact managed state or an optional selection"
+     "  unapply LAYER|COMPONENT  remove managed state; supports --dry-run"
      "  shell                    start an interactive Zsh with the current environment"
      "  shell-init               print the Zsh integration fragment"
+     "  completion bash|zsh      print catalog-based completions"
      "  docker-rootful           provision rootful Docker behind two approval flags"]
     (emit line))
   (when (os/stat (string root "/src/bundle/controller.sh"))
@@ -47,8 +52,10 @@
   (each line
     [""
      "options:"
-     "  --dry-run                preview without changing anything"
-     "  --skip docker            leave Docker convergence to the operator"
+     "  --dry-run                preview apply/adopt/force/add/unapply without changes"
+     "  --skip docker            skip Docker during apply only"
+     "  --json / --check          status output / health exit code"
+     "  ds help COMMAND          command-specific options and examples"
      ""
      (string "layers: " (catalog-names :layers))
      (string "optional components: " (catalog-names :optional))]
@@ -97,20 +104,16 @@
     (fail (string command " does not accept --skip")))
   parsed)
 
+(defn reject-extra [args maximum]
+  (when (> (length args) maximum)
+    (fail (string "unexpected argument: " (get args maximum)))))
+
 (defn print-plan [operation layer components]
   (print (string operation " " layer ":"))
   (each component components
     (print (string "  " component))))
 
 (def base-environment (os/environ))
-
-(defn quiet-runner [argv environment]
-  (def sink (file/open (if (= (get environment "DS_OS") "Windows") "NUL" "/dev/null") :w))
-  (put environment :out sink)
-  (put environment :err sink)
-  (def status (os/execute argv :pe environment))
-  (file/close sink)
-  status)
 
 (defn foreground-runner [argv environment]
   (os/execute argv :pe environment))
@@ -121,23 +124,11 @@
 (defn command-present? [environment command]
   (def separator (if (= (get environment "DS_OS") "Windows") ";" ":"))
   (def suffix (if (= (get environment "DS_OS") "Windows") ".exe" ""))
-  (var present? false)
-  (each directory (string/split separator (or (get environment "PATH") ""))
-    (when (os/stat (string directory "/" command suffix))
-      (set present? true)))
-  present?)
-
-(defn capture-runner [argv environment]
-  (def target (mise/copy-environment environment))
-  (def sink (file/open (if (= (get environment "DS_OS") "Windows") "NUL" "/dev/null") :w))
-  (put target :out :pipe)
-  (put target :err sink)
-  (def proc (os/spawn argv :pe target))
-  (def output (string (ev/read (get proc :out) :all)))
-  (def status (os/proc-wait proc))
-  (os/proc-close proc)
-  (file/close sink)
-  [status output])
+  (not= nil
+    (find (fn [directory]
+            (managed/executable-file?
+              (string (if (empty? directory) "." directory) "/" command suffix)))
+          (string/split separator (or (get environment "PATH") "")))))
 
 (defn current-user []
   (or (get base-environment "USER")
@@ -148,20 +139,21 @@
 (defn linger-enabled? []
   (not= nil (os/stat (string "/var/lib/systemd/linger/" (current-user)))))
 
-(defn docker-rootless? []
+(defn probe-docker-engine []
   (if-not (command-present? base-environment "docker")
-    false
-    (let [result (capture-runner
-                   ["docker" "info" "--format" "{{json .SecurityOptions}}"]
-                   base-environment)]
-      (and (= 0 (get result 0)) (string/find "rootless" (get result 1))))))
-
-(defn docker-engine-ready? []
-  (and (command-present? base-environment "docker")
-       (= 0 (quiet-runner ["docker" "info"] (mise/copy-environment base-environment)))
-       (= 0 (quiet-runner ["docker" "buildx" "version"] (mise/copy-environment base-environment)))
-       (= 0 (quiet-runner ["docker" "compose" "version"] (mise/copy-environment base-environment)))))
-
+    {:engine-ready? false :rootless? false :probe :missing}
+    (let [info (process/capture ["docker" "info" "--format" "{{json .SecurityOptions}}"] base-environment 3)
+          extensions (if (= :ok (get info :state))
+                       (map (fn [name] (process/capture ["docker" name "version"] base-environment 3))
+                            ["buildx" "compose"]) [])
+          probe (cond
+                  (= :timeout (get info :state)) :timeout
+                  (not= :ok (get info :state)) :unreachable
+                  (find |(= :timeout (get $ :state)) extensions) :timeout
+                  (find |(not= :ok (get $ :state)) extensions) :missing-plugin
+                  :else :ready)]
+      {:engine-ready? (= probe :ready) :probe probe
+       :rootless? (and (= :ok (get info :state)) (not= nil (string/find "rootless" (get info :output))))})))
 
 (defn slurp-or-empty [path]
   (if (os/stat path) (string (slurp path)) ""))
@@ -172,16 +164,15 @@
   (def runtime (get base-environment "XDG_RUNTIME_DIR"))
   (def os-name (or (get base-environment "DS_OS")
                    (if (os/which :macos) "Darwin" "Linux")))
-  {:engine-ready? (docker-engine-ready?)
-   :rootless? (docker-rootless?)
-   :os (platform/normalize-os os-name)
+  (merge (probe-docker-engine)
+  {:os (platform/normalize-os os-name)
    :uid uid
    :user user
    :command? (fn [command] (command-present? base-environment command))
    :subids? (and (docker/subid-range? (slurp-or-empty "/etc/subuid") user uid)
                  (docker/subid-range? (slurp-or-empty "/etc/subgid") user uid))
    :runtime? (and runtime (os/stat runtime))
-   :linger? (linger-enabled?)})
+   :linger? (linger-enabled?)}))
 
 # Each field costs a daemon round trip and component-probe runs inside a map,
 # so the record is sampled once per process. Sampling it once also keeps the
@@ -201,7 +192,8 @@
 
 (defn print-docker-diagnostic [state]
   (def user (or (get base-environment "USER") (get base-environment "LOGNAME") "this user"))
-  (print (string "docker: " (docker/diagnostic state user))))
+  (print (string "docker: " (docker/diagnostic state user)))
+  (print (string "docker probe: " (get (docker-facts) :probe))))
 
 (defn converge-docker []
   (def state (docker-plan))
@@ -211,7 +203,7 @@
     (try
       (do
         (docker/install-rootless foreground-runner base-environment)
-        (if-not (docker-engine-ready?)
+        (if-not (get (probe-docker-engine) :engine-ready?)
           (print-docker-diagnostic :failed)
           (if (linger-enabled?)
             (print-docker-diagnostic :reuse)
@@ -221,20 +213,25 @@
        (print-docker-diagnostic :failed)))
     (print-docker-diagnostic state)))
 
-(defn component-probe [layer component]
+(var cached-inventory nil)
+
+(defn tool-inventory []
+  (when (nil? cached-inventory)
+    (set cached-inventory (inventory/collect generated/catalog root base-environment)))
+  cached-inventory)
+
+(defn component-probe [_layer component]
   (def spec (get (get generated/catalog :components) component))
   (def commands (get spec :commands))
   (case (get spec :owner)
-    :runtime (if (os/stat (mise/binary root base-environment)) :present :missing)
-    :native (if (if (= component :docker)
-                  (docker-ready?)
-                  (commands-present? commands (fn [command] (command-present? base-environment command))))
-              :present
-              :missing)
-    :mise (if (mise/tool-installed? root layer base-environment (or (get spec :tool) component))
-            :present
-            :missing)
-    :unavailable))
+    :runtime {:state (if (managed/executable-file? (mise/binary root base-environment)) :installed :missing)}
+    :native (if (= component :docker)
+              (let [probe (get (docker-facts) :probe)]
+                {:state (case probe :ready :installed :missing :missing :unavailable) :probe probe})
+              {:state (if (commands-present? commands (fn [command] (command-present? base-environment command)))
+                        :installed :missing)})
+    :mise (get (tool-inventory) component)
+    {:state :unavailable}))
 
 (defn inspect-layer [layer]
   (def components (layers/resolve generated/catalog layer
@@ -254,12 +251,17 @@
 (defn optional-state [name]
   (def component (keyword name))
   (if (and (selection/selected? generated/catalog base-environment component)
-           (= :present (component-probe (current-layer) component)))
+           (= :installed (get (component-probe (current-layer) component) :state)))
     :complete
     :incomplete))
 
+(defn print-component [entry]
+  (print (string "  " (get entry :state) " " (get entry :component)
+                 (if (get entry :expected) (string " (expected " (get entry :expected) ")") ""))))
+
 (defn print-optional-status [name]
   (print (string name ": " (optional-state name)))
+  (print-component (merge (component-probe (current-layer) (keyword name)) {:component (keyword name)}))
   (print (string "  "
                  (if (selection/selected? generated/catalog base-environment (keyword name))
                    "selected "
@@ -275,8 +277,7 @@
 
 (defn print-status [layer entries file-entries]
   (print (string layer ": " (combined-summary entries file-entries)))
-  (each entry entries
-    (print (string "  " (get entry :state) " " (get entry :component))))
+  (each entry entries (print-component entry))
   (each entry file-entries
     (print (string "  " (get entry :state) " " (get entry :target)))))
 
@@ -284,6 +285,7 @@
   (print (string "diff " layer ":"))
   (each action (planner/diff entries)
     (case (get action :action)
+      :update (print (string "  ~ " (get action :component) " outdated"))
       :install (print (string "  + " (get action :component)))
       :blocked (print (string "  ! " (get action :component) " conflict"))
       :unavailable (print (string "  ? " (get action :component) " unavailable"))))
@@ -299,12 +301,7 @@
   (print "if [ -r \"${XDG_CONFIG_HOME:-$HOME/.config}/ds/shell.zsh\" ]; then")
   (print "  source \"${XDG_CONFIG_HOME:-$HOME/.config}/ds/shell.zsh\"")
   (print "fi")
-  (print "ds() {")
-  (print "  command \"$DS_DS\" \"$@\"")
-  (print "  local exit_status=$?")
-  (print "  case \"$1:$exit_status\" in apply:0|add:0) eval \"$(command \"$DS_DS\" shell-init)\" ;; esac")
-  (print "  return $exit_status")
-  (print "}"))
+  (print (string (slurp (string root "/src/dotfiles/command.sh")))))
 
 (defn require-target [name]
   (unless (or (optional-component? name) (known-layer? name))
@@ -313,27 +310,52 @@
                   "; optional components: " (catalog-names :optional) ")")))
   name)
 
+(defn report-status [args]
+  (when (< (length args) 3) (fail "status requires a layer"))
+  (def target (require-target (get args 2)))
+  (var json? false)
+  (var check? false)
+  (each arg (slice args 3)
+    (case arg "--json" (set json? true) "--check" (set check? true)
+      (fail (string "unknown argument: " arg))))
+  (def optional? (optional-component? target))
+  (def packages (if optional?
+                  (planner/inspect [(keyword target)] |(component-probe (current-layer) $))
+                  (inspect-layer target)))
+  (def files (if optional? [] (managed/inspect root base-environment target)))
+  (def summary (if optional? (optional-state target) (combined-summary packages files)))
+  (if json?
+    (print (json/encode {:schema 1 :target target :summary summary :components packages
+                          :files files :selected (selection/selected generated/catalog base-environment)}))
+    (if optional? (print-optional-status target) (print-status target packages files)))
+  (when check? (os/exit (if (= summary :complete) 0 1))))
+
 (defn main [& args]
   (when (< (length args) 2)
     (usage eprint)
     (os/exit 1))
   (def command (get args 1))
+  (when (and (has-key? help/commands command)
+             (find |(or (= $ "--help") (= $ "-h")) (slice args 2)))
+    (help/show command generated/catalog)
+    (break))
   (case command
-    "help" (usage print)
-    "--help" (usage print)
-    "-h" (usage print)
-
-    "status"
-    (do
-      (when (< (length args) 3)
-        (fail "status requires a layer"))
-      (def layer (require-target (get args 2)))
-      (if (optional-component? layer)
-        (print-optional-status layer)
-        (print-status layer (inspect-layer layer) (managed/inspect root base-environment layer))))
+    "help" (do (reject-extra args 3)
+               (if (get args 2)
+                 (if (has-key? help/commands (get args 2)) (help/show (get args 2) generated/catalog)
+                   (fail (string "unknown command: " (get args 2))))
+                 (usage print)))
+    "--help" (do (reject-extra args 2) (usage print))
+    "-h" (do (reject-extra args 2) (usage print))
+    "status" (report-status args)
+    "completion" (do (reject-extra args 3)
+                      (try (help/complete (get args 2) generated/catalog
+                             (not= nil (os/stat (string root "/src/bundle/controller.sh"))))
+                           ([err] (fail err))))
 
     "diff"
     (do
+      (reject-extra args 3)
       (when (< (length args) 3)
         (fail "diff requires a layer"))
       (def layer (require-target (get args 2)))
@@ -375,9 +397,11 @@
 
     "unapply"
     (do
-      (when (< (length args) 3)
-        (fail "unapply requires a layer"))
-      (def target (require-target (get args 2)))
+      (def parsed (parse-takeover-args "unapply" args))
+      (def target (require-target (get parsed 0)))
+      (when (get parsed 1)
+        (print (string "would unapply " target))
+        (break))
       (if (optional-component? target)
         (do
           (selection/remove generated/catalog base-environment (keyword target))
@@ -401,6 +425,7 @@
           (unless (= status 0) (fail (string "mise bootstrap failed with status " status)))
           (managed/prepare foreground-runner root base-environment layer :adopt)
           (managed/apply root base-environment layer)
+          (when (= layer "remote") (converge-docker))
           (print (string "adopted and applied " layer)))))
 
     "force"
@@ -416,18 +441,8 @@
           (unless (= status 0) (fail (string "mise bootstrap failed with status " status)))
           (managed/prepare foreground-runner root base-environment layer :force)
           (managed/apply root base-environment layer)
+          (when (= layer "remote") (converge-docker))
           (print (string "forced and applied " layer)))))
-
-    "shell-init" (print-shell-init)
-
-    "doctor"
-    (do
-      (def layer (if (< (length args) 3) "core" (require-target (get args 2))))
-      (if (optional-component? layer)
-        (print-optional-status layer)
-        (do
-          (print-status layer (inspect-layer layer) (managed/inspect root base-environment layer))
-          (when (= layer "remote") (print-docker-diagnostic (docker-plan))))))
 
     "add"
     (do
@@ -452,13 +467,27 @@
           (selection/add generated/catalog base-environment (keyword component))
           (print (string "added " component)))))
 
+    "shell-init" (do (reject-extra args 2) (print-shell-init))
+
+    "doctor"
+    (do
+      (reject-extra args 3)
+      (def layer (if (< (length args) 3) "core" (require-target (get args 2))))
+      (if (optional-component? layer)
+        (print-optional-status layer)
+        (do
+          (print-status layer (inspect-layer layer) (managed/inspect root base-environment layer))
+          (when (= layer "remote") (print-docker-diagnostic (docker-plan))))))
+
     "shell"
     (do
+      (reject-extra args 2)
       (def status (os/execute ["zsh" "-i"] :pe base-environment))
       (os/exit status))
 
     "docker-rootful"
     (do
+      (reject-extra args 4)
       (unless (and (= "--approve-rootful" (get args 2))
                    (= "--grant-docker-group" (get args 3)))
         (fail "docker-rootful requires --approve-rootful --grant-docker-group"))

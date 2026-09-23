@@ -4,20 +4,20 @@
    :remote [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :nnn :jq :xh :tmux :docker :zoxide :bat :delta]}
   :optional [:starship]
   :components
-  {:bat {:commands ["bat"] :owner :mise}
+  {:bat {:commands ["bat"] :owner :mise :version "0.25.0"}
    :curl {:commands ["curl"] :owner :native}
-   :delta {:commands ["delta"] :owner :mise :tool "http-delta"}
+   :delta {:commands ["delta"] :owner :mise :tool "http-delta" :version "0.18.2"}
    :docker {:commands ["docker"] :owner :native}
-   :fd {:commands ["fd"] :owner :mise}
-   :fzf {:commands ["fzf"] :owner :mise}
+   :fd {:commands ["fd"] :owner :mise :version "10.4.2"}
+   :fzf {:commands ["fzf"] :owner :mise :version "0.74.2"}
    :git {:commands ["git"] :owner :native}
-   :jq {:commands ["jq"] :owner :mise}
+   :jq {:commands ["jq"] :owner :mise :version "1.8.2"}
    :mise {:commands ["mise"] :owner :runtime}
    :neovim {:commands ["nvim"] :owner :native}
    :nnn {:commands ["nnn"] :owner :native}
-   :ripgrep {:commands ["rg"] :owner :mise}
-   :starship {:commands ["starship"] :owner :mise}
+   :ripgrep {:commands ["rg"] :owner :mise :version "15.2.0"}
+   :starship {:commands ["starship"] :owner :mise :version "1.23.0"}
    :tmux {:commands ["tmux"] :owner :native}
-   :xh {:commands ["xh"] :owner :mise}
-   :zoxide {:commands ["zoxide"] :owner :mise}
+   :xh {:commands ["xh"] :owner :mise :version "0.26.2"}
+   :zoxide {:commands ["zoxide"] :owner :mise :version "0.9.8"}
    :zsh {:commands ["zsh"] :owner :native}}})

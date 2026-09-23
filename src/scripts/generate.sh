@@ -30,8 +30,20 @@ while IFS= read -r component; do
 	owner=$("$mise_command" toml get --file "$root/src/catalog.toml" "components.$component.owner")
 	tool=$("$mise_command" toml get --file "$root/src/catalog.toml" "components.$component.tool" 2>/dev/null || true)
 	case "$owner" in runtime | native | mise) ;; *) die "invalid owner for $component: $owner" ;; esac
-	jq --arg component "$component" --arg owner "$owner" --arg tool "$tool" --argjson commands "$commands" \
-		'. + {($component): ({commands: $commands, owner: $owner} + if $tool == "" then {} else {tool: $tool} end)}' \
+	version=
+	if [ "$owner" = mise ]; then
+		version_key=$component
+		[ "$tool" != http-delta ] || version_key=http:delta.version
+		for profile in "$root"/src/mise/mise*.toml; do
+			version=$("$mise_command" toml get --file "$profile" "tools.$version_key" 2>/dev/null || true)
+			[ -z "$version" ] || break
+		done
+		[ -n "$version" ] || die "missing pinned version for $component"
+	fi
+	jq --arg component "$component" --arg owner "$owner" --arg tool "$tool" --argjson commands "$commands" --arg version "$version" \
+		'. + {($component): ({commands: $commands, owner: $owner}
+         + (if $tool == "" then {} else {tool: $tool} end)
+         + (if $owner == "mise" then {version: $version} else {} end))}' \
 		"$work/components.json" >"$work/components.next"
 	mv "$work/components.next" "$work/components.json"
 done <"$work/component-names"
@@ -53,7 +65,8 @@ jq -r '
   ([.components | to_entries | sort_by(.key)[] |
     ":" + .key + " {:commands " + (.value.commands | strings) +
     " :owner :" + .value.owner +
-    (if .value.tool then " :tool " + (.value.tool | @json) else "" end) + "}"] | join("\n   ")) +
+    (if .value.tool then " :tool " + (.value.tool | @json) else "" end) +
+    (if .value.version then " :version " + (.value.version | @json) else "" end) + "}"] | join("\n   ")) +
   "}})"
 ' "$work/catalog.json" >"$work/layers.janet"
 

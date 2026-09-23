@@ -10,15 +10,16 @@ because they run before `ds` exists on the machine: `src/install.sh` and
 
 | Command                                                    | Purpose                                                 |
 | ---------------------------------------------------------- | ------------------------------------------------------- |
-| `ds help`                                                  | Print the command list, layers, and optional components |
-| `ds status LAYER`                                          | Report component and managed-file state                 |
+| `ds help [COMMAND]`                                        | Print the command list, layers, and optional components |
+| `ds status LAYER [--json] [--check]`                       | Report component and managed-file state                 |
 | `ds diff LAYER`                                            | Show missing, conflicting, and unavailable entries      |
 | `ds doctor [LAYER]`                                        | Show status plus Docker diagnostics for `remote`        |
 | `ds apply LAYER [--dry-run] [--skip COMPONENT]`            | Converge a layer or preview it                          |
 | `ds adopt LAYER [--dry-run]`                               | Back up conflicts, then converge                        |
 | `ds force LAYER [--dry-run]`                               | Destructively replace conflicts, then converge          |
 | `ds add COMPONENT [--dry-run]`                             | Enable an optional component                            |
-| `ds unapply LAYER_OR_COMPONENT`                            | Remove exact managed state or an optional selection     |
+| `ds unapply LAYER_OR_COMPONENT [--dry-run]`                | Remove managed state or preview removal                 |
+| `ds completion SHELL`                                      | Print catalog-based shell completions                   |
 | `ds shell`                                                 | Start an interactive Zsh with the current environment   |
 | `ds shell-init`                                            | Print the Zsh integration fragment                      |
 | `ds push HOST LAYER [OPTIONS]`                             | Deliver and apply from a controller checkout            |
@@ -28,6 +29,45 @@ because they run before `ds` exists on the machine: `src/install.sh` and
 `starship`. `ds help`, `ds --help`, and `ds -h` print the same list from the
 catalog and exit successfully; an unrecognized layer or component name is
 rejected before any state changes.
+
+Commands accept `--help` before performing work. `ds help COMMAND` shows the
+same command-specific options, effects, and example. Unknown trailing arguments
+are rejected. `unapply --dry-run` reports the requested removal without
+changing files or selections.
+
+Enable catalog-derived completions in an interactive shell:
+
+```sh
+source <(ds completion zsh) # after compinit
+# Bash: source <(ds completion bash)
+```
+
+## Status for automation
+
+`ds status TARGET --json` emits one JSON object with `schema: 1`, `target`,
+`summary`, `components`, `files`, and `selected`. `TARGET` can also be an optional
+component. Component states are `installed`, `missing`, `outdated`, or
+`unavailable`; managed-file states remain `present`, `missing`, `conflict`, or
+`unavailable`.
+
+For mise tools, `expected` is the version pinned by ds's selected profile,
+`installed` lists healthy installed versions, and `executables` records the
+selected version's executable paths. One cached filesystem inventory checks the
+pinned executables, including archive subdirectories. An empty install directory
+is not healthy. `outdated` means a different version is installed, even when it
+is newer than the pin. Native tools are checked on PATH without querying a
+package repository for newer versions. This is an installation-health check;
+it does not execute each tool to prove runtime compatibility.
+
+`--check` returns **0** when complete, **1** when incomplete or conflicting,
+and **2** for invalid command arguments. Without `--check`, an unhealthy status
+is still a successful report. Combine `--json --check` for automation.
+
+Docker reports a separate `probe`: `ready`, `missing`, `missing-plugin`,
+`unreachable`, or `timeout`. Each of `info`, Buildx, and Compose has a three-second
+deadline, so a successful info probe followed by slow plugins is bounded by nine
+seconds. Only one set of probes runs per invocation. Missing Docker is distinct
+from a daemon that cannot be reached.
 
 `--skip` accepts only `docker`, the one component `ds` converges outside
 `mise bootstrap`. `adopt` and `force` reject it.

@@ -67,10 +67,10 @@ run_case() {
             "$installed/ds" apply remote
             "$installed/ds" status remote >"$HOME/status"
             grep -q "^  missing docker$" "$HOME/status"
-            grep -q "^  present tmux$" "$HOME/status"
-            grep -q "^  present zoxide$" "$HOME/status"
-            grep -q "^  present bat$" "$HOME/status"
-            grep -q "^  present delta$" "$HOME/status"
+            grep -q "^  installed tmux$" "$HOME/status"
+            grep -q "^  installed zoxide " "$HOME/status"
+            grep -q "^  installed bat " "$HOME/status"
+            grep -q "^  installed delta " "$HOME/status"
 
             find "$HOME" -print | sort > /tmp/ds-before-paths
             find "$HOME" -type f -exec sha256sum {} \; | sort > /tmp/ds-before-hashes

@@ -61,7 +61,8 @@ The controller:
 3. Git-exports the Neovim and Tmux configuration sources;
 4. builds a checksummed manifest;
 5. derives a content-addressed version from the payload;
-6. transfers files using SSH plus `mkdir`, `cat`, and `chmod`;
+6. streams a verified file list over SSH when `tar` is available, or transfers
+   individual files using `mkdir`, `cat`, and `chmod`;
 7. verifies and installs the snapshot before applying the layer.
 
 Pushing identical content is idempotent and returns the existing version path.

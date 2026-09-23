@@ -215,14 +215,7 @@ grep -q '^core: ' "$work/wget-pull.out" || fail 'wget pull transport did not dis
 
 mkdir -p "$work/remote-home"
 export DS_FAKE_REMOTE_HOME="$work/remote-home"
-# shellcheck disable=SC2016 # The fake expands these at run time, not here.
-printf '%s\n' \
-	'#!/bin/sh' \
-	'while [ "$#" -gt 0 ]; do case "$1" in -o) shift 2 ;; -O) exit 0 ;; *) break ;; esac; done' \
-	'[ "$#" -eq 2 ] || exit 2' \
-	'command=$2' \
-	"cd \"\$DS_FAKE_REMOTE_HOME\"" \
-	"HOME=\$DS_FAKE_REMOTE_HOME exec /bin/sh -c \"\$command\"" >"$work/fake-ssh"
+cp "$root/tests/fake-ssh.sh" "$work/fake-ssh"
 chmod 0755 "$work/fake-ssh"
 mkdir -p "$work/ssh temp"
 push_root=$(

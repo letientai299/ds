@@ -50,6 +50,7 @@ measure() {
 	name=$1
 	command=$2
 	DS_BENCH_COMMAND=$command zsh -fc '
+        set -e
         zmodload zsh/datetime
         typeset -F start elapsed average
         start=$EPOCHREALTIME
@@ -64,6 +65,7 @@ measure_once() {
 	name=$1
 	command=$2
 	DS_BENCH_COMMAND=$command zsh -fc '
+        set -e
         zmodload zsh/datetime
         typeset -F start elapsed
         start=$EPOCHREALTIME
@@ -95,11 +97,7 @@ measure portable_shell_source "$common PATH=/usr/bin:/bin zsh -dfc 'source $snap
 remote_home=$work/remote-home
 fake_ssh=$work/fake-ssh
 mkdir -p "$remote_home"
-# shellcheck disable=SC2016 # Variables belong to the generated fake SSH script.
-printf '%s\n' \
-	'#!/bin/sh' \
-	'shift' \
-	'HOME=$DS_BENCH_REMOTE_HOME exec /bin/sh -c "$1"' >"$fake_ssh"
+cp "$root/tests/fake-ssh.sh" "$fake_ssh"
 chmod 0755 "$fake_ssh"
-measure_once stage0_loopback_push "DS_BENCH_REMOTE_HOME='$remote_home' DS_SSH='$fake_ssh' '$root/src/bundle/push.sh' --snapshot '$snapshot' --host benchmark >/dev/null"
-measure stage0_idempotent_push "$common DS_BENCH_REMOTE_HOME='$remote_home' DS_SSH='$fake_ssh' '$root/src/bundle/push.sh' --snapshot '$snapshot' --host benchmark >/dev/null"
+measure_once stage0_loopback_push "DS_FAKE_REMOTE_HOME='$remote_home' DS_SSH='$fake_ssh' '$root/src/bundle/push.sh' --snapshot '$snapshot' --host benchmark >/dev/null"
+measure stage0_idempotent_push "$common DS_FAKE_REMOTE_HOME='$remote_home' DS_SSH='$fake_ssh' '$root/src/bundle/push.sh' --snapshot '$snapshot' --host benchmark >/dev/null"

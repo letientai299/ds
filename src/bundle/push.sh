@@ -77,14 +77,8 @@ remote_prefix=\$HOME/$prefix
 remote_source=$remote_prefix/incoming/$version
 remote_install=$remote_prefix/versions/$version
 
-if remote "test -x \"$remote_install/ds\"" >/dev/null 2>&1; then
-	remote "printf '%s\\n' \"$remote_install\""
-	exit 0
-fi
-
-remote "mkdir -p \"$remote_source\"; cat >\"$remote_source/manifest.tsv\"; chmod 0644 \"$remote_source/manifest.tsv\"" \
-	<"$snapshot/manifest.tsv"
-
+transfer_list=$control_dir/files
+printf '%s\n' manifest.tsv >"$transfer_list"
 tab=$(printf '\t')
 while IFS="$tab" read -r record mode _expected_sha256 path _extra; do
 	[ "$record" = file ] || continue
@@ -92,10 +86,30 @@ while IFS="$tab" read -r record mode _expected_sha256 path _extra; do
 	case "$path" in
 	'' | /* | ../* | */../* | */.. | *[!0-9A-Za-z._/-]*) die "unsafe bundle path: $path" ;;
 	esac
-	remote_file=$remote_source/files/$path
-	remote_dir=${remote_file%/*}
-	remote "mkdir -p \"$remote_dir\"; cat >\"$remote_file\"; chmod \"$mode\" \"$remote_file\"" \
-		<"$snapshot/files/$path"
+	printf 'files/%s\n' "$path" >>"$transfer_list"
 done <"$snapshot/manifest.tsv"
 
-remote "\"$remote_source/files/src/bootstrap.sh\" --source \"$remote_source\" --prefix \"$remote_prefix\" --manifest-sha256 \"$manifest_sha\""
+if remote "test -x \"$remote_install/ds\"" >/dev/null 2>&1; then
+	remote "printf '%s\\n' \"$remote_install\""
+	exit 0
+fi
+
+printf '%s\n' "ds push: transferring $version" >&2
+if command -v tar >/dev/null 2>&1 && remote 'command -v tar' >/dev/null 2>&1; then
+	# Stream only verified files; dereference source links.
+	tar -chf - -C "$snapshot" -T "$transfer_list" |
+		remote "mkdir -p \"$remote_source\" && tar -xf - -C \"$remote_source\""
+else
+	remote "mkdir -p \"$remote_source\" && cat >\"$remote_source/manifest.tsv\" && chmod 0644 \"$remote_source/manifest.tsv\"" \
+		<"$snapshot/manifest.tsv"
+	while IFS="$tab" read -r record mode _expected_sha256 path _extra; do
+		[ "$record" = file ] || continue
+		remote_file=$remote_source/files/$path
+		remote_dir=${remote_file%/*}
+		remote "mkdir -p \"$remote_dir\" && cat >\"$remote_file\" && chmod \"$mode\" \"$remote_file\"" \
+			<"$snapshot/files/$path"
+	done <"$snapshot/manifest.tsv"
+fi
+
+printf '%s\n' "ds push: verifying $version" >&2
+remote "sh \"$remote_source/files/src/bootstrap.sh\" --source \"$remote_source\" --prefix \"$remote_prefix\" --manifest-sha256 \"$manifest_sha\""

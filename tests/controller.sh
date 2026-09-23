@@ -14,12 +14,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 export DS_FAKE_REMOTE_HOME="$work/remote-home"
 mkdir -p "$DS_FAKE_REMOTE_HOME"
-# shellcheck disable=SC2016 # The fake expands these at run time, not here.
-printf '%s\n' \
-	'#!/bin/sh' \
-	'for argument in "$@"; do command=$argument; done' \
-	"cd \"\$DS_FAKE_REMOTE_HOME\"" \
-	"HOME=\$DS_FAKE_REMOTE_HOME exec /bin/sh -c \"\$command\"" >"$work/fake-ssh"
+cp "$root/tests/fake-ssh.sh" "$work/fake-ssh"
 chmod 0755 "$work/fake-ssh"
 
 first=$(

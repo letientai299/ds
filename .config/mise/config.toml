@@ -70,6 +70,7 @@ run = [
   "tests/rootful.sh",
   "sh tests/runtime-build.sh",
   "sh tests/shell-init.sh",
+  "sh tests/push.sh",
   "sh tests/try.sh",
   "JANET_PATH=$PWD/src janet -x strict tests/platform.janet",
   "selection_home=$(mktemp -d ${TMPDIR:-/tmp}/ds-selection.XXXXXX); trap 'rm -rf \"$selection_home\"' EXIT; DS_TEST_HOME=$selection_home JANET_PATH=$PWD/src janet -x strict tests/selection.janet",

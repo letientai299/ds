@@ -2,3 +2,4 @@
 .config/mise/config.local.toml
 .rumdl_cache/
 dist/
+.ai/

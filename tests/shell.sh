@@ -16,6 +16,8 @@ export DS_NVIM_SOURCE="$work/nvim" DS_MISE="$work/mise"
 export DS_ROOT=/stale/root ZDOTDIR="$work/old-zdotdir"
 unset DS_SHELL_ROOT DS_SHELL_CONFIG_HOME DS_SHELL_GIT_GLOBAL DS_SHELL_STATE GIT_CONFIG_GLOBAL
 mkdir -p "$HOME" "$DS_NVIM_SOURCE" "$XDG_CONFIG_HOME/git" "$work/working dir" "$ZDOTDIR"
+mkdir -p "$work/ignore-repo"
+git -C "$work/ignore-repo" init -q
 printf '%s\n' 'exit 91' >"$HOME/.zshrc"
 printf '%s\n' 'exit 92' >"$ZDOTDIR/.zshrc"
 printf '%s\n' '[user]' 'name = Daily User' >"$HOME/.gitconfig"
@@ -27,7 +29,7 @@ fd_version=$(JANET_PATH="$root/src" "$DS_JANET" -e '(import scripts/generated/la
 mkdir -p "$MISE_DATA_DIR/installs/fd/$fd_version/bin"
 printf '%s\n' '#!/bin/sh' 'echo trial-pinned-fd' >"$MISE_DATA_DIR/installs/fd/$fd_version/bin/fd"
 chmod +x "$MISE_DATA_DIR/installs/fd/$fd_version/bin/fd"
-export DS_TEST_ROOT="$root" DS_TEST_CWD="$work/working dir"
+export DS_TEST_ROOT="$root" DS_TEST_CWD="$work/working dir" DS_TEST_IGNORE_REPO="$work/ignore-repo"
 cat >"$work/input" <<'ZSH'
 [[ $$ == $DS_TEST_PID ]] || exit 10
 [[ $PWD == $DS_TEST_CWD ]] || exit 11
@@ -38,6 +40,9 @@ cat >"$work/input" <<'ZSH'
 [[ $(git config user.email) == daily@example.invalid ]] || exit 16
 [[ $(git config push.autoSetupRemote) == true ]] || exit 17
 [[ $(git config core.excludesFile) == $XDG_CONFIG_HOME/ds/gitignore ]] || exit 18
+git -C "$DS_TEST_IGNORE_REPO" check-ignore -q .ai/probe || exit 68
+git -C "$DS_TEST_IGNORE_REPO" check-ignore -q .swp || exit 69
+git -C "$DS_TEST_IGNORE_REPO" check-ignore -q _sbt && exit 70
 [[ $(<$XDG_CONFIG_HOME/application) == 'application settings' ]] || exit 19
 [[ ${XDG_CONFIG_HOME:A} != ${DS_SHELL_CONFIG_HOME:A} ]] || exit 20
 [[ ${XDG_CONFIG_HOME}/nvim -ef $DS_NVIM_SOURCE ]] || exit 21

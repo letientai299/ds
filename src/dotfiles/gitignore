@@ -1,5 +1,92 @@
+.mise.local.toml
+
+.jira.d/ .dump/
+dump/
+*.dump.*
+dump.*
+.dump
+*.temp.*
+temp.*
+
+# Vim
+# temp file
+*.vim~
+
 .DS_Store
-*.swp
-*.swo
-*~
+
+# swap
+[._]*.s[a-w][a-z]
+.s[a-w][a-z]
+# persistent undo
+*.un~
+# session
+Session.vim
+# temporary
 .netrwhist
+*~
+# Auto generated tag files
+.gradletasknamecache
+
+# VScode
+*.browse.VC.*
+
+# Maven
+target/
+
+# Gradle
+.gradle/
+.gradletasknamecache
+
+# Intellij*
+.idea/
+!.idea/.name
+*.iml
+out/
+
+# Node js
+node_modules
+.tern-port
+hs_err*
+
+.vscode
+
+yarn-error.log
+yarn.lock
+
+.env
+.envrc
+.direnv
+
+vendor/
+
+.local.vimrc
+_notes/
+.*pid*
+tmux-client*.log
+nohup.out
+# *.gen.go
+
+# Nodejs
+# ignore v8 log
+*-v8.log
+.aider*
+
+*.tsbuildinfo
+
+# AI dirs and files
+.junie/
+.output.txt
+.claude
+.ai
+
+.playwright*
+.ai/
+
+.nvim.lua
+.wrangler
+
+**/*.local.*
+**/*.temp.*
+**/*.dump.*
+.worktreeinclude
+.ai/

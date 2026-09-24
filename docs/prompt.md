@@ -3,9 +3,12 @@
 The built-in prompt uses Zsh and Git. No prompt plugin is required.
 Open a new shell after installing an updated checkout.
 
-The first line shows the SSH host when connected remotely, `⚙️` for an effective
-root shell, and `🔒` when the current Linux filesystem is mounted read-only. It
-also shows the directory, `⑂` branch, Git counts, and latest commit subject.
+The first line shows the SSH alias in brackets when connected remotely,
+`⚙️` for an effective root shell, and `🔒` when the current Linux filesystem is
+mounted read-only. The managed [SSH config][ssh-config] sends
+`LC_SSH_ALIAS=%n`, using the alias given to `ssh`; if the server does not accept
+it, the short hostname is shown. It also shows the directory, `⑂` branch, Git
+counts, and latest commit subject.
 Long lines truncate to fit the terminal. Detached HEAD shows `@` and an
 abbreviated commit ID; repositories without commits omit the commit subject.
 
@@ -42,5 +45,6 @@ Implementation: [prompt source][source]. Protocols: [Git status][git-status] and
 [Zsh prompt expansion][zsh-prompt].
 
 [source]: ../src/dotfiles/prompt.zsh
+[ssh-config]: ../src/dotfiles/ssh_config
 [git-status]: https://git-scm.com/docs/git-status
 [zsh-prompt]: https://zsh.sourceforge.io/Doc/Release/Prompt-Expansion.html

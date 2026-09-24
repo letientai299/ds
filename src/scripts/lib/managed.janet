@@ -99,6 +99,7 @@
   (def bin (if shell-state (path shell-state "bin") (path home ".local/bin")))
   (def zshrc (if shell-state (path shell-state "zsh/.zshrc") (path home ".zshrc")))
   (def gitconfig (if shell-state (path shell-state "gitconfig") (path home ".gitconfig")))
+  (def ssh-config (path home ".ssh/config"))
   (def base (if shell-state root (link-root root)))
   (def core
     @[{:kind :link :target (path bin "ds") :source (string base "/ds")}
@@ -114,9 +115,11 @@
       @[{:kind :link :target (path config-home "ds/shell.zsh") :source (string base "/src/dotfiles/shell.zsh")}
         {:kind :link :target (path config-home "ds/gitconfig") :source (string base "/src/dotfiles/gitconfig")}
         {:kind :link :target (path config-home "ds/gitignore") :source (string base "/src/dotfiles/gitignore")}
+        {:kind :link :target (path config-home "ds/ssh_config") :source (string base "/src/dotfiles/ssh_config")}
         {:kind :link :target (path config-home "ds/rgrc") :source (string base "/src/dotfiles/rgrc")}
         {:kind :link :target (path config-home "nvim") :source (source-root base environment "nvim")}
         {:kind :marker :target zshrc :line (string "source \"" config-home "/ds/shell.zsh\"")}
+        {:kind :marker :target ssh-config :line (string "Include \"" config-home "/ds/ssh_config\"")}
         {:kind :marker :target gitconfig
          :line (string "[include]\n\tpath = " config-home "/ds/gitconfig"
                         (if shell-state (string "\n[core]\n\texcludesFile = " config-home "/ds/gitignore") ""))}])

@@ -9,7 +9,7 @@ typeset -g _ds_prompt_oid='' _ds_prompt_subject=''
 typeset -g _ds_prompt_command=git _ds_prompt_apple_git='' _ds_prompt_apple_key=''
 typeset -gF _ds_prompt_started=0
 # Reserve one column against automatic wrapping.
-PROMPT='%$(( COLUMNS > 1 ? COLUMNS - 1 : 1 ))>…>${_ds_prompt_context}%F{blue}%(5~|…/%4~|%~)%f${_ds_prompt_git}%>>
+PROMPT=$'\n''%$(( COLUMNS > 1 ? COLUMNS - 1 : 1 ))>…>${_ds_prompt_context}%F{blue}%(5~|…/%4~|%~)%f${_ds_prompt_git}%>>
 %F{yellow}%(1j.%(2j.%j.)• .)%f${_ds_prompt_duration}%F{yellow}%D{%H:%M:%S}%f ${_ds_prompt_char}%f '
 RPROMPT=''
 
@@ -103,15 +103,15 @@ _ds_prompt_git() {
 
 _ds_prompt_context() {
   emulate -L zsh
-  local context='' host=${HOST%%.*}
+  local context='' ssh_alias=${LC_SSH_ALIAS:-${HOST%%.*}}
   local line mountpoint options super_options physical_pwd
   local -a fields
   local -i separator index best_length=0 readonly_mount=0
 
   if [[ -n ${SSH_CONNECTION:-}${SSH_TTY:-} ]]; then
-    host=${host//[[:cntrl:]]/ }
-    host=${host//\%/%%}
-    context+="%F{cyan}ssh:$host%f "
+    ssh_alias=${ssh_alias//[[:cntrl:]]/ }
+    ssh_alias=${ssh_alias//\%/%%}
+    context+="%F{cyan}[$ssh_alias]%f "
   fi
   (( EUID == 0 )) && context+='%F{red}⚙️%f '
 

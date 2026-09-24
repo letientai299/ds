@@ -1,0 +1,2 @@
+Host *
+  SetEnv LC_SSH_ALIAS=%n

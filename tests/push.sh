@@ -36,15 +36,26 @@ printf '%s\n' unlisted >"$snapshot/files/unlisted"
 cp "$root/tests/fake-ssh.sh" "$work/ssh"
 chmod 0755 "$work/ssh"
 export DS_SSH="$work/ssh" DS_SSH_LOG="$work/ssh.log"
+export DS_SSH_CONTROL_LOG="$work/control.log"
+export TMPDIR="$work/long-temporary-directory-exceeding-macos-socket-limits/with spaces"
+mkdir -p "$TMPDIR"
+
+check_control() {
+	[ "$(sort -u "$DS_SSH_CONTROL_LOG" | wc -l | tr -d ' ')" -eq 1 ] || die 'push did not reuse its socket'
+	control_path=$(sed -n '1p' "$DS_SSH_CONTROL_LOG")
+	[ ! -d "${control_path%/*}" ] || die 'push leaked its socket directory'
+}
 
 for mode in archive fallback; do
 	export DS_FAKE_REMOTE_HOME="$work/$mode"
 	mkdir -p "$DS_FAKE_REMOTE_HOME"
 	: >"$DS_SSH_LOG"
+	: >"$DS_SSH_CONTROL_LOG"
 	DS_SSH_NO_TAR=false
 	[ "$mode" != fallback ] || DS_SSH_NO_TAR=true
 	export DS_SSH_NO_TAR
 	installed=$("$root/src/bundle/push.sh" --snapshot "$snapshot" --host fixture)
+	check_control
 	[ "$("$installed/ds")" = delivered ] || die "$mode dispatch failed"
 	[ "$(cat "$installed/src/file-19")" = 19 ] || die "$mode payload incomplete"
 	[ ! -e "$DS_FAKE_REMOTE_HOME/.local/share/ds/incoming/fixture/files/unlisted" ] || die 'unlisted file transferred'
@@ -54,8 +65,17 @@ for mode in archive fallback; do
 	fallback) [ "$calls" -eq 26 ] || die 'fallback transfer skipped files' ;;
 	esac
 	: >"$DS_SSH_LOG"
+	: >"$DS_SSH_CONTROL_LOG"
 	[ "$("$root/src/bundle/push.sh" --snapshot "$snapshot" --host fixture)" = "$installed" ] || die 'repeat push changed version'
+	check_control
 	[ "$(wc -l <"$DS_SSH_LOG" | tr -d ' ')" -eq 2 ] || die 'repeat push transferred payload'
 done
+
+: >"$DS_SSH_CONTROL_LOG"
+printf '%s\n' tampered >"$snapshot/files/src/file-19"
+if "$root/src/bundle/push.sh" --snapshot "$snapshot" --host fixture >/dev/null 2>&1; then
+	die 'push accepted a corrupt snapshot'
+fi
+check_control
 
 printf '%s\n' 'push: ok (archive=4, fallback=26 remote commands)'

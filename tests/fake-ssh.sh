@@ -4,7 +4,24 @@ set -eu
 
 while [ "$#" -gt 0 ]; do
 	case "$1" in
-	-o) shift 2 ;;
+	-o)
+		case "$2" in
+		ControlPath=*)
+			if [ -n "${DS_SSH_CONTROL_LOG:-}" ]; then
+				control_path=${2#ControlPath=}
+				control_path=${control_path#\"}
+				control_path=${control_path%\"}
+				control_path=$(printf '%s\n' "$control_path" | sed 's/%C/0123456789012345678901234567890123456789/g')
+				[ "${#control_path}" -lt 104 ] || {
+					printf '%s\n' 'ControlPath too long' >&2
+					exit 1
+				}
+				printf '%s\n' "$control_path" >>"$DS_SSH_CONTROL_LOG"
+			fi
+			;;
+		esac
+		shift 2
+		;;
 	-O) exit 0 ;;
 	*) break ;;
 	esac

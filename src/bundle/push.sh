@@ -49,7 +49,8 @@ command -v "$ssh_command" >/dev/null 2>&1 || die "SSH command is missing: $ssh_c
 
 # A snapshot carries a few hundred payload files and each one used to cost its
 # own handshake, so every push multiplexes them over a single master connection.
-control_dir=$(mktemp -d "${TMPDIR:-/tmp}/ds-push.XXXXXX")
+# Socket paths must fit macOS limits.
+control_dir=$(mktemp -d /tmp/ds-push.XXXXXX)
 ssh_run() {
 	"$ssh_command" -o ControlMaster=auto -o ControlPersist=60 \
 		-o "ControlPath=\"$control_dir/%C\"" "$@"

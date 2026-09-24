@@ -11,6 +11,9 @@ alias so=source
 alias :q=exit
 alias wrap='tput smam'
 alias nowrap='tput rmam'
+if (( $+commands[eza] )); then
+  alias ls=eza
+fi
 
 alias gcf!="git commit --amend --no-edit"
 alias gll='git log --pretty="%C(Yellow)%h  %C(reset)%ad (%C(Green)%cr%C(reset))%x09 %C(Cyan)%an: %C(reset)%s"'

@@ -14,6 +14,11 @@ function docker() { fail 'Docker ran during startup'; }
 source "$shell"
 function reload() { source "$shell"; }
 reload
+if (( $+commands[eza] )); then
+  [[ $aliases[ls] == eza ]] || fail 'ls alias missing'
+else
+  [[ -z ${aliases[ls]:-} ]] || fail 'ls alias needs eza'
+fi
 [[ -f $XDG_CACHE_HOME/ds/git-version ]] || fail 'Git version cache missing'
 [[ -z $(command find "$HOME" -type f ! -path "$XDG_CACHE_HOME/ds/git-version" -print) ]] || fail 'unexpected startup files'
 typeset -g _ds_git_version_key=''
@@ -45,6 +50,7 @@ rd "$work/new directory/child"
 [[ -d "$work/new directory" && ! -e "$work/new directory/child" ]] || fail 'directory helpers failed'
 
 function ls() { print -rl -- "$@"; }
+function eza() { print -rl -- "$@"; }
 [[ $(l 'spaced directory') == $'-lah\nspaced directory' ]] || fail 'l arguments changed'
 [[ $(ll 'spaced directory') == $'-lh\nspaced directory' ]] || fail 'll arguments changed'
 [[ $(la 'spaced directory') == $'-lAh\nspaced directory' ]] || fail 'la arguments changed'

@@ -1,6 +1,7 @@
 [tools]
 bat = "0.25.0"
 eza = "0.23.5"
+gdu = "5.37.0"
 
 [tools."http:delta"]
 version = "0.18.2"
@@ -28,6 +29,15 @@ linux-arm64 = { url = "https://github.com/w31r4/gokill/releases/download/v1.4.1/
 linux-x64 = { url = "https://github.com/w31r4/gokill/releases/download/v1.4.1/gokill_Linux_x86_64.tar.gz", checksum = "sha256:efad865d2e0b6207c5f10d548f2e332f1ebf34ce282e5cd39e26afc697ff0f0f" }
 macos-arm64 = { url = "https://github.com/w31r4/gokill/releases/download/v1.4.1/gokill_Darwin_arm64.tar.gz", checksum = "sha256:0068343c28ae040412f082f12d115d5bad5bc64d446c5e2e9cd6f2d0113c6415" }
 macos-x64 = { url = "https://github.com/w31r4/gokill/releases/download/v1.4.1/gokill_Darwin_x86_64.tar.gz", checksum = "sha256:84553f010b98480d320abe59ff98927fa66bb5848085626c8190085796de6702" }
+
+[tools."http:ouch"]
+version = "0.8.3"
+
+[tools."http:ouch".platforms]
+linux-arm64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-aarch64-unknown-linux-musl.tar.gz", checksum = "sha256:4619158de69e65e8d23147c3d8b46b116feb0259c8a1704df7d792394c2b5847" }
+linux-x64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-x86_64-unknown-linux-musl.tar.gz", checksum = "sha256:eaab9b997a823f584557ac5f85205105ae577a4c4fbd23926b686469cfa19881" }
+macos-arm64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-aarch64-apple-darwin.tar.gz", checksum = "sha256:969c1bd9105b5033cc9cac0a37c011d23482948d681b43f97c6f79311f3263d0" }
+macos-x64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-x86_64-apple-darwin.tar.gz", checksum = "sha256:c97188f4c09fb959ea0d3117781ae524431b62fcd8f1b8d19323550773cd438a" }
 
 [bootstrap.packages]
 "apk:gcompat" = "latest"

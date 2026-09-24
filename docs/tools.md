@@ -1,8 +1,9 @@
 # Shell tools
 
-`ds apply core` installs `serve`, `fzf-files`, and `fzf-dirs` in `~/.local/bin` and
-manages zoxide through mise. `extra` supplies eza, gokill, and Worktrunk. Trial shells expose the same commands. Existing files at
-managed paths follow the normal adoption and conflict rules.
+`ds apply core` installs `serve`, `fzf-files`, and `fzf-dirs` in `~/.local/bin`
+and manages zoxide through mise. `extra` supplies eza, gokill, and Worktrunk.
+Trial shells expose the same commands. Existing files at managed paths follow
+the normal adoption and conflict rules.
 
 ## File selection and search
 
@@ -106,6 +107,23 @@ Mise manages gokill as the `http:gokill` tool. Its version and platform
 checksums are pinned in the [extra profile][profile]; `ds apply extra`
 installs it. Neither command adds work to shell startup.
 
+## Disk usage and archives
+
+`ds apply extra` installs [gdu][gdu] for disk usage analysis and [ouch][ouch]
+for creating, listing, and extracting archives.
+
+```sh
+gdu .
+ouch compress ./logs logs.tar.zst
+ouch list logs.tar.zst
+ouch decompress logs.tar.zst --dir restored
+```
+
+Ouch supports ZIP, TAR, 7z, gzip, bzip2, xz, zstd, and other compression
+formats. RAR supports extraction and listing only.
+
+[gdu]: https://github.com/dundee/gdu
+[ouch]: https://github.com/ouch-org/ouch
 [caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server
 [gokill]: https://github.com/w31r4/gokill
 [profile]: ../src/mise/mise.extra.toml

@@ -13,7 +13,7 @@ core = [
   "xh",
 ]
 remote = ["tmux", "docker"]
-extra = ["bat", "delta", "worktrunk", "gokill", "eza"]
+extra = ["bat", "delta", "worktrunk", "gokill", "eza", "gdu", "ouch"]
 ui = ["kitty"]
 all = []
 optional = []
@@ -75,6 +75,15 @@ tool = "http-gokill"
 [components.eza]
 commands = ["eza"]
 owner = "mise"
+
+[components.gdu]
+commands = ["gdu"]
+owner = "mise"
+
+[components.ouch]
+commands = ["ouch"]
+owner = "mise"
+tool = "http-ouch"
 
 [components.tmux]
 commands = ["tmux"]

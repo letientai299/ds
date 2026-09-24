@@ -29,87 +29,45 @@
                         (get generated/catalog :optional))))
     ", "))
 
-# A delivered snapshot carries no docs, so this is the only discovery surface
-# on a target. `push` is dispatched by the launcher and exists only in a
-# controller checkout, so it is listed only where it works.
+(defn controller? []
+  (not= nil (os/stat (string root "/src/bundle/controller.sh"))))
+
 (defn usage [emit]
-  (each line
-    ["usage: ds <command> [layer|component] [options]"
-     ""
-     "commands:"
-     "  status LAYER             report component and managed-file state"
-     "  diff LAYER               show missing, conflicting, and unavailable entries"
-     "  doctor [LAYER]           status plus Docker diagnostics for remote"
-     "  apply LAYER              converge a layer"
-     "  adopt LAYER              back up conflicting targets, then converge"
-     "  force LAYER              destructively replace conflicting targets, then converge"
-     "  add COMPONENT            enable an optional component"
-     "  unapply LAYER|COMPONENT  remove managed state; supports --dry-run"
-     "  shell                    start a trial Zsh; default without arguments"
-     "  shell-init               print the Zsh integration fragment"
-     "  stage                    verify and stage a snapshot"
-     "  activate VERSION         switch to a staged version"
-     "  rollback                 switch to the previous version"
-     "  completion bash|zsh      print catalog-based completions"
-     "  docker-rootful           provision rootful Docker behind two approval flags"]
-    (emit line))
-  (when (os/stat (string root "/src/bundle/controller.sh"))
-    (emit "  push HOST LAYER          deliver and apply from a controller checkout")
-    (emit "  docker [--rebuild]       cached Ubuntu core shell with /work mounted"))
-  (each line
-    [""
-     "options:"
-     "  --dry-run                preview apply/adopt/force/add/unapply without changes"
-     "  --skip docker            skip Docker during apply only"
-     "  --json / --check          status output / health exit code"
-     "  ds help COMMAND          command-specific options and examples"
-     ""
-     (string "layers: " (catalog-names :layers))
-     (string "optional components: " (catalog-names :optional))]
-    (emit line)))
+  (help/usage emit generated/catalog (controller?) false))
 
 (defn known-layer? [name]
   (layers/known-layer? generated/catalog name))
 
-(defn require-layer [name]
-  (unless (known-layer? name)
-    (fail (string "unknown layer: " name " (known layers: " (catalog-names :layers) ")")))
-  name)
-
-# `--skip` can only honour components ds converges itself. Everything else is
-# installed by `mise bootstrap` as one profile, so accepting it would be a lie.
-(def skippable [:docker])
-
-(defn parse-layer-args [command args]
-  (when (< (length args) 3)
-    (fail (string command " requires a layer")))
-  (def layer (get args 2))
+(defn parse-mutation [command args]
+  (var target nil)
   (var dry-run? false)
-  (var skips @[])
-  (var index 3)
+  (var mode (if (= command "remove") "unapply" command))
+  (def skips @[])
+  (var index 2)
   (while (< index (length args))
     (def arg (get args index))
     (case arg
       "--dry-run" (set dry-run? true)
-      "--skip"
-      (do
-        (set index (+ index 1))
-        (when (>= index (length args)) (fail "--skip requires a component"))
-        (def component (keyword (get args index)))
-        (unless (find |(= $ component) skippable)
-          (fail (string "--skip does not accept " (get args index)
-                        " (skippable components: "
-                        (string/join (sort (map string skippable)) ", ") ")")))
-        (array/push skips component))
-      (fail (string "unknown argument: " arg)))
-    (set index (+ index 1)))
-  [layer dry-run? skips])
-
-(defn parse-takeover-args [command args]
-  (def parsed (parse-layer-args command args))
-  (unless (empty? (get parsed 2))
-    (fail (string command " does not accept --skip")))
-  parsed)
+      "--adopt" (do
+                  (unless (= command "apply") (fail "--adopt requires apply"))
+                  (when (= mode "force") (fail "--adopt conflicts with --force"))
+                  (set mode "adopt"))
+      "--force" (do
+                  (unless (= command "apply") (fail "--force requires apply"))
+                  (when (= mode "adopt") (fail "--force conflicts with --adopt"))
+                  (set mode "force"))
+      "--skip" (do
+                 (unless (= command "apply") (fail (string command " does not accept --skip")))
+                 (++ index)
+                 (unless (= "docker" (get args index)) (fail "--skip requires docker"))
+                 (array/push skips :docker))
+      (if (or target (string/has-prefix? "-" arg))
+        (fail (string "unexpected argument: " arg))
+        (set target arg)))
+    (++ index))
+  (when (and (nil? target) (not= command "apply"))
+    (fail (string command " requires a target")))
+  {:target target :dry-run dry-run? :skips skips :mode (keyword mode)})
 
 (defn reject-extra [args maximum]
   (when (> (length args) maximum)
@@ -245,9 +203,10 @@
 
 (defn current-layer []
   (def target (string (selection/config-home base-environment) "/ds/layer"))
-  (if (os/stat target)
+  (if (os/lstat target)
     (let [value (string/trim (string (slurp target)))]
-      (if (find |(= $ value) ["core" "remote"]) value "core"))
+      (unless (known-layer? value) (fail (string "invalid saved layer: " value)))
+      value)
     "core"))
 
 (defn optional-state [name]
@@ -277,11 +236,21 @@
         (find |(not= :present (get $ :state)) file-entries)) :incomplete
     :else :complete))
 
-(defn print-status [layer entries file-entries]
-  (print (string layer ": " (combined-summary entries file-entries)))
+(defn print-entries [entries file-entries]
   (each entry entries (print-component entry))
   (each entry file-entries
     (print (string "  " (get entry :state) " " (get entry :target)))))
+
+(defn print-status [layer entries file-entries]
+  (print (string layer ": " (combined-summary entries file-entries)))
+  (print-entries entries file-entries))
+
+(defn print-context [layer emit]
+  (emit (string "scope: " (if (get base-environment "DS_SHELL_STATE") "trial configuration" "normal configuration")))
+  (emit (string "layer: " layer))
+  (emit (string "configuration: " (selection/config-home base-environment)))
+  (when (get base-environment "DS_SHELL_STATE")
+    (emit "Package installations affect the host.")))
 
 (defn print-diff [layer entries file-entries]
   (print (string "diff " layer ":"))
@@ -313,31 +282,36 @@
   name)
 
 (defn run-mutation [command args]
-  (def parsed (if (= command "apply") (parse-layer-args command args) (parse-takeover-args command args)))
-  (def target (if (find |(= $ command) ["unapply" "add"])
-                 (require-target (get parsed 0)) (require-layer (get parsed 0))))
-  (when (and (= command "add") (not (optional-component? target)))
-    (fail "add requires an optional component"))
+  (def parsed (parse-mutation command args))
+  (def target (require-target (or (get parsed :target) (current-layer))))
   (def component (if (optional-component? target) (keyword target) nil))
+  (def mode (if (and component (= :apply (get parsed :mode))) :add (get parsed :mode)))
+  (when (and (= command "add") (not component))
+    (fail "add requires an optional component"))
+  (when (and component (or (find |(= mode $) [:adopt :force])
+                           (not (empty? (get parsed :skips)))))
+    (fail "Conflict policies and --skip require a layer"))
   (def layer (if component (current-layer) target))
-  (def components (filter (fn [item] (not (find |(= $ item) (get parsed 2))))
+  (def components (filter (fn [item] (not (find |(= $ item) (get parsed :skips))))
                          (layers/resolve generated/catalog layer
                            (map string (distinct (tuple ;(selection/selected generated/catalog base-environment)
                                                         ;(if component [component] [])))))))
-  (def request {:mode (keyword command) :layer layer :component component :components components
-                :docker (and (= layer "remote") (not (find |(= $ :docker) (get parsed 2))))})
+  (def request {:mode mode :layer layer :component component :components components
+                :docker (and (= layer "remote") (not (find |(= $ :docker) (get parsed :skips))))})
+  (when (find |(= command $) ["apply" "remove"]) (print-context layer print))
   (defn work []
     (def plan (mutation/build generated/catalog root base-environment request))
-    (if (get parsed 1)
+    (if (get parsed :dry-run)
       (do
-        (print (string "would " command " " target (if (find |(= $ command) ["unapply" "add"]) "" ":")))
+        (print (string "would " command " " target (if (find |(= command $) ["unapply" "add" "remove"]) "" ":")))
         (each item plan (print (string "  " (mutation/describe item)))))
       (do
         (mutation/execute plan foreground-runner root base-environment converge-docker)
         (print (string (case command "apply" "applied" "adopt" "adopted and applied"
-                             "force" "forced and applied" "add" "added" "unapply" "unapplied") " " target)))))
+                             "force" "forced and applied" "add" "added" "unapply" "unapplied"
+                             "remove" "removed") " " target)))))
   (try
-    (if (get parsed 1) (work)
+    (if (get parsed :dry-run) (work)
       (activation/with-lock (or (activation/prefix root)
                                (string (selection/config-home base-environment) "/ds")) work))
     ([err] (eprint (string "ds: " err)) (os/exit 1))))
@@ -373,40 +347,87 @@
        ([err] (eprint (string "ds: " err)) (os/exit 1))))
 
 (defn report-status [args]
-  (when (< (length args) 3) (fail "status requires a layer"))
-  (def target (require-target (get args 2)))
+  (var target nil)
   (var json? false)
   (var check? false)
-  (each arg (slice args 3)
-    (case arg "--json" (set json? true) "--check" (set check? true)
-      (fail (string "unknown argument: " arg))))
+  (var verbose? false)
+  (each arg (slice args 2)
+    (case arg
+      "--json" (set json? true)
+      "--check" (set check? true)
+      "--verbose" (set verbose? true)
+      (if (or target (string/has-prefix? "-" arg))
+        (fail (string "unexpected argument: " arg))
+        (set target arg))))
+  (set target (require-target (or target (current-layer))))
   (def optional? (optional-component? target))
+  (def layer (if optional? (current-layer) target))
   (def packages (if optional?
-                  (planner/inspect [(keyword target)] |(component-probe (current-layer) $))
+                  (planner/inspect [(keyword target)] |(component-probe layer $))
                   (inspect-layer target)))
   (def files (if optional? [] (managed/inspect root base-environment target)))
   (def summary (if optional? (optional-state target) (combined-summary packages files)))
   (if json?
     (print (json/encode {:schema 1 :target target :summary summary :components packages
                           :files files :selected (selection/selected generated/catalog base-environment)}))
-    (if optional? (print-optional-status target) (print-status target packages files)))
+    (do
+      (print-context layer print)
+      (print (string target ": " summary))
+      (print-entries (if verbose? packages (filter |(not= :installed (get $ :state)) packages))
+                     (if verbose? files (filter |(not= :present (get $ :state)) files)))
+      (when optional?
+        (def selected? (selection/selected? generated/catalog base-environment (keyword target)))
+        (when (or verbose? (not selected?))
+          (print (string "  " (if selected? "selected " "unselected ") target))))
+      (when (and verbose? (not optional?) (= layer "remote"))
+        (print-docker-diagnostic (docker-plan)))
+      (unless (= summary :complete)
+        (if (find |(= :unavailable (get $ :state)) files)
+          (print "Resolve unavailable configuration sources before applying.")
+          (print (string "preview: ds apply " target
+                         (if (= summary :conflict) " --adopt" "") " --dry-run"))))))
   (when check? (os/exit (if (= summary :complete) 0 1))))
+
+(defn help-request? [args]
+  (var requested? false)
+  (each arg (slice args 2)
+    (when (= arg "--") (break))
+    (when (find |(= arg $) ["--help" "-h"]) (set requested? true)))
+  requested?)
+
+(defn start-shell [args]
+  (var docker? false)
+  (var passthrough? false)
+  (def forwarded @[])
+  (each arg (slice args 2)
+    (if (and (not passthrough?) (= arg "--docker"))
+      (set docker? true)
+      (array/push forwarded arg))
+    (when (= arg "--") (set passthrough? true)))
+  (if docker?
+    (do
+      (unless (controller?) (fail "--docker requires a controller checkout"))
+      (os/posix-exec [(string root "/src/bundle/docker.sh") ;forwarded] :pe base-environment))
+    (do
+      (reject-extra args 2)
+      (shell/start root base-environment generated/catalog))))
 
 (defn main [& args]
   (when (< (length args) 2)
     (try (shell/start root base-environment generated/catalog)
          ([err] (fail err))))
   (def command (get args 1))
-  (when (and (has-key? help/commands command)
-             (find |(or (= $ "--help") (= $ "-h")) (slice args 2)))
-    (help/show command generated/catalog)
+  (when (and (help/specification command (controller?)) (help-request? args))
+    (help/show command generated/catalog (controller?))
     (break))
   (case command
     "help" (do (reject-extra args 3)
-               (if (get args 2)
-                 (if (has-key? help/commands (get args 2)) (help/show (get args 2) generated/catalog)
-                   (fail (string "unknown command: " (get args 2))))
-                 (usage print)))
+               (case (get args 2)
+                 nil (usage print)
+                 "--all" (help/usage print generated/catalog (controller?) true)
+                 (if (help/specification (get args 2) (controller?))
+                   (help/show (get args 2) generated/catalog (controller?))
+                   (fail (string "unavailable command: " (get args 2))))))
     "--help" (do (reject-extra args 2) (usage print))
     "-h" (do (reject-extra args 2) (usage print))
     "status" (report-status args)
@@ -415,8 +436,7 @@
     "activate" (switch-version command args)
     "rollback" (switch-version command args)
     "completion" (do (reject-extra args 3)
-                      (try (help/complete (get args 2) generated/catalog
-                             (not= nil (os/stat (string root "/src/bundle/controller.sh"))))
+                      (try (help/complete (get args 2) generated/catalog (controller?))
                            ([err] (fail err))))
 
     "diff"
@@ -435,6 +455,7 @@
     "apply" (run-mutation command args)
     "adopt" (run-mutation command args)
     "force" (run-mutation command args)
+    "remove" (run-mutation command args)
     "unapply" (run-mutation command args)
     "add" (run-mutation command args)
 
@@ -450,11 +471,7 @@
           (print-status layer (inspect-layer layer) (managed/inspect root base-environment layer))
           (when (= layer "remote") (print-docker-diagnostic (docker-plan))))))
 
-    "shell"
-    (do
-      (reject-extra args 2)
-      (try (shell/start root base-environment generated/catalog)
-           ([err] (fail err))))
+    "shell" (try (start-shell args) ([err] (fail err)))
 
     "docker-rootful"
     (do

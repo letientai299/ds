@@ -9,6 +9,8 @@ die() {
 
 usage() {
 	printf '%s\n' 'usage: ds push HOST LAYER [--platform PLATFORM] [--prefix RELATIVE_PATH] [--home RELATIVE_PATH] [--dry-run|--deliver-only]'
+	printf '%s\n' '--dry-run delivers and stages, then previews application.' \
+		'Use ds help push for options and examples.'
 }
 
 root=$(dirname -- "$0")/../..

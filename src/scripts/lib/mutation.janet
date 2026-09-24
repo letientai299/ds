@@ -49,7 +49,7 @@
       :conflict
       (cond
         (= mode :apply)
-        (array/push plan (action :blocked {:target (get entry :target) :reason "conflict; use adopt or force"}))
+        (array/push plan (action :blocked {:target (get entry :target) :reason (string "conflict; preview: ds apply " layer " --adopt --dry-run")}))
         (and (= mode :adopt) (os/lstat (managed/backup-path entry)))
         (array/push plan (action :blocked {:target (managed/backup-path entry) :reason "backup exists"}))
         :else (array/push plan (action :takeover {:entry entry :mode mode}))))

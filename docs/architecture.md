@@ -38,7 +38,7 @@ selected Neovim/Tmux configuration, and inserts marked blocks into `.zshrc` and
 `.gitconfig`.
 
 Convergence distinguishes missing, present, conflicting, and unavailable state.
-Exact-link and exact-marker checks prevent unapply from deleting user content.
+Exact-link and exact-marker checks prevent removal from deleting user content.
 Marker operations refuse to follow symlinks, which prevents a linked rc file
 from mutating another dotfiles repository.
 

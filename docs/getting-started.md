@@ -59,11 +59,11 @@ Delivery bundles contain committed Git exports of both sources.
 
 ## Apply core safely
 
-Always inspect the current state first:
+`ds status` and `ds apply` use the saved layer, initially `core`.
+Choose an explicit layer to inspect or apply another preset:
 
 ```sh
 ./ds status core
-./ds diff core
 ./ds apply core --dry-run
 ```
 
@@ -82,8 +82,8 @@ Apply refuses conflicts:
 If a conflict should be preserved and replaced, use adoption:
 
 ```sh
-./ds adopt core --dry-run
-./ds adopt core
+./ds apply core --adopt --dry-run
+./ds apply core --adopt
 ```
 
 Each conflicting target is backed up to `<target>.ds-adopted` before it is
@@ -91,13 +91,14 @@ replaced. Adoption never follows a linked Zsh rc into another repository.
 
 ## Use the remote layer
 
-`remote` includes every `core` component and adds the tools listed under
-[Layers][layers]:
+`remote` is an extended local preset. It includes every `core` component
+and adds the tools listed under [Layers][layers]. SSH delivery uses
+`ds push HOST LAYER`:
 
 ```sh
 ./ds apply remote --dry-run
 ./ds apply remote
-./ds doctor remote
+./ds status remote --verbose
 ```
 
 On macOS, Docker must already be available through Docker Desktop, OrbStack, or
@@ -115,30 +116,30 @@ The layer remains incomplete until Docker is ready.
 ## Optional Starship prompt
 
 ```sh
-./ds add starship --dry-run
-./ds add starship
+./ds apply starship --dry-run
+./ds apply starship
 ./ds status starship
 ```
 
 Remove the selection with:
 
 ```sh
-./ds unapply starship
+./ds remove starship
 ```
 
 ## Recovery
 
 ```sh
-./ds unapply core
+./ds remove core
 ```
 
-Unapply removes only exact links and marker blocks owned by `ds`. It restores
+Removal deletes only exact links and marker blocks owned by `ds`. It restores
 available `.ds-adopted` backups when the original target is absent. Installed
 system packages, mise tools, and versioned snapshots are additive and remain on
 disk.
 
-Avoid `ds force` unless discarding each reported conflict is intentional. It
-removes conflicting targets without backups.
+Avoid `ds apply --force` unless discarding each reported conflict is intentional.
+It removes conflicting targets without backups.
 
 [layers]: ../README.md#layers
 [try]: try.md

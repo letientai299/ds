@@ -1,10 +1,10 @@
 # Try ds in Docker
 
-`ds docker` opens a provisioned Ubuntu container with your current directory
+`ds shell --docker` opens a provisioned Ubuntu container with your current directory
 mounted read-write at `/work`:
 
 ```sh
-ds docker
+ds shell --docker
 ```
 
 The first run builds from `ubuntu:latest` and installs `core`, including `nnn`.
@@ -16,7 +16,7 @@ created in `/work` may be root-owned on Linux hosts.
 Refresh Ubuntu, packages, and the checkout configuration explicitly:
 
 ```sh
-ds docker --rebuild
+ds shell --docker --rebuild
 ```
 
 The image captures this checkout when built; source edits require a rebuild.
@@ -25,7 +25,7 @@ repositories, just like `mise run try`. Docker must access the current directory
 on the host. For scripted runs, pass a command after `--`:
 
 ```sh
-ds docker -- ds status core --check
+ds shell --docker -- ds status core --check
 ```
 
 ## Uncached demo
@@ -71,8 +71,8 @@ marker has loaded [`src/dotfiles/shell.zsh`][shell-zsh], and
 every layer component is on `PATH`.
 
 ```sh
-ds status core        # component and managed-file state
-ds doctor core        # status plus diagnostics
+ds status                  # health and problems
+ds status --verbose        # full state and diagnostics
 ls -l ~/.config/ds    # the dedicated files ds owns
 cat ~/.zshrc          # the marker block ds inserted
 ```
@@ -85,9 +85,8 @@ Preview commands answer the question that matters before adopting `ds` on a real
 machine — what would it change?
 
 ```sh
-ds diff core
 ds apply core --dry-run
-ds unapply core       # remove everything ds owns, then look around again
+ds remove core       # remove everything ds owns, then look around again
 ```
 
 ## Other layers and images

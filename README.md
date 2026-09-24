@@ -15,10 +15,11 @@ Linux][rocky], and macOS.
 | -------- | ----------------------------------------------------------------------- |
 | `core`   | mise, Git, Curl, Zsh, Neovim, fd, FZF, ripgrep, nnn, jq, gokill, and xh |
 | `remote` | `core` plus Tmux, [Docker][docker] readiness, Zoxide, Bat, Delta        |
-| optional | Starship, enabled independently with `ds add starship`                  |
+| optional | Starship, enabled independently with `ds apply starship`                |
 
-`src/catalog.toml` is the source of truth for this table, and `ds status LAYER`
-prints what a layer actually resolves to on a given machine.
+`src/catalog.toml` defines the layers. `ds status LAYER --verbose` shows
+resolved components and managed files. `remote` is an extended local preset;
+SSH delivery uses `ds push HOST LAYER`.
 
 Mise manages the pinned Neovim release directly. Alpine builds that release from
 checksum-verified source during installation; macOS and glibc Linux use upstream
@@ -30,10 +31,10 @@ target does not need those repositories.
 
 ## Try it first
 
-With the global launcher linked to this checkout, run `ds docker` from any
+With the global launcher linked to this checkout, run `ds shell --docker` from any
 project directory. It builds a reusable Ubuntu image with `core` installed,
 mounts the current directory at `/work`, and removes the container on exit.
-Use `ds docker --rebuild` to refresh the image and capture checkout changes.
+Use `ds shell --docker --rebuild` to refresh the image and capture checkout changes.
 
 Nothing is written to your home. The demo builds a snapshot, applies it inside a
 throwaway container, and hands over an interactive Zsh:
@@ -64,14 +65,17 @@ exec ~/.local/bin/ds
 `core` initially, retains your home and working directory, and loads this
 checkout's Zsh, Git, and Neovim configuration. It reuses installed tools without
 installing packages or editing your startup files. Other application
-configurations remain
-available through links, so their edits still affect the originals. Trial state
-and history live under `${XDG_STATE_HOME:-~/.local/state}/ds/shell`. Its persistent
-`ZDOTDIR` is the `zsh` directory there; local additions to its `.zshrc` survive
-new sessions. Running `ds apply core` inside this shell installs packages and
-updates its isolated configuration and command links. Your normal `.zshrc` and
-`.gitconfig` remain unchanged. Layer and component selections persist too.
-Open a new terminal to return to your normal setup. Use `ds --help` for commands.
+configurations remain available through links, so their edits still affect the
+originals. Trial state and history live under
+`${XDG_STATE_HOME:-~/.local/state}/ds/shell`. Its persistent `ZDOTDIR` is the
+`zsh` directory there; local additions to its `.zshrc` survive new sessions.
+Running `ds apply core` inside this shell installs packages and updates its
+isolated configuration and command links. Your normal `.zshrc` and `.gitconfig`
+remain unchanged. Layer and component selections persist too. Open a new
+terminal to return to your normal setup. Use `ds --help` for everyday commands
+and `ds help --all` for advanced operations. `ds apply` and `ds status` use the
+saved layer, initially `core`; status and previews identify the active
+configuration scope.
 
 ### Install a release
 
@@ -91,7 +95,7 @@ commands:
 
 ```sh
 curl -fsSL https://github.com/letientai299/ds/releases/latest/download/install.sh | sh -s -- --no-apply
-~/.local/share/ds/versions/*/ds diff core
+~/.local/share/ds/versions/*/ds status core
 ~/.local/share/ds/versions/*/ds apply core --dry-run
 ```
 
@@ -101,8 +105,8 @@ Normal apply refuses conflicting managed targets. To preserve and replace
 conflicts, preview adoption first:
 
 ```sh
-ds adopt core --dry-run
-ds adopt core
+ds apply core --adopt --dry-run
+ds apply core --adopt
 ```
 
 Adoption backs each conflict up to `<target>.ds-adopted` before replacing it.

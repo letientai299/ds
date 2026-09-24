@@ -83,4 +83,32 @@ DS_TEST_RUN_STATUS=37 ds docker -- false && code=0 || code=$?
 [ "$code" -eq 37 ] || fail 'container exit status lost'
 DS_TEST_ARCH=x86_64 ds docker
 grep -qx 'ds-local:core-amd64' "$work/run.args" || fail 'engine architecture ignored'
+cp -R "$root/src/scripts" "$work/checkout/src/scripts"
+cp "$root/src/bundle/controller.sh" "$work/checkout/src/bundle/controller.sh"
+DS_JANET=$(command -v janet)
+export DS_JANET
+before=$(wc -l <"$work/calls")
+ds shell --docker --help >"$work/help"
+[ "$(wc -l <"$work/calls")" -eq "$before" ] || fail 'shell help contacted Docker'
+ds shell --docker -- printf '%s' 'argument with spaces' --help --docker
+grep -qx 'argument with spaces' "$work/run.args" || fail 'shell argument split'
+grep -qx -- --help "$work/run.args" || fail 'command help intercepted'
+grep -qx -- --docker "$work/run.args" || fail 'command option consumed'
+ds shell --rebuild --docker -- true
+[ "$(grep -cx build "$work/calls")" -eq 4 ] || fail 'shell rebuild skipped'
+DS_TEST_RUN_STATUS=38 ds shell --docker -- false && code=0 || code=$?
+[ "$code" -eq 38 ] || fail 'shell exit status lost'
+rm "$work/checkout/src/bundle/controller.sh"
+ds --help >"$work/target-help"
+if grep -q -- --docker "$work/target-help"; then fail 'target advertises Docker shell'; fi
+ds help --all >"$work/target-help"
+if grep -Eq '^  (push|docker) ' "$work/target-help"; then fail 'target advertises controller commands'; fi
+ds shell --help >"$work/target-help"
+if grep -q -- --docker "$work/target-help"; then fail 'target shell help advertises Docker'; fi
+ds completion bash >"$work/target-completion"
+if grep -Eq '(push\)|docker\)|--docker)' "$work/target-completion"; then fail 'target completion advertises controller commands'; fi
+before=$(wc -l <"$work/calls")
+if ds shell --docker >"$work/out" 2>"$work/err"; then fail 'target accepted Docker shell'; fi
+[ "$(wc -l <"$work/calls")" -eq "$before" ] || fail 'target contacted Docker'
+grep -q 'requires a controller checkout' "$work/err" || fail 'controller diagnostic absent'
 printf '%s\n' 'docker shell: ok'

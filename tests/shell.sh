@@ -113,7 +113,9 @@ printf '%s\n' "$*" >>"$DS_TEST_LOG"
 SH
 chmod +x "$DS_MISE" "$HOME/.local/bin/serve" "$work/tmux/tm"
 cat >"$work/apply" <<'ZSH'
-ds apply core --dry-run >"$DS_SHELL_STATE/plan" || exit 41
+ds apply --dry-run >"$DS_SHELL_STATE/plan" || exit 41
+grep -qx "scope: trial configuration" "$DS_SHELL_STATE/plan" || exit 60
+grep -qx "layer: core" "$DS_SHELL_STATE/plan" || exit 61
 if grep -q blocked "$DS_SHELL_STATE/plan"; then exit 42; fi
 ds apply core || exit 43
 ds apply core || exit 44
@@ -124,7 +126,7 @@ zsh -d -ic '[[ $HISTFILE == $ZDOTDIR/history && $aliases[gst] == "git status" ]]
 print -r -- 'export DS_TEST_LOCAL=kept' >>"$ZDOTDIR/.zshrc"
 print -s -- ds-persistent-history
 fc -AI
-ds add starship || exit 49
+ds apply starship || exit 49
 ds apply remote --skip docker || exit 50
 [[ $MISE_ENV == remote,starship ]] || exit 51
 exit 0
@@ -139,7 +141,11 @@ ZSH
 [[ $MISE_ENV == remote,starship ]] || exit 53
 grep -qx ds-persistent-history "$HISTFILE" || exit 54
 [[ $(git config trial.setting) == kept ]] || exit 55
-ds unapply remote || exit 56
+ds status --json >"$DS_SHELL_STATE/status" || exit 62
+grep -q '"target":"remote"' "$DS_SHELL_STATE/status" || exit 63
+ds remove starship || exit 64
+[[ $MISE_ENV == remote ]] || exit 65
+ds remove remote || exit 56
 [[ -f $ZDOTDIR/.zshrc ]] || exit 57
 [[ -z $(grep 'ds managed' "$ZDOTDIR/.zshrc") ]] || exit 58
 ds --help >/dev/null || exit 59

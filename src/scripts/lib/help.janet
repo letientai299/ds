@@ -65,18 +65,9 @@
     :details ["Both approval flags are required, in the listed order."
               "Docker-group membership grants root-equivalent access."]
     :example "ds docker-rootful --approve-rootful --grant-docker-group"}
-   {:name "adopt" :group :compatibility :args "LAYER" :targets :layers :flags ["--dry-run"]
-    :summary "Back up conflicts, then apply"
-    :details ["Prefer ds apply LAYER --force."] :example "ds apply core --force --dry-run"}
-   {:name "force" :group :compatibility :args "LAYER" :targets :layers :flags ["--dry-run"]
-    :summary "Back up conflicts, then apply"
-    :details ["Prefer ds apply LAYER --force."] :example "ds apply core --force --dry-run"}
    {:name "add" :group :compatibility :args "COMPONENT" :targets :optional :flags ["--dry-run"]
     :summary "Enable an optional component"
     :details ["Prefer ds apply COMPONENT."] :example "ds apply core"}
-   {:name "unapply" :group :compatibility :args "LAYER|COMPONENT" :targets :all :flags ["--dry-run"]
-    :summary "Remove managed configuration; keep packages"
-    :details ["Prefer ds remove TARGET."] :example "ds remove core --dry-run"}
    {:name "diff" :group :compatibility :args "LAYER|COMPONENT" :targets :all
     :summary "Show missing, outdated, conflicting, or unavailable entries"
     :details ["Prefer ds status TARGET for problems and suggested actions."] :example "ds status core"}
@@ -132,12 +123,17 @@
         (def spec (specification (get item :name) controller?))
         (emit (string/format "  %-24s %s"
                 (string (get spec :name) " " (get spec :args)) (get spec :summary))))))
-  (each line ["" "examples:" "  ds" "  ds apply --dry-run" "  ds apply" ""
-              (string "layers: " (string/join (map string (sort (keys (get catalog :layers)))) ", "))
-              "remote is an extended local preset, not an SSH destination."
-              (string "optional components: " (string/join (map string (get catalog :optional)) ", "))
-              "Omitted targets use the saved layer, initially core."
-              "Use ds COMMAND --help for options."
+  (each line ["" "examples:" "  ds" "  ds apply --dry-run" "  ds apply"]
+    (emit line))
+  (emit "")
+  (emit "components by layer:")
+  (each layer (sort (keys (get catalog :layers)))
+    (emit (string "  " layer ": "
+                  (string/join (map string (get-in catalog [:layers layer])) ", "))))
+  (unless (empty? (get catalog :optional))
+    (emit (string "  optional (any layer): "
+                  (string/join (map string (get catalog :optional)) ", "))))
+  (each line ["" "Use ds COMMAND --help for options."
               "Use ds help --all for advanced commands."]
     (emit line)))
 

@@ -19,6 +19,8 @@ The primary commands follow the daily workflow:
 | `ds remove TARGET`   | Remove managed configuration or optional selection |
 | `ds push HOST LAYER` | Deliver and apply over SSH; checkout only          |
 
+`ds help` lists components by layer from the generated catalog.
+
 `TARGET` accepts a catalog layer or optional component. Omitted targets use the
 saved layer, initially `core`. An invalid saved layer fails explicitly. Removal
 requires a target and leaves packages installed. The `remote` layer is an
@@ -39,15 +41,12 @@ commands from help and completions.
 
 Existing commands remain available:
 
-| Existing command    | Preferred form               |
-| ------------------- | ---------------------------- |
-| `ds adopt LAYER`    | `ds apply LAYER --force`     |
-| `ds force LAYER`    | `ds apply LAYER --force`     |
-| `ds add COMPONENT`  | `ds apply COMPONENT`         |
-| `ds unapply TARGET` | `ds remove TARGET`           |
-| `ds diff TARGET`    | `ds status TARGET`           |
-| `ds doctor TARGET`  | `ds status TARGET --verbose` |
-| `ds docker`         | `ds shell --docker`          |
+| Existing command   | Preferred form               |
+| ------------------ | ---------------------------- |
+| `ds add COMPONENT` | `ds apply COMPONENT`         |
+| `ds diff TARGET`   | `ds status TARGET`           |
+| `ds doctor TARGET` | `ds status TARGET --verbose` |
+| `ds docker`        | `ds shell --docker`          |
 
 Legacy `diff` and `doctor` retain their output; bare `doctor` still defaults to
 `core`. Shell completion offers primary commands first and includes advanced
@@ -97,7 +96,7 @@ from a daemon that cannot be reached.
 
 `apply --skip docker` skips Docker convergence for layer applications, including
 the `--force` conflict policy. Optional-component applications reject
-`--skip` and conflict policies. Legacy `adopt` and `force` still reject `--skip`.
+`--skip` and conflict policies.
 
 ## Conflict operations
 

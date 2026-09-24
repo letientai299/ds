@@ -1,5 +1,6 @@
 (import scripts/generated/layers :as generated)
 (import scripts/lib/layers :as layers)
+(import scripts/lib/help)
 
 (def fixture (merge generated/catalog {:optional [:example] :components (merge (get generated/catalog :components) {:example {:commands ["example"] :owner :mise}})}))
 
@@ -42,5 +43,14 @@
   ([_err] (set duplicate-owner-failed? true)))
 (unless duplicate-owner-failed?
   (error "duplicate command ownership should fail"))
+
+(def help-lines @[])
+(help/usage |(array/push help-lines $)
+  {:layers {:sample [:one :two] :extended [:one :two :three]} :optional [:extra]}
+  true true)
+(each line ["  sample: one, two" "  extended: one, two, three" "  optional (any layer): extra"]
+  (unless (find |(= $ line) help-lines) (error (string "catalog help missing: " line))))
+(each command ["adopt" "force" "unapply"]
+  (assert= nil (help/specification command true) "removed command is unavailable"))
 
 (print "layers: ok")

@@ -78,9 +78,9 @@ if "$two" apply core --force >"$work/out" 2>"$work/err"; then fail 'backup overw
 [ "$(cat "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted")" = backup ] || fail 'backup damaged'
 rm "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted"
 "$one" apply core --force >/dev/null
-"$one" unapply core --dry-run >"$work/plan"
+"$one" remove core --dry-run >"$work/plan"
 grep -q "restore $XDG_CONFIG_HOME/ds/gitignore.ds-adopted" "$work/plan" || fail 'restore absent from plan'
-"$one" unapply core >/dev/null
+"$one" remove core >/dev/null
 [ "$(cat "$XDG_CONFIG_HOME/ds/gitignore")" = custom ] || fail 'original not restored'
 
 mkdir -p "$work/dangling"
@@ -111,8 +111,8 @@ cp "$MISE_DATA_DIR/installs/example/1.22.0/example" "$MISE_DATA_DIR/installs/exa
 "$root/ds" status example --json --check >"$work/status.json"
 check_json -e '.summary == "complete" and .components[0].state == "installed"' "$work/status.json" >/dev/null
 
-"$root/ds" help adopt >"$work/help"
-grep -q '^usage: ds adopt LAYER' "$work/help" || fail 'command-specific help missing'
+"$root/ds" help apply >"$work/help"
+grep -q '^usage: ds apply' "$work/help" || fail 'command-specific help missing'
 "$root/ds" completion bash >"$work/completion.bash"
 bash -c '. "$1"; COMP_WORDS=(ds add ex); COMP_CWORD=2; _ds_complete; [[ "${COMPREPLY[*]}" == example ]]' test "$work/completion.bash"
 "$root/ds" completion zsh >"$work/completion.zsh"

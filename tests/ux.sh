@@ -29,8 +29,8 @@ printf '%s\n' example >"$XDG_CONFIG_HOME/ds/components"
 cp "$HOME/.zshrc" "$work/zshrc"
 
 for target in core example; do
-	"$root/ds" unapply "$target" --dry-run >"$work/preview"
-	grep -qx "would unapply $target" "$work/preview" || fail 'missing unapply preview'
+	"$root/ds" remove "$target" --dry-run >"$work/preview"
+	grep -qx "would remove $target" "$work/preview" || fail 'missing remove preview'
 	[ -L "$HOME/.local/bin/ds" ] || fail 'preview removed launcher'
 	[ "$(cat "$XDG_CONFIG_HOME/ds/components")" = example ] || fail 'preview removed selection'
 	cmp "$HOME/.zshrc" "$work/zshrc" || fail 'preview changed shell configuration'
@@ -42,8 +42,8 @@ reject() {
 	fi
 	grep -q '^ds: ' "$work/err" || fail 'missing argument diagnostic'
 }
-reject unapply core --dryrun
-reject unapply example extra
+reject remove core --dryrun
+reject remove example extra
 reject status core extra
 reject diff core extra
 reject doctor core extra
@@ -52,7 +52,7 @@ reject shell-init extra
 reject docker-rootful --approve-rootful --grant-docker-group extra
 [ -L "$HOME/.local/bin/ds" ] || fail 'invalid arguments removed launcher'
 [ "$(cat "$XDG_CONFIG_HOME/ds/components")" = example ] || fail 'invalid arguments removed selection'
-for command in apply unapply adopt force add status diff doctor push; do
+for command in apply remove add status diff doctor push; do
 	"$root/ds" "$command" --help >"$work/help"
 	grep -q '^usage:' "$work/help" || fail "missing help: $command"
 done
@@ -67,11 +67,11 @@ ZSH
         source "$1"
         : >"$HOME/refresh.log"
         [[ "$MISE_ENV" == example ]] || exit 1
-        ds unapply example --dry-run >/dev/null
-        ds unapply --help >/dev/null
+        ds remove example --dry-run >/dev/null
+        ds remove --help >/dev/null
         [[ ! -s "$HOME/refresh.log" ]] || exit 1
         [[ "$MISE_ENV" == example ]] || exit 1
-        ds unapply example >/dev/null
+        ds remove example >/dev/null
         [[ -s "$HOME/refresh.log" ]] || exit 1
         [[ -z "$MISE_ENV" ]] || exit 1
     ' ds-ux "$root/src/dotfiles/shell.zsh" || fail 'shell selection refresh failed'
@@ -95,10 +95,10 @@ grep -q 'Docker daemon, Compose, and Buildx are ready' "$work/status-docker" || 
 
 printf '%s\n' '#!/bin/sh' 'exit 0' >"$DS_TMUX_SOURCE/tm"
 chmod 0755 "$DS_TMUX_SOURCE/tm"
-for command in adopt force; do
+for flag in --force --adopt; do
 	: >"$work/docker.log"
 	PATH="$work/bin:$PATH" DS_DOCKER_LOG="$work/docker.log" \
-		"$root/ds" "$command" remote >"$work/takeover"
+		"$root/ds" apply remote "$flag" >"$work/takeover"
 	grep -q '^docker: ' "$work/takeover" || fail 'takeover omitted Docker convergence'
 	[ "$(grep -c '^info ' "$work/docker.log")" -eq 1 ] || fail 'takeover repeated Docker info'
 done
@@ -110,7 +110,7 @@ PATH="$work/bin:/usr/bin:/bin" "$root/ds" doctor remote >"$work/directory-docker
 for command in shell apply status remove push; do
 	grep -q "^  $command " "$work/help" || fail "primary command absent: $command"
 done
-for command in stage activate rollback shell-init completion docker-rootful adopt force add unapply diff doctor docker; do
+for command in stage activate rollback shell-init completion docker-rootful add diff doctor docker; do
 	if grep -q "^  $command " "$work/help"; then fail "advanced command exposed: $command"; fi
 done
 "$root/ds" help --all >"$work/all-help"
@@ -194,8 +194,8 @@ cmp "$work/force-plan" "$work/alias-plan" || fail 'aliases changed force plan'
 [ "$(cat "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted")" = original ] || fail 'force lost original'
 "$root/ds" remove core >/dev/null
 [ "$(cat "$XDG_CONFIG_HOME/ds/gitignore")" = original ] || fail 'force backup not restored'
-"$root/ds" force core >/dev/null
-[ "$(cat "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted")" = original ] || fail 'legacy force lost original'
+"$root/ds" apply core --force >/dev/null
+[ "$(cat "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted")" = original ] || fail 'force lost original'
 "$root/ds" apply example >/dev/null
 [ "$(cat "$XDG_CONFIG_HOME/ds/components")" = example ] || fail 'apply did not select component'
 "$root/ds" remove example >/dev/null

@@ -100,7 +100,7 @@ for spelling in help --help -h; do
 	DS_ROOT=$root DS_JANET=$janet DS_MISE=$mise "$root/ds" "$spelling" \
 		>"$work/help.out" 2>"$work/help.err" || fail "ds $spelling exited non-zero"
 	grep -q '^usage: ds ' "$work/help.out" || fail "ds $spelling printed no usage to stdout"
-	grep -q '^layers: core, remote$' "$work/help.out" || fail "ds $spelling omits the catalog layers"
+	grep -q '^components by layer:$' "$work/help.out" || fail "ds $spelling omits components"
 	[ ! -s "$work/help.err" ] || fail "ds $spelling wrote to stderr"
 done
 
@@ -117,13 +117,13 @@ reject() {
 	grep -q '^ds: ' "$work/reject.err" || fail "$description lacks a ds: diagnostic"
 	[ ! -e "$work/reject-home" ] || fail "$description wrote to the isolated home"
 }
-reject 'unapply with an unknown layer' unapply cor
+reject 'removed unapply command' unapply core
 reject 'status with an unknown layer' status cor
 reject 'diff with an unknown layer' diff cor
 reject 'apply with an unknown layer' apply cor
 reject 'apply with an unskippable component' apply core --skip fzf
-reject 'adopt with --skip' adopt core --skip docker
-reject 'force with --skip' force core --skip docker
+reject 'removed adopt command' adopt core
+reject 'removed force command' force core
 reject 'add with a misspelled flag' add starship --dryrun
 reject 'add with a trailing argument' add starship extra
 reject 'an unknown command' bogus-command

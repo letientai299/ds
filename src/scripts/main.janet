@@ -41,7 +41,7 @@
 (defn parse-mutation [command args]
   (var target nil)
   (var dry-run? false)
-  (var mode (case command "remove" "unapply" "force" "adopt" command))
+  (var mode (case command "remove" "unapply" command))
   (def skips @[])
   (var index 2)
   (while (< index (length args))
@@ -298,12 +298,11 @@
     (def plan (mutation/build generated/catalog root base-environment request))
     (if (get parsed :dry-run)
       (do
-        (print (string "would " command " " target (if (find |(= command $) ["unapply" "add" "remove"]) "" ":")))
+        (print (string "would " command " " target (if (find |(= command $) ["add" "remove"]) "" ":")))
         (each item plan (print (string "  " (mutation/describe item)))))
       (do
         (mutation/execute plan foreground-runner root base-environment converge-docker)
-        (print (string (case command "apply" "applied" "adopt" "adopted and applied"
-                             "force" "forced and applied" "add" "added" "unapply" "unapplied"
+        (print (string (case command "apply" "applied" "add" "added"
                              "remove" "removed") " " target)))))
   (try
     (if (get parsed :dry-run) (work)
@@ -448,10 +447,7 @@
         (print-diff layer (inspect-layer layer) (managed/inspect root base-environment layer))))
 
     "apply" (run-mutation command args)
-    "adopt" (run-mutation command args)
-    "force" (run-mutation command args)
     "remove" (run-mutation command args)
-    "unapply" (run-mutation command args)
     "add" (run-mutation command args)
 
     "shell-init" (do (reject-extra args 2) (print-shell-init))

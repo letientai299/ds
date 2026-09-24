@@ -239,6 +239,14 @@ if [ "$apply" = false ]; then
 	set -- "$@" --dry-run
 fi
 "$root/ds" "$@"
+completion_dir=$HOME/.local/share/zsh/site-functions
+mkdir -p "$completion_dir"
+temporary=$(mktemp "$completion_dir/_ds.XXXXXX")
+"$root/ds" completion zsh >"$temporary"
+printf '%s\n' '_ds_complete "$@"' >>"$temporary"
+chmod 0644 "$temporary"
+mv "$temporary" "$completion_dir/_ds"
+temporary=
 printf '%s\n' "ds setup: launcher $root/ds"
 if [ "$shell" = true ]; then
 	exec zsh -l

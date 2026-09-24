@@ -18,6 +18,7 @@ cat >"$work/fixture/ds" <<'SH'
 #!/bin/sh
 printf '%s\n' "$*" >>"$DS_TEST_LOG"
 test -x "$DS_JANET" && test -x "$DS_MISE"
+[ "$*" != 'completion zsh' ] || printf '%s\n' '#compdef ds'
 SH
 cat >"$work/fixture/src/runtime/fetch-mise.sh" <<'SH'
 #!/bin/sh
@@ -88,6 +89,7 @@ SH
 chmod 0755 "$work/bin/"* "$work/fixture/ds"
 export PATH="$work/bin:$PATH" DS_TEST_FIXTURE="$work/fixture"
 export DS_TEST_LOG="$work/actions"
+export HOME="$work/home"
 unset DS_NVIM_SOURCE DS_TMUX_SOURCE DS_KITTY_SOURCE
 
 cd "$work"
@@ -114,6 +116,8 @@ for target in Darwin:arm64:macos-arm64 Darwin:x86_64:macos-x64 Linux:aarch64:lin
 	grep -qx "mise $platform" "$DS_TEST_LOG" || fail 'wrong runtime platform'
 	grep -qx 'diff core' "$DS_TEST_LOG" || fail 'preview diff missing'
 	grep -qx 'apply core --dry-run' "$DS_TEST_LOG" || fail 'preview applied changes'
+	grep -qx 'completion zsh' "$DS_TEST_LOG" || fail 'completion was not generated'
+	grep -qx '#compdef ds' "$HOME/.local/share/zsh/site-functions/_ds" || fail 'completion missing'
 	[ "$(grep -c '^clone ' "$DS_TEST_LOG")" -eq 2 ] || fail 'core should clone only ds and Neovim'
 	[ "$(grep -c '^compile$' "$DS_TEST_LOG")" -eq 1 ] || fail 'runtime not built'
 	printf '%s\n' keep >"$prefix/ds/local-edit"

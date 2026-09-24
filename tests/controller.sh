@@ -78,6 +78,11 @@ preview=$(
 [ "$preview" = "$first" ] || fail 'push-and-preview returned the wrong installed path'
 [ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] || fail 'preview changed current'
 grep -q '^would apply core:$' "$work/preview.err" || fail 'controller did not invoke remote layer preview'
+DS_SSH=$work/fake-ssh "$root/ds" push fixture core extra \
+	--prefix .local/share/ds-controller \
+	--home .local/share/ds-controller-test-home \
+	--dry-run >"$work/multi.out" 2>"$work/multi.err"
+grep -q '^would apply core,extra:$' "$work/multi.err" || fail 'controller did not pass multiple layers'
 [ -d "$DS_FAKE_REMOTE_HOME/.local/share/ds-controller-test-home" ] || fail 'controller did not create the isolated remote home'
 [ ! -e "$DS_FAKE_REMOTE_HOME/.local/share/ds-controller-test-home/.config" ] || fail 'remote layer preview wrote configuration'
 

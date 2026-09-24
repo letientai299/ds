@@ -34,13 +34,13 @@
   (not= nil (os/stat (string root "/src/bundle/controller.sh"))))
 
 (defn usage [emit]
-  (help/usage emit generated/catalog (controller?) false))
+  (help/usage emit generated/catalog (controller?) true))
 
 (defn known-layer? [name]
   (layers/known-layer? generated/catalog name))
 
 (defn parse-mutation [command args]
-  (var target nil)
+  (def targets @[])
   (var dry-run? false)
   (var mode (case command "remove" "unapply" command))
   (def skips @[])
@@ -57,13 +57,14 @@
                  (++ index)
                  (unless (= "docker" (get args index)) (fail "--skip requires docker"))
                  (array/push skips :docker))
-      (if (or target (string/has-prefix? "-" arg))
+      (if (or (string/has-prefix? "-" arg)
+              (and (= command "remove") (not (empty? targets))))
         (fail (string "unexpected argument: " arg))
-        (set target arg)))
+        (array/push targets arg)))
     (++ index))
-  (when (and (nil? target) (not= command "apply"))
+  (when (and (empty? targets) (not= command "apply"))
     (fail (string command " requires a target")))
-  {:target target :dry-run dry-run? :skips skips :mode (keyword mode)})
+  {:targets targets :dry-run dry-run? :skips skips :mode (keyword mode)})
 
 (defn reject-extra [args maximum]
   (when (> (length args) maximum)
@@ -278,20 +279,32 @@
 
 (defn run-mutation [command args]
   (def parsed (parse-mutation command args))
-  (def target (if (get parsed :target) (require-target (get parsed :target)) (current-layer)))
-  (def component (if (optional-component? target) (keyword target) nil))
+  (def targets @[])
+  (each arg (get parsed :targets)
+    (if (= command "apply")
+      (each name (string/split "," arg) (array/push targets name))
+      (array/push targets arg)))
+  (each name targets (require-target name))
+  (when (and (= command "apply") (> (length targets) 1)
+             (find optional-component? targets))
+    (fail "multiple apply targets require layers"))
+  (when (and (= command "add") (find |(not (optional-component? $)) targets))
+    (fail "add requires optional components"))
+  (def target (if (empty? targets) (current-layer) (string/join targets ",")))
+  (def component (if (or (= command "add") (optional-component? target))
+                   (keyword (get targets 0)) nil))
   (def mode (if (and component (= :apply (get parsed :mode))) :add (get parsed :mode)))
-  (when (and (= command "add") (not component))
-    (fail "add requires an optional component"))
   (when (and component (or (find |(= mode $) [:adopt :force])
                            (not (empty? (get parsed :skips)))))
     (fail "Conflict policies and --skip require a layer"))
   (def layer (if component (current-layer) target))
+  (def extras (if (= command "add") (map keyword targets) (if component [component] [])))
   (def components (filter (fn [item] (not (find |(= $ item) (get parsed :skips))))
                          (layers/resolve generated/catalog layer
                            (map string (distinct (tuple ;(selection/selected generated/catalog base-environment)
-                                                        ;(if component [component] [])))))))
+                                                        ;extras))))))
   (def request {:mode mode :layer layer :component component :components components
+                :extras extras
                 :docker (and (layers/includes? generated/catalog layer :docker) (not (find |(= $ :docker) (get parsed :skips))))})
   (when (find |(= command $) ["apply" "remove"]) (print-context layer print))
   (defn work []

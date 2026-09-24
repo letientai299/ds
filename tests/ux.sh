@@ -9,6 +9,12 @@ trap 'exit 143' HUP INT TERM
 . "$root/tests/optional-fixture.sh"
 optional_fixture "$root" "$work/source"
 root=$work/source
+cat >>"$root/src/scripts/generated/layers.janet" <<'JANET'
+(def catalog (merge catalog {:optional [:example :second]
+  :components (merge (get catalog :components)
+    {:second {:commands ["second"] :owner :mise :version "1.0.0"}})}))
+JANET
+printf '%s\n' '[tools]' 'second = "1.0.0"' >"$root/src/mise/mise.second.toml"
 
 fail() {
 	printf '%s\n' "ux: $*" >&2
@@ -111,10 +117,10 @@ for command in shell apply status remove push; do
 	grep -q "^  $command " "$work/help" || fail "primary command absent: $command"
 done
 for command in stage activate rollback shell-init completion docker-rootful add diff doctor docker; do
-	if grep -q "^  $command " "$work/help"; then fail "advanced command exposed: $command"; fi
+	grep -q "^  $command " "$work/help" || fail "command absent: $command"
 done
-"$root/ds" help --all >"$work/all-help"
-grep -q '^  rollback ' "$work/all-help" || fail 'advanced help missing recovery'
+"$root/ds" help >"$work/all-help"
+cmp "$work/help" "$work/all-help" || fail 'help forms differ'
 "$root/ds" apply --help >"$work/help"
 grep -qx 'example: ds apply --dry-run' "$work/help" || fail 'apply example changed commands'
 for command in apply push; do
@@ -146,6 +152,20 @@ grep -qx 'layer: core,remote' "$work/default-plan" || fail 'apply ignored saved 
 grep -qx 'would apply core,remote:' "$work/default-plan" || fail 'apply default target missing'
 "$root/ds" apply --dry-run core >"$work/explicit-plan"
 grep -qx 'layer: core' "$work/explicit-plan" || fail 'explicit layer ignored'
+"$root/ds" apply core extra --dry-run >"$work/multi-plan"
+grep -qx 'would apply core,extra:' "$work/multi-plan" || fail 'multiple layers ignored'
+grep -q 'mise bootstrap profile core,extra' "$work/multi-plan" || fail 'multiple layer profile missing'
+"$root/ds" apply core,extra,ui --dry-run >"$work/comma-plan"
+grep -qx 'would apply core,extra,ui:' "$work/comma-plan" || fail 'comma-separated layers ignored'
+grep -q 'mise bootstrap profile core,extra,ui' "$work/comma-plan" || fail 'comma-separated profile missing'
+reject apply core,,extra --dry-run
+"$root/ds" add example second --dry-run >"$work/add-plan"
+grep -qx 'would add example,second' "$work/add-plan" || fail 'multiple components rejected'
+grep -q 'selection example, second' "$work/add-plan" || fail 'multiple components not selected'
+"$root/ds" add example second >/dev/null
+grep -qx second "$XDG_CONFIG_HOME/ds/components" || fail 'multiple component selection missing'
+"$root/ds" remove second >/dev/null
+reject apply core example --dry-run
 "$root/ds" status --json >"$work/default-json"
 "$root/ds" status --json >"$work/explicit-json"
 cmp "$work/default-json" "$work/explicit-json" || fail 'status ignored saved layer'
@@ -210,6 +230,12 @@ bash -c '
     [[ "${COMPREPLY[*]}" == rollback ]] || exit 2
     COMP_WORDS=(ds apply exam); COMP_CWORD=2; _ds_complete
     [[ "${COMPREPLY[*]}" == example ]] || exit 3
+    COMP_WORDS=(ds apply core ex); COMP_CWORD=3; _ds_complete
+    [[ "${COMPREPLY[*]}" == extra ]] || exit 7
+    COMP_WORDS=(ds apply core,ex); COMP_CWORD=2; _ds_complete
+    [[ "${COMPREPLY[*]}" == core,extra ]] || exit 9
+    COMP_WORDS=(ds add example ex); COMP_CWORD=3; _ds_complete
+    [[ "${COMPREPLY[*]}" == example ]] || exit 8
     COMP_WORDS=(ds apply --skip ""); COMP_CWORD=3; _ds_complete
     [[ "${COMPREPLY[*]}" == docker ]] || exit 4
     COMP_WORDS=(ds help --a); COMP_CWORD=2; _ds_complete
@@ -225,5 +251,23 @@ zsh -fc '
     words=(ds status --v); CURRENT=3; _ds_complete
 ' test "$work/completion.zsh" >"$work/zsh-choices"
 grep -qx -- --verbose "$work/zsh-choices" || fail 'Zsh completion omitted verbose'
+grep -qx '#compdef ds' "$work/completion.zsh" || fail 'Zsh completion cannot autoload'
+cp "$work/completion.zsh" "$work/_ds"
+printf '%s\n' '_ds_complete "$@"' >>"$work/_ds"
+zsh -dfc '
+    fpath=("$1" $fpath)
+    compdef() { :; }
+    compadd() { shift; [[ $1 == -- ]] && shift; print -rl -- "$@"; }
+    autoload -Uz _ds
+    words=(ds apply core ex); CURRENT=4; _ds
+' test "$work" >"$work/autoload-choices"
+grep -qx extra "$work/autoload-choices" || fail 'autoload completion omitted layer'
+zsh -fc '
+    compdef() { :; }
+    compadd() { shift; [[ $1 == -- ]] && shift; print -rl -- "$@"; }
+    source "$1"
+    words=(ds apply core,ex); CURRENT=3; _ds_complete
+' test "$work/completion.zsh" >"$work/comma-choices"
+grep -qx core,extra "$work/comma-choices" || fail 'comma completion omitted layer'
 
 printf '%s\n' 'ux: ok'

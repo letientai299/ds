@@ -14,21 +14,23 @@ The primary commands follow the daily workflow:
 | -------------------- | -------------------------------------------------- |
 | `ds` or `ds shell`   | Open the persistent trial shell                    |
 | `ds shell --docker`  | Open cached Ubuntu; checkout only                  |
-| `ds apply [TARGET]`  | Apply a layer or enable an optional component      |
+| `ds apply [TARGET ...]` | Apply layers or enable an optional component |
 | `ds status [TARGET]` | Summarize health and list problems                 |
 | `ds remove TARGET`   | Remove managed configuration or optional selection |
-| `ds push HOST LAYER` | Deliver and apply over SSH; checkout only          |
+| `ds push HOST LAYER ...` | Deliver and apply over SSH; checkout only     |
 
 `ds help` lists components by layer from the generated catalog.
 
 `TARGET` accepts a catalog layer or optional component. Omitted targets use the
-selected layer union, initially `core`. Invalid saved selections fail explicitly. Removal
-requires a target and leaves packages installed. The `remote` layer is an
+selected layer union, initially `core`. Invalid selections fail explicitly.
+Removal requires a target and leaves packages installed. The `remote` layer is an
 extended local preset; only `push` selects an SSH destination.
 
 `apply extra` and `apply ui` add to the saved selection. Bare `apply` and `status`
 use that union. `apply all` selects every layer; `remove ui` then keeps the other
 layers and their shared configuration. `extra` and `ui` can also be used alone.
+Pass several layers to `apply` or `push` with spaces or commas to apply their
+union. `ds add` accepts several optional components.
 
 Status, application, and removal identify the layer and configuration scope.
 Inside `ds shell`, configuration changes use the persistent trial directory;
@@ -36,9 +38,7 @@ package installation still affects the host. `ds status --verbose` includes
 healthy entries and Docker diagnostics. The default report suggests a preview
 command when changes are needed. `ds apply --dry-run` shows the full action plan.
 
-`ds help`, `ds --help`, and `ds -h` show primary commands and examples.
-`ds help --all` also shows delivery (`stage`, `activate`, `rollback`), integration
-(`shell-init`, `completion`), and host provisioning (`docker-rootful`).
+`ds help`, `ds --help`, and `ds -h` show all commands and examples.
 Rollback switches the active snapshot; it does not reverse package installation
 or all prior file changes. Delivered snapshots omit unavailable controller
 commands from help and completions.
@@ -62,7 +62,9 @@ are rejected. Mutation previews show package convergence, exact file paths,
 backup destinations, selection changes, and activation from the same action
 plan used for execution. A blocked plan explains what must be resolved first.
 
-The managed shell loads completions automatically. For another interactive shell:
+`mise run install` writes `_ds` to `~/.local/share/zsh/site-functions` for
+Zsh autoloading. The managed shell loads completions automatically. For another
+interactive shell:
 
 ```sh
 source <(ds completion zsh) # after compinit

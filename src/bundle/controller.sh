@@ -8,7 +8,7 @@ die() {
 }
 
 usage() {
-	printf '%s\n' 'usage: ds push HOST LAYER [--platform PLATFORM] [--prefix RELATIVE_PATH] [--home RELATIVE_PATH] [--force] [--dry-run|--deliver-only]'
+	printf '%s\n' 'usage: ds push HOST LAYER ... [--platform PLATFORM] [--prefix RELATIVE_PATH] [--home RELATIVE_PATH] [--force] [--dry-run|--deliver-only]'
 	printf '%s\n' '--dry-run delivers and stages, then previews application.' \
 		'Use ds help push for options and examples.'
 }
@@ -18,7 +18,7 @@ root=$(CDPATH='' cd "$root" && pwd)
 runtime_dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
 ssh_command=${DS_SSH:-ssh}
 host=${1:-}
-layer=${2:-}
+layers=
 platform=
 prefix=.local/share/ds
 remote_home=
@@ -36,11 +36,7 @@ esac
 	usage
 	die 'host is required'
 }
-[ -n "$layer" ] || {
-	usage
-	die 'layer is required'
-}
-shift 2
+shift
 
 while [ "$#" -gt 0 ]; do
 	case "$1" in
@@ -69,11 +65,26 @@ while [ "$#" -gt 0 ]; do
 		usage
 		exit 0
 		;;
-	*) die "unknown argument: $1" ;;
+	*)
+		remaining=$1
+		while :; do
+			layer=${remaining%%,*}
+			case "$layer" in
+			core | remote | extra | ui | all) layers="${layers:+$layers }$layer" ;;
+			*) die "unknown layer: $layer" ;;
+			esac
+			[ "$remaining" != "$layer" ] || break
+			remaining=${remaining#*,}
+		done
+		shift
+		;;
 	esac
 done
 
-case "$layer" in core | remote | extra | ui | all) ;; *) die "unknown layer: $layer" ;; esac
+[ -n "$layers" ] || {
+	usage
+	die 'layer is required'
+}
 case "$host" in -*) die 'host must not begin with a hyphen' ;; esac
 case "$prefix" in
 '' | /* | ../* | */../* | */.. | *[!0-9A-Za-z._/-]*) die 'prefix must be a safe relative path' ;;
@@ -145,7 +156,7 @@ installed=$("$root/src/bundle/push.sh" \
 	--prefix "$prefix")
 
 if [ "$deliver_only" = false ]; then
-	apply_args=$layer
+	apply_args=$layers
 	[ "$force" = false ] || apply_args="$apply_args --force"
 	[ "$dry_run" = false ] || apply_args="$apply_args --dry-run"
 	if [ -n "$remote_home" ]; then

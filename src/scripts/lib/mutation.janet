@@ -75,6 +75,7 @@
   (def next-layers (if (= mode :unapply) remaining (selection/combine catalog active layer)))
   (def state-entry {:kind :layer :target (selection/layer-path environment) :contents (string/join next-layers ",")})
   (def component (get request :component))
+  (def extras (get request :extras []))
   (def plan @[])
   (when state-error
     (array/push plan (action :blocked {:target (selection/layer-path environment) :reason state-error})))
@@ -113,12 +114,12 @@
     :else
     (do
       (array/push plan (action :packages
-        {:profile (selection/profile catalog environment layer (if component [component] []))
+        {:profile (selection/profile catalog environment layer extras)
          :components (filter |(and (not= $ :docker)
                                   (not= :runtime (get-in catalog [:components $ :owner])))
                               (get request :components))}))
       (if component
-        (array/push plan (action :select {:target (selection/state-path environment) :components (distinct (tuple ;selected component))}))
+        (array/push plan (action :select {:target (selection/state-path environment) :components (distinct (tuple ;selected ;extras))}))
         (do
           (array/concat plan (files root environment layer mode))
           (array/push plan (action :write {:entry state-entry}))

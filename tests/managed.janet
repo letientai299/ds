@@ -191,7 +191,7 @@
 
 (defn version-root [version]
   (def target (string prefix "/versions/" version))
-  (each relative ["/ds" "/src/dotfiles/shell.zsh" "/src/dotfiles/gitconfig"
+  (each relative ["/ds" "/src/dotfiles/shell.zsh" "/src/dotfiles/ssh_config" "/src/dotfiles/gitconfig"
                   "/src/dotfiles/gitignore" "/src/dotfiles/rgrc" "/src/mise/mise.toml"
                   "/src/mise/mise.remote.toml" "/src/mise/mise.core.toml" "/src/mise/mise.extra.toml" "/src/mise/mise.ui.toml"
                   "/src/tools/serve" "/src/tools/fzf-files" "/src/tools/fzf-dirs"]

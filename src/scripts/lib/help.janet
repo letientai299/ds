@@ -2,10 +2,12 @@
   [{:name "shell" :group :primary :args "" :summary "Open a shell; default command"
     :details ["Use persistent trial configuration without installing packages." "Home and working directory remain unchanged."]
     :example "exec ds"}
-   {:name "apply" :group :primary :args "[TARGET]" :targets :all
+   {:name "apply" :group :primary :args "[LAYER ...|COMPONENT]" :targets :all
     :summary "Apply a layer or optional component"
     :flags ["--dry-run" "--force" "--skip"]
     :details ["Omitted targets use selected layers, initially core."
+              "Multiple layer names apply their combined selection."
+              "Separate layers with spaces or commas."
               "--dry-run previews changes without writing."
               "--force backs up conflicts before applying."
               "Conflict policies require a layer target."
@@ -27,7 +29,7 @@
               "Packages and snapshots remain installed."
               "A target is required; --dry-run previews removal."]
     :example "ds remove core --dry-run"}
-   {:name "push" :group :primary :controller true :args "HOST LAYER" :targets :layers
+   {:name "push" :group :primary :controller true :args "HOST LAYER ..." :targets :layers
     :summary "Deploy over SSH; checkout only"
     :flags ["--platform" "--prefix" "--home" "--force" "--dry-run" "--deliver-only"]
     :details ["--platform NAME overrides automatic platform detection."
@@ -65,7 +67,7 @@
     :details ["Both approval flags are required, in the listed order."
               "Docker-group membership grants root-equivalent access."]
     :example "ds docker-rootful --approve-rootful --grant-docker-group"}
-   {:name "add" :group :compatibility :args "COMPONENT" :targets :optional :flags ["--dry-run"]
+   {:name "add" :group :compatibility :args "COMPONENT ..." :targets :optional :flags ["--dry-run"]
     :summary "Enable an optional component"
     :details ["Prefer ds apply COMPONENT."] :example "ds apply core"}
    {:name "diff" :group :compatibility :args "LAYER|COMPONENT" :targets :all
@@ -121,7 +123,7 @@
     (each item (available controller?)
       (when (= group (get item :group))
         (def spec (specification (get item :name) controller?))
-        (emit (string/format "  %-24s %s"
+        (emit (string/format "  %-28s %s"
                 (string (get spec :name) " " (get spec :args)) (get spec :summary))))))
   (each line ["" "examples:" "  ds" "  ds apply --dry-run" "  ds apply"]
     (emit line))
@@ -139,19 +141,20 @@
   (unless (empty? (get catalog :optional))
     (emit (string "  optional (any layer): "
                   (string/join (map string (get catalog :optional)) ", "))))
-  (each line ["" "Use ds COMMAND --help for options."
-              "Use ds help --all for advanced commands."]
+  (each line ["" "Use ds COMMAND --help for options."]
     (emit line)))
 
 (defn complete [shell catalog controller?]
   (unless (find |(= $ shell) ["bash" "zsh"]) (error "completion requires bash or zsh"))
+  (when (= shell "zsh") (print "#compdef ds"))
   (def specs (map |(specification (get $ :name) controller?) (available controller?)))
   (def names (string/join (map |(get $ :name) specs) " "))
   (def primary (string/join (map |(get $ :name) (filter |(= :primary (get $ :group)) specs)) " "))
+  (def layer-names (string/join (map string (targets (specification "push" true) catalog)) " "))
   (print "_ds_complete() {")
   (if (= shell "bash")
-    (print "  local cmd=${COMP_WORDS[1]} cur=${COMP_WORDS[COMP_CWORD]} pos=$COMP_CWORD prev=${COMP_WORDS[COMP_CWORD-1]} choices")
-    (print "  local cmd=$words[2] cur=$words[CURRENT] pos=$((CURRENT-1)) prev=$words[CURRENT-1] choices"))
+    (print "  local cmd=${COMP_WORDS[1]} cur=${COMP_WORDS[COMP_CWORD]} pos=$COMP_CWORD prev=${COMP_WORDS[COMP_CWORD-1]} choices prefix expanded item")
+    (print "  local cmd=$words[2] cur=$words[CURRENT] pos=$((CURRENT-1)) prev=$words[CURRENT-1] choices prefix expanded item"))
   (if (= shell "bash")
     (print "  local i; for ((i=2; i<COMP_CWORD; i++)); do [ \"${COMP_WORDS[i]}\" != -- ] || { COMPREPLY=(); return; }; done")
     (print "  local i; for ((i=3; i<CURRENT; i++)); do [ \"${words[i]}\" != -- ] || return; done"))
@@ -165,7 +168,20 @@
   (print (string "      help) choices='" names " --all' ;;"))
   (print "      *) choices='--help' ;;")
   (print "    esac")
+  (print (string "    if [ \"$cmd\" = apply ] && [ \"$pos\" -gt 2 ]; then choices='"
+                 layer-names
+                 " --dry-run --force --skip --help'; fi"))
+  (print "    if [ \"$cmd\" = push ] && [ \"$pos\" -eq 2 ]; then choices=''; fi")
   (print "    [ \"$prev\" != --skip ] || choices=docker")
+  (print "    if [ \"$cmd\" = apply ] || [ \"$cmd\" = push ]; then")
+  (print "      case \"$cur\" in")
+  (print (string "        *,*) prefix=${cur%,*},; choices='" layer-names "'; expanded=''"))
+  (print (if (= shell "bash")
+           "             for item in $choices; do expanded=\"$expanded $prefix$item\"; done ;;"
+           "             for item in ${=choices}; do expanded=\"$expanded $prefix$item\"; done ;;"))
+  (print "      esac")
+  (print "      [ -z \"${prefix:-}\" ] || choices=$expanded")
+  (print "    fi")
   (print "  fi")
   (if (= shell "bash")
     (print "  COMPREPLY=(); while IFS= read -r item; do COMPREPLY+=(\"$item\"); done < <(compgen -W \"$choices\" -- \"$cur\")")

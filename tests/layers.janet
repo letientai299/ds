@@ -20,7 +20,7 @@
 (eachp [index component] core
   (assert= component (get remote index) "remote includes core in order"))
 
-(assert= [:bat :delta :worktrunk :gokill] (tuple/slice (layers/resolve generated/catalog "extra" [])) "extra is independent")
+(assert= [:bat :delta :worktrunk :gokill :eza] (tuple/slice (layers/resolve generated/catalog "extra" [])) "extra is independent")
 (assert= [:kitty] (tuple/slice (layers/resolve generated/catalog "ui" [])) "ui is independent")
 (def all-components (layers/resolve generated/catalog "all" []))
 (each name ["core" "remote" "extra" "ui"]

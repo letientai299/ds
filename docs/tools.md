@@ -1,7 +1,7 @@
 # Shell tools
 
 `ds apply core` installs `serve`, `fzf-files`, and `fzf-dirs` in `~/.local/bin` and
-manages zoxide through mise. `extra` supplies gokill and Worktrunk. Trial shells expose the same commands. Existing files at
+manages zoxide through mise. `extra` supplies eza, gokill, and Worktrunk. Trial shells expose the same commands. Existing files at
 managed paths follow the normal adoption and conflict rules.
 
 ## File selection and search

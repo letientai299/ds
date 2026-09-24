@@ -22,9 +22,13 @@ The primary commands follow the daily workflow:
 `ds help` lists components by layer from the generated catalog.
 
 `TARGET` accepts a catalog layer or optional component. Omitted targets use the
-saved layer, initially `core`. An invalid saved layer fails explicitly. Removal
+selected layer union, initially `core`. Invalid saved selections fail explicitly. Removal
 requires a target and leaves packages installed. The `remote` layer is an
 extended local preset; only `push` selects an SSH destination.
+
+`apply extra` and `apply ui` add to the saved selection. Bare `apply` and `status`
+use that union. `apply all` selects every layer; `remove ui` then keeps the other
+layers and their shared configuration. `extra` and `ui` can also be used alone.
 
 Status, application, and removal identify the layer and configuration scope.
 Inside `ds shell`, configuration changes use the persistent trial directory;

@@ -18,13 +18,24 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 case "$mode" in --check | --write) ;; *) die 'usage: src/scripts/generate.sh [--check|--write]' ;; esac
 command -v "$mise_command" >/dev/null 2>&1 || die 'mise is required'
 command -v jq >/dev/null 2>&1 || die 'jq is required'
+command -v taplo >/dev/null 2>&1 || die 'taplo is required'
 
-core=$("$mise_command" toml get --file "$root/src/catalog.toml" layers.core)
-remote=$("$mise_command" toml get --file "$root/src/catalog.toml" layers.remote)
-optional=$("$mise_command" toml get --file "$root/src/catalog.toml" layers.optional)
+taplo get -f "$root/src/catalog.toml" -o json layers >"$work/layers.json"
+taplo get -f "$root/src/catalog.toml" -o json extends >"$work/extends.json"
+jq -n --slurpfile definitions "$work/layers.json" --slurpfile parents "$work/extends.json" '
+  ($definitions[0] | del(.optional)) as $layers |
+  def expand($name; $seen):
+    if ($seen | index($name)) then error("layer inheritance cycle") else
+    ($parents[0][$name] // []) as $parents |
+    (if $parents == ["*"] then ($layers | keys | map(select(. != $name))) else $parents end) as $bases |
+    if $layers[$name] == null then error("unknown parent layer") else
+    ([$bases[] | expand(.; $seen + [$name])[]] + [$name] | unique) end end;
+  {layers: ($layers | with_entries(.value = [expand(.key; [])[] as $p | $layers[$p][]] | .value |= reduce .[] as $x ([]; if index($x) then . else . + [$x] end))),
+   profiles: ($layers | with_entries(.value = [expand(.key; [])[] | select(. != "all")])),
+   optional: ($definitions[0].optional // [])}
+' >"$work/resolved.json"
 printf '%s\n' '{}' >"$work/components.json"
-printf '%s\n%s\n%s\n' "$core" "$remote" "$optional" |
-	jq -r -s 'add | unique[]' >"$work/component-names"
+jq -r '[.layers[][], .optional[]] | unique[]' "$work/resolved.json" >"$work/component-names"
 while IFS= read -r component; do
 	commands=$("$mise_command" toml get --file "$root/src/catalog.toml" "components.$component.commands")
 	owner=$("$mise_command" toml get --file "$root/src/catalog.toml" "components.$component.owner")
@@ -48,20 +59,15 @@ while IFS= read -r component; do
 		"$work/components.json" >"$work/components.next"
 	mv "$work/components.next" "$work/components.json"
 done <"$work/component-names"
-jq -n \
-	--argjson core "$core" \
-	--argjson remote "$remote" \
-	--argjson optional "$optional" \
-	--slurpfile components "$work/components.json" \
-	'{layers: {core: $core, remote: $remote, optional: $optional}, components: $components[0]}' \
-	>"$work/catalog.json"
+jq --slurpfile components "$work/components.json" '. + {components: $components[0]}' \
+	"$work/resolved.json" >"$work/catalog.json"
 jq -r '
   def keyword: ":" + .;
   def keywords: "[" + (map(keyword) | join(" ")) + "]";
   def strings: "[" + (map(@json) | join(" ")) + "]";
-  "(def catalog\n  @{:layers\n  {:core " + (.layers.core | keywords) +
-  "\n   :remote " + (.layers.remote | keywords) + "}" +
-  "\n  :optional " + (.layers.optional | keywords) +
+  "(def catalog\n  @{:layers\n  {" + ([.layers | to_entries[] | ":" + .key + " " + (.value | keywords)] | join("\n   ")) + "}" +
+  "\n  :profiles {" + ([.profiles | to_entries[] | ":" + .key + " " + (.value | keywords)] | join(" ")) + "}" +
+  "\n  :optional " + (.optional | keywords) +
   "\n  :components\n  {" +
   ([.components | to_entries | sort_by(.key)[] |
     ":" + .key + " {:commands " + (.value.commands | strings) +
@@ -71,13 +77,21 @@ jq -r '
   "}})"
 ' "$work/catalog.json" >"$work/layers.janet"
 
+jq -r '
+  "typeset -gA _ds_profiles=(",
+  (.profiles | to_entries[] | "  " + .key + " \"" + (.value | join(",")) + "\""),
+  ")"
+' "$work/catalog.json" >"$work/profiles.zsh"
+profiles=$root/src/dotfiles/profiles.zsh
+
 case "$mode" in
 --write)
 	cp "$work/layers.janet" "$target"
+	cp "$work/profiles.zsh" "$profiles"
 	printf '%s\n' "$target"
 	;;
 --check)
-	if ! cmp -s "$work/layers.janet" "$target"; then
+	if ! cmp -s "$work/layers.janet" "$target" || ! cmp -s "$work/profiles.zsh" "$profiles"; then
 		diff -u "$target" "$work/layers.janet" >&2 || true
 		die 'generated layer catalog is stale; run mise run generate'
 	fi

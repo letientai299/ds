@@ -1,6 +1,7 @@
 (import scripts/lib/activation)
 (import scripts/lib/help)
 (import scripts/lib/inventory)
+(import scripts/lib/kitty)
 (import scripts/lib/json)
 (import scripts/lib/mutation)
 (import scripts/lib/process)
@@ -176,6 +177,9 @@
   cached-inventory)
 
 (defn component-probe [_layer component]
+  (when (= component :kitty)
+    (def reason (kitty/unsupported base-environment))
+    (when reason (break {:state :unavailable :reason reason})))
   (def spec (get (get generated/catalog :components) component))
   (def commands (get spec :commands))
   (case (get spec :owner)
@@ -197,12 +201,8 @@
   (layers/optional-component? generated/catalog (keyword name)))
 
 (defn current-layer []
-  (def target (string (selection/config-home base-environment) "/ds/layer"))
-  (if (os/lstat target)
-    (let [value (string/trim (string (slurp target)))]
-      (unless (known-layer? value) (fail (string "invalid saved layer: " value)))
-      value)
-    "core"))
+  (try (string/join (selection/active-layers generated/catalog base-environment ["core"]) ",")
+       ([err] (fail err))))
 
 (defn optional-state [name]
   (def component (keyword name))
@@ -278,7 +278,7 @@
 
 (defn run-mutation [command args]
   (def parsed (parse-mutation command args))
-  (def target (require-target (or (get parsed :target) (current-layer))))
+  (def target (if (get parsed :target) (require-target (get parsed :target)) (current-layer)))
   (def component (if (optional-component? target) (keyword target) nil))
   (def mode (if (and component (= :apply (get parsed :mode))) :add (get parsed :mode)))
   (when (and (= command "add") (not component))
@@ -292,7 +292,7 @@
                            (map string (distinct (tuple ;(selection/selected generated/catalog base-environment)
                                                         ;(if component [component] [])))))))
   (def request {:mode mode :layer layer :component component :components components
-                :docker (and (= layer "remote") (not (find |(= $ :docker) (get parsed :skips))))})
+                :docker (and (layers/includes? generated/catalog layer :docker) (not (find |(= $ :docker) (get parsed :skips))))})
   (when (find |(= command $) ["apply" "remove"]) (print-context layer print))
   (defn work []
     (def plan (mutation/build generated/catalog root base-environment request))
@@ -353,7 +353,7 @@
       (if (or target (string/has-prefix? "-" arg))
         (fail (string "unexpected argument: " arg))
         (set target arg))))
-  (set target (require-target (or target (current-layer))))
+  (set target (if target (require-target target) (current-layer)))
   (def optional? (optional-component? target))
   (def layer (if optional? (current-layer) target))
   (def packages (if optional?
@@ -363,7 +363,8 @@
   (def summary (if optional? (optional-state target) (combined-summary packages files)))
   (if json?
     (print (json/encode {:schema 1 :target target :summary summary :components packages
-                          :files files :selected (selection/selected generated/catalog base-environment)}))
+                          :files files :selected (selection/selected generated/catalog base-environment)
+                          :layers (try (selection/active-layers generated/catalog base-environment) ([_err] []))}))
     (do
       (print-context layer print)
       (print (string target ": " summary))
@@ -373,7 +374,7 @@
         (def selected? (selection/selected? generated/catalog base-environment (keyword target)))
         (when (or verbose? (not selected?))
           (print (string "  " (if selected? "selected " "unselected ") target))))
-      (when (and verbose? (not optional?) (= layer "remote"))
+      (when (and verbose? (not optional?) (layers/includes? generated/catalog layer :docker))
         (print-docker-diagnostic (docker-plan)))
       (unless (= summary :complete)
         (if (find |(= :unavailable (get $ :state)) files)
@@ -460,7 +461,7 @@
         (print-optional-status layer)
         (do
           (print-status layer (inspect-layer layer) (managed/inspect root base-environment layer))
-          (when (= layer "remote") (print-docker-diagnostic (docker-plan))))))
+          (when (layers/includes? generated/catalog layer :docker) (print-docker-diagnostic (docker-plan))))))
 
     "shell" (try (start-shell args) ([err] (fail err)))
 

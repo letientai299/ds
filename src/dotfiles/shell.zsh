@@ -22,13 +22,16 @@ export MISE_SYSTEM_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise-system"
 export MISE_OVERRIDE_CONFIG_FILENAMES=mise.toml
 export MISE_GLOBAL_CONFIG_ROOT="$_ds_root/src/mise"
 export MISE_TRUSTED_CONFIG_PATHS="$_ds_root/src/mise"
-typeset -a _ds_environments
+typeset -ga _ds_environments=()
 _ds_layer=core
 if [[ -r "$XDG_CONFIG_HOME/ds/layer" ]]; then
   _ds_layer="$(<"$XDG_CONFIG_HOME/ds/layer")"
 fi
-[[ "$_ds_layer" != core ]] || _ds_layer=core
-[[ "$_ds_layer" != remote ]] || _ds_environments+=(remote)
+source "${${(%):-%x}:A:h}/profiles.zsh"
+for _ds_selected in ${(s:,:)_ds_layer}; do
+  _ds_environments+=(${(s:,:)_ds_profiles[$_ds_selected]})
+done
+unset _ds_profiles
 if [[ -r "$XDG_CONFIG_HOME/ds/components" ]]; then
   while IFS= read -r _ds_component; do
     if [[ -n "$_ds_component" && -f "$_ds_root/src/mise/mise.$_ds_component.toml" ]]; then
@@ -36,6 +39,7 @@ if [[ -r "$XDG_CONFIG_HOME/ds/components" ]]; then
     fi
   done <"$XDG_CONFIG_HOME/ds/components"
 fi
+typeset -gaU _ds_environments
 export MISE_ENV="${(j:,:)_ds_environments}"
 if [[ -S "${XDG_RUNTIME_DIR:-/run/user/$UID}/docker.sock" ]]; then
   export DOCKER_HOST="unix://${XDG_RUNTIME_DIR:-/run/user/$UID}/docker.sock"
@@ -71,7 +75,7 @@ if [[ -x "$_ds_zoxide" ]] && (( ! ${+_ds_zoxide_loaded} )); then
 fi
 export DS_DS="$_ds_root/ds"
 [[ ! -r "$_ds_root/src/dotfiles/command.sh" ]] || source "$_ds_root/src/dotfiles/command.sh"
-unset _ds_fzf _ds_zoxide _ds_layer _ds_component _ds_environments _ds_root
+unset _ds_fzf _ds_zoxide _ds_selected _ds_layer _ds_component _ds_environments _ds_root
 
 [[ ! -r "$XDG_CONFIG_HOME/ds/local.zsh" ]] || source "$XDG_CONFIG_HOME/ds/local.zsh"
 if [[ -o interactive && ${DS_MISE_ACTIVATE:-0} == 1 ]] && (( ! ${+_ds_mise_loaded} )); then

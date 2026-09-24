@@ -1,6 +1,8 @@
 (import scripts/lib/filesystem)
 (import scripts/lib/activation)
 (import scripts/lib/mise)
+(import scripts/lib/layers)
+(import scripts/generated/layers :as generated)
 
 (def rc-start "# >>> ds managed >>>")
 (def rc-end "# <<< ds managed <<<")
@@ -30,8 +32,9 @@
     (let [actual (string/trim (string (slurp target)))]
       (cond
         (= actual desired) :present
-        (and (= desired "core") (= actual "remote")) :present
-        (or (= actual "core") (= actual "remote")) :missing
+        (all |(layers/known-layer? generated/catalog $) (string/split "," actual))
+        (if (all (fn [component] (layers/includes? generated/catalog actual component))
+                 (layers/layer-components generated/catalog desired)) :present :missing)
         :else :conflict))))
 
 (defn marker-block [line]
@@ -99,27 +102,37 @@
   (def base (if shell-state root (link-root root)))
   (def core
     @[{:kind :link :target (path bin "ds") :source (string base "/ds")}
-     {:kind :command-link :target (path bin "mise") :source (mise/binary base environment)}
-     {:kind :link :target (path config-home "ds/shell.zsh") :source (string base "/src/dotfiles/shell.zsh")}
-     {:kind :link :target (path config-home "ds/gitconfig") :source (string base "/src/dotfiles/gitconfig")}
-     {:kind :link :target (path config-home "ds/gitignore") :source (string base "/src/dotfiles/gitignore")}
-     {:kind :link :target (path config-home "ds/rgrc") :source (string base "/src/dotfiles/rgrc")}
-     {:kind :link :target (path config-home "ds/mise/config.toml") :source (string base "/src/mise/mise.toml")}
-     {:kind :link :target (path config-home "ds/mise/config.remote.toml") :source (string base "/src/mise/mise.remote.toml")}
-     {:kind :layer :target (path config-home "ds/layer") :contents layer}
-     {:kind :link :target (path config-home "nvim") :source (source-root base environment "nvim")}
-     {:kind :marker :target zshrc :line (string "source \"" config-home "/ds/shell.zsh\"")}
-     {:kind :marker :target gitconfig
-      :line (string "[include]\n\tpath = " config-home "/ds/gitconfig"
-                    (if shell-state (string "\n[core]\n\texcludesFile = " config-home "/ds/gitignore") ""))}])
-  (each name tool-names
-    (array/push core {:kind :link :target (path bin name)
-                     :source (string base "/src/tools/" name)}))
-  (when (= layer "remote")
+      {:kind :command-link :target (path bin "mise") :source (mise/binary base environment)}
+      {:kind :layer :target (path config-home "ds/layer") :contents layer}
+      {:kind :link :target (path config-home "ds/mise/config.toml") :source (string base "/src/mise/mise.toml")}])
+  (each name (sort (keys (get generated/catalog :layers)))
+    (unless (= name :all)
+      (array/push core {:kind :link :target (path config-home (string "ds/mise/config." name ".toml"))
+                        :source (string base "/src/mise/mise." name ".toml")})))
+  (when (layers/includes? generated/catalog layer :zsh)
+    (array/concat core
+      @[{:kind :link :target (path config-home "ds/shell.zsh") :source (string base "/src/dotfiles/shell.zsh")}
+        {:kind :link :target (path config-home "ds/gitconfig") :source (string base "/src/dotfiles/gitconfig")}
+        {:kind :link :target (path config-home "ds/gitignore") :source (string base "/src/dotfiles/gitignore")}
+        {:kind :link :target (path config-home "ds/rgrc") :source (string base "/src/dotfiles/rgrc")}
+        {:kind :link :target (path config-home "nvim") :source (source-root base environment "nvim")}
+        {:kind :marker :target zshrc :line (string "source \"" config-home "/ds/shell.zsh\"")}
+        {:kind :marker :target gitconfig
+         :line (string "[include]\n\tpath = " config-home "/ds/gitconfig"
+                        (if shell-state (string "\n[core]\n\texcludesFile = " config-home "/ds/gitignore") ""))}])
+    (each name tool-names
+      (array/push core {:kind :link :target (path bin name) :source (string base "/src/tools/" name)})))
+  (when (layers/includes? generated/catalog layer :tmux)
     (def tmux-source (source-root base environment "tmux"))
     (array/concat core
       @[{:kind :link :target (path config-home "tmux") :source tmux-source}
         {:kind :link :target (path bin "tm") :source (string tmux-source "/tm")}]))
+  (when (layers/includes? generated/catalog layer :kitty)
+    (def kitty-source (source-root base environment "kitty"))
+    (array/push core
+      {:kind :link :target (path config-home "ds/kitty") :source kitty-source}
+      {:kind :link :target (path config-home "ds/kt") :source (string kitty-source "/bin/kt")}
+      {:kind :link :target (path bin "kt") :source (string base "/src/tools/kt")}))
   (map (fn [entry]
          (def source (get entry :source))
          (if (and source (string/has-prefix? (string base "/") source))
@@ -190,7 +203,7 @@
 
 (defn apply-entry [entry]
   (def target (get entry :target))
-  (when (= :present (state entry)) (break))
+  (when (and (not= :layer (get entry :kind)) (= :present (state entry))) (break))
   (def kind (get entry :kind))
   (cond
     (link-kind? kind)
@@ -210,7 +223,9 @@
     (= :layer kind)
     (do
       (filesystem/ensure-parent target)
-      (spit target (string (get entry :contents) "\n")))))
+      (def temporary (string target "." (os/getpid)))
+      (spit temporary (string (get entry :contents) "\n"))
+      (os/rename temporary target))))
 
 (defn remove-marker [target line]
   (when (= :file (os/lstat target :mode))

@@ -11,17 +11,26 @@
 (assert= true (layers/validate generated/catalog) "catalog is valid")
 
 (def core (layers/resolve generated/catalog "core" []))
-(assert= 13 (length core) "core component count")
+(assert= 11 (length core) "core component count")
 (assert= :mise (first core) "core starts with mise")
 (assert= :xh (last core) "core ends with xh")
 
 (def remote (layers/resolve generated/catalog "remote" []))
-(assert= 17 (length remote) "remote component count")
+(assert= 13 (length remote) "remote component count")
 (eachp [index component] core
   (assert= component (get remote index) "remote includes core in order"))
 
+(assert= [:bat :delta :worktrunk :gokill] (tuple/slice (layers/resolve generated/catalog "extra" [])) "extra is independent")
+(assert= [:kitty] (tuple/slice (layers/resolve generated/catalog "ui" [])) "ui is independent")
+(def all-components (layers/resolve generated/catalog "all" []))
+(each name ["core" "remote" "extra" "ui"]
+  (each component (layers/resolve generated/catalog name [])
+    (unless (find |(= $ component) all-components)
+      (error (string "all is missing " component)))))
+(assert= 18 (length all-components) "all deduplicates components")
+
 (def optional (layers/resolve fixture "core" ["example" "example"]))
-(assert= 14 (length optional) "optional components are unique")
+(assert= 12 (length optional) "optional components are unique")
 (assert= :example (last optional) "optional component is appended")
 (assert= true (layers/optional-component? fixture :example) "example is optional")
 
@@ -46,9 +55,9 @@
 
 (def help-lines @[])
 (help/usage |(array/push help-lines $)
-  {:layers {:sample [:one :two] :extended [:one :two :three]} :optional [:extra]}
+  {:layers {:core [:one :two] :remote [:one :two :three] :sample [:four]} :optional [:extra]}
   true true)
-(each line ["  sample: one, two" "  extended: one, two, three" "  optional (any layer): extra"]
+(each line ["  core: one, two" "  remote: core tools, plus three" "  sample: four" "  optional (any layer): extra"]
   (unless (find |(= $ line) help-lines) (error (string "catalog help missing: " line))))
 (each command ["adopt" "force" "unapply"]
   (assert= nil (help/specification command true) "removed command is unavailable"))

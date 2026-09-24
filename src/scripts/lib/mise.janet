@@ -1,4 +1,6 @@
 (import scripts/lib/platform)
+(import scripts/lib/layers)
+(import scripts/generated/layers :as generated)
 (import scripts/lib/process)
 
 (defn copy-environment [source]
@@ -31,7 +33,7 @@
   (put result "MISE_GLOBAL_CONFIG_ROOT" (config-root root))
   (put result "MISE_TRUSTED_CONFIG_PATHS" (config-root root))
   (put result "MISE_YES" "1")
-  (put result "MISE_ENV" (if (= layer "core") "" layer))
+  (put result "MISE_ENV" (string/join (layers/profiles generated/catalog layer) ","))
   result)
 
 (defn binary [root environment]

@@ -3,6 +3,9 @@
 (import scripts/lib/managed)
 (import scripts/lib/mise)
 (import scripts/lib/selection)
+(import scripts/lib/layers)
+(import scripts/lib/kitty)
+(import scripts/generated/layers :as generated)
 
 (def required
   {:packages [:profile :components] :takeover [:entry :mode] :write [:entry]
@@ -16,7 +19,7 @@
          :link (string? (get entry :source))
          :command-link (string? (get entry :source))
          :marker (string? (get entry :line))
-         :layer (find |(= $ (get entry :contents)) ["core" "remote"])
+         :layer (all |(layers/known-layer? generated/catalog $) (string/split "," (get entry :contents)))
          false)))
 
 (defn action [tag fields]
@@ -38,11 +41,12 @@
     :command-link (managed/same-link? target (get entry :source))
     :marker (= :present (managed/state entry))
     :layer (and (= :file (os/lstat target :mode))
-                (find |(= $ (string/trim (string (slurp target)))) ["core" "remote"]))))
+                (all |(layers/known-layer? generated/catalog $) (string/split "," (string/trim (string (slurp target))))))))
 
 (defn files [root environment layer mode]
   (def plan @[])
   (each entry (managed/inspect root environment layer)
+    (unless (= :layer (get entry :kind))
     (def state (get entry :state))
     (case state
       :unavailable (array/push plan (action :blocked {:target (get entry :target) :reason "source unavailable"}))
@@ -53,7 +57,7 @@
         (and (= mode :adopt) (os/lstat (managed/backup-path entry)))
         (array/push plan (action :blocked {:target (managed/backup-path entry) :reason "backup exists"}))
         :else (array/push plan (action :takeover {:entry entry :mode mode}))))
-    (unless (= state :present) (array/push plan (action :write {:entry entry}))))
+    (unless (= state :present) (array/push plan (action :write {:entry entry})))))
   plan)
 
 (defn build [catalog root environment request]
@@ -62,8 +66,21 @@
     (error "invalid mutation mode"))
   (def layer (get request :layer))
   (def selected (selection/selected catalog environment))
+  (var state-error nil)
+  (def active (try (selection/active-layers catalog environment)
+                   ([err] (set state-error (string err)) [])))
+  (def removing (string/split "," layer))
+  (def remaining (if (= layer "all") [] (filter (fn [saved] (not (find |(= $ saved) removing))) active)))
+  (def retained (if (empty? remaining) [] (managed/entries root environment (string/join remaining ","))))
+  (def next-layers (if (= mode :unapply) remaining (selection/combine catalog active layer)))
+  (def state-entry {:kind :layer :target (selection/layer-path environment) :contents (string/join next-layers ",")})
   (def component (get request :component))
   (def plan @[])
+  (when state-error
+    (array/push plan (action :blocked {:target (selection/layer-path environment) :reason state-error})))
+  (when (and (not= mode :unapply) (layers/includes? catalog layer :kitty))
+    (def reason (kitty/unsupported environment))
+    (when reason (array/push plan (action :blocked {:target "ui" :reason reason}))))
   (def activate? (and (not (get environment "DS_SHELL_STATE")) (activation/prefix root)))
   (when (and (not= mode :unapply) (not component) activate?)
     (try
@@ -77,6 +94,8 @@
       (array/push plan (action :select {:target (selection/state-path environment) :components (filter |(not= $ component) selected)}))
       (do
         (each entry (reverse (managed/entries root environment layer))
+          (unless (or (= :layer (get entry :kind))
+                    (find |(= (get $ :target) (get entry :target)) retained))
           (def remove? (removal entry))
           (when remove? (array/push plan (action :remove {:entry entry})))
           (def backup (managed/backup-path entry))
@@ -86,8 +105,11 @@
                                              (string (slurp (get entry :target))))))))
           (when (and (os/lstat backup) (not marker-remains?)
                      (or remove? (not (os/lstat (get entry :target)))))
-            (array/push plan (action :restore {:entry entry :backup backup}))))
-        (when (= layer "core") (array/push plan (action :select {:target (selection/state-path environment) :components []})))))
+            (array/push plan (action :restore {:entry entry :backup backup})))))
+        (if (empty? next-layers)
+          (when (os/stat (get state-entry :target))
+            (array/push plan (action :remove {:entry (merge state-entry {:contents layer})})))
+          (array/push plan (action :write {:entry state-entry})))))
     :else
     (do
       (array/push plan (action :packages
@@ -99,10 +121,12 @@
         (array/push plan (action :select {:target (selection/state-path environment) :components (distinct (tuple ;selected component))}))
         (do
           (array/concat plan (files root environment layer mode))
+          (array/push plan (action :write {:entry state-entry}))
+          (when (layers/includes? catalog layer :zsh)
           (array/push plan (action :directory
             {:target (string (or (get environment "DS_SHELL_STATE")
                                  (get environment "XDG_STATE_HOME")
-                                 (string (get environment "HOME") "/.local/state")) "/zsh/history")}))
+                                 (string (get environment "HOME") "/.local/state")) "/zsh/history")})))
           (when (get request :docker) (array/push plan (action :docker {})))
           (when activate? (array/push plan (action :activate {:root root})))))))
   plan)

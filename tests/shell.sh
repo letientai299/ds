@@ -127,7 +127,7 @@ print -r -- 'export DS_TEST_LOCAL=kept' >>"$ZDOTDIR/.zshrc"
 print -s -- ds-persistent-history
 fc -AI
 ds apply remote --skip docker || exit 50
-[[ $MISE_ENV == remote ]] || exit 51
+[[ $MISE_ENV == core,remote ]] || exit 51
 exit 0
 ZSH
 "$HOME/.local/bin/ds" shell <"$work/apply" >"$work/out" 2>"$work/err" || {
@@ -137,13 +137,14 @@ ZSH
 [ -s "$DS_TEST_LOG" ]
 "$HOME/.local/bin/ds" shell >"$work/out" 2>"$work/err" <<'ZSH' || {
 [[ $DS_TEST_LOCAL == kept ]] || exit 52
-[[ $MISE_ENV == remote ]] || exit 53
+[[ $MISE_ENV == core,remote ]] || exit 53
 grep -qx ds-persistent-history "$HISTFILE" || exit 54
 [[ $(git config trial.setting) == kept ]] || exit 55
 ds status --json >"$DS_SHELL_STATE/status" || exit 62
-grep -q '"target":"remote"' "$DS_SHELL_STATE/status" || exit 63
-[[ $MISE_ENV == remote ]] || exit 65
+grep -q '"target":"core,remote"' "$DS_SHELL_STATE/status" || exit 63
+[[ $MISE_ENV == core,remote ]] || exit 65
 ds remove remote || exit 56
+ds remove core || exit 66
 [[ -f $ZDOTDIR/.zshrc ]] || exit 57
 [[ -z $(grep 'ds managed' "$ZDOTDIR/.zshrc") ]] || exit 58
 ds --help >/dev/null || exit 59

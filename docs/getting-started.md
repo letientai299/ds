@@ -69,7 +69,7 @@ Delivery bundles contain committed Git exports of both sources.
 
 ## Apply core safely
 
-`ds status` and `ds apply` use the saved layer, initially `core`.
+`ds status` and `ds apply` use the selected layer union, initially `core`.
 Choose an explicit layer to inspect or apply another preset:
 
 ```sh

@@ -26,6 +26,7 @@ local_todo() {
 }
 
 _ds_worktrunk_init() {
+  [[ ,${MISE_ENV:-}, == *,extra,* ]] || return 1
   (( ${+_ds_worktrunk_loaded} )) && return 0
   local -a binaries=("$MISE_DATA_DIR"/installs/http-worktrunk/latest/{,bin/,*/}wt(N))
   (( $#binaries )) || return 1
@@ -39,7 +40,7 @@ _ds_worktrunk_init() {
 if (( ! $+functions[wt] )); then
   wt() {
     if ! _ds_worktrunk_init; then
-      print -ru2 -- 'wt: install Worktrunk with ds apply core'
+      print -ru2 -- 'wt: install Worktrunk with ds apply extra'
       return 1
     fi
     wt "$@"

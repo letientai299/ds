@@ -8,7 +8,7 @@ die() {
 }
 
 usage() {
-	printf '%s\n' 'usage: try.sh [--layer core|remote] [--source auto|checkout|release] [--version TAG] [--image IMAGE] [--platform DOCKER_PLATFORM] [--command COMMAND]'
+	printf '%s\n' 'usage: try.sh [--layer LAYER] [--source auto|checkout|release] [--version TAG] [--image IMAGE] [--platform DOCKER_PLATFORM] [--command COMMAND]'
 }
 
 repository=${DS_REPOSITORY:-letientai299/ds}
@@ -42,7 +42,7 @@ while [ "$#" -gt 0 ]; do
 	esac
 done
 
-case "$layer" in core | remote) ;; *) die "unknown layer: $layer" ;; esac
+case "$layer" in core | remote | extra | ui | all) ;; *) die "unknown layer: $layer" ;; esac
 case "$source_mode" in auto | checkout | release) ;; *) die "unknown source: $source_mode" ;; esac
 command -v docker >/dev/null 2>&1 || die 'Docker is required'
 

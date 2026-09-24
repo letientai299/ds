@@ -11,10 +11,9 @@ Linux][rocky], and macOS.
 
 ## Layers
 
-| Layer    | Contents                                                                              |
-| -------- | ------------------------------------------------------------------------------------- |
-| `core`   | mise, Git, Curl, Zsh, Neovim, fd, FZF, ripgrep, Worktrunk, Zoxide, jq, gokill, and xh |
-| `remote` | `core` plus Tmux, [Docker][docker] readiness, Bat, Delta                              |
+Run `ds help` for the component lists generated from the catalog.
+`remote` extends `core`; `extra` and `ui` are independent. `all` combines every
+layer without duplicating tools.
 
 `src/catalog.toml` defines the layers. `ds status LAYER --verbose` shows
 resolved components and managed files. `remote` is an extended local preset;
@@ -80,7 +79,7 @@ isolated configuration and command links. Your normal `.zshrc` and `.gitconfig`
 remain unchanged. Layer and component selections persist too. Open a new
 terminal to return to your normal setup. Use `ds --help` for everyday commands
 and `ds help --all` for advanced operations. `ds apply` and `ds status` use the
-saved layer, initially `core`; status and previews identify the active
+selected layers, initially `core`; status and previews identify the active
 configuration scope.
 
 ### Install from main

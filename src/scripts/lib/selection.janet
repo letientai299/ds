@@ -49,11 +49,29 @@
   (save environment (filter |(not= $ component) (selected catalog environment))))
 
 (defn profile [catalog environment layer extras]
-  (def environments @[])
-  (unless (= layer "core") (array/push environments layer))
+  (def environments (layers/profiles catalog layer))
   (each component (selected catalog environment)
     (array/push environments (string component)))
   (each component extras
     (unless (find |(= $ (string component)) environments)
       (array/push environments (string component))))
   (string/join environments ","))
+
+(defn layer-path [environment]
+  (string (config-home environment) "/ds/layer"))
+
+(defn active-layers [catalog environment &opt fallback]
+  (def target (layer-path environment))
+  (if (os/lstat target)
+    (let [names (string/split "," (string/trim (string (slurp target))))]
+      (each name names
+        (unless (layers/known-layer? catalog name)
+          (error (string "invalid saved layer: " name))))
+      (distinct names))
+    (or fallback [])))
+
+(defn combine [catalog current target]
+  (def names (string/split "," target))
+  (distinct (tuple ;current ;(if (find |(= $ "all") names)
+                             (map string (filter |(not= $ :all) (sort (keys (get catalog :layers)))))
+                             names))))

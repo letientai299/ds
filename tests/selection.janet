@@ -11,11 +11,11 @@
 (def environment {"HOME" home "XDG_CONFIG_HOME" (string home "/config")})
 (os/mkdir home)
 
-(assert= "" (selection/profile fixture environment "core" []) "empty core profile")
+(assert= "core" (selection/profile fixture environment "core" []) "empty core profile")
 (selection/add fixture environment :example)
 (assert= true (selection/selected? fixture environment :example) "selection persists")
-(assert= "example" (selection/profile fixture environment "core" []) "core optional profile")
-(assert= "remote,example" (selection/profile fixture environment "remote" []) "remote optional profile")
+(assert= "core,example" (selection/profile fixture environment "core" []) "core optional profile")
+(assert= "core,remote,example" (selection/profile fixture environment "remote" []) "remote optional profile")
 (selection/remove fixture environment :example)
 (assert= false (selection/selected? fixture environment :example) "selection removes")
 (assert= nil (os/stat (selection/state-path environment)) "empty selection removes state file")
@@ -27,7 +27,7 @@
 (assert= [:example]
          (tuple ;(selection/selected fixture environment))
          "unknown selected component is skipped, not fatal")
-(assert= "example"
+(assert= "core,example"
          (selection/profile fixture environment "core" [])
          "profile ignores the unknown component")
 (selection/remove fixture environment :example)

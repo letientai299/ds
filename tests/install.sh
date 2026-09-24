@@ -88,7 +88,7 @@ SH
 chmod 0755 "$work/bin/"* "$work/fixture/ds"
 export PATH="$work/bin:$PATH" DS_TEST_FIXTURE="$work/fixture"
 export DS_TEST_LOG="$work/actions"
-unset DS_NVIM_SOURCE DS_TMUX_SOURCE
+unset DS_NVIM_SOURCE DS_TMUX_SOURCE DS_KITTY_SOURCE
 
 cd "$work"
 : >"$DS_TEST_LOG"
@@ -114,13 +114,17 @@ for target in Darwin:arm64:macos-arm64 Darwin:x86_64:macos-x64 Linux:aarch64:lin
 	grep -qx "mise $platform" "$DS_TEST_LOG" || fail 'wrong runtime platform'
 	grep -qx 'diff core' "$DS_TEST_LOG" || fail 'preview diff missing'
 	grep -qx 'apply core --dry-run' "$DS_TEST_LOG" || fail 'preview applied changes'
-	[ "$(grep -c '^clone ' "$DS_TEST_LOG")" -eq 3 ] || fail 'missing source checkout'
+	[ "$(grep -c '^clone ' "$DS_TEST_LOG")" -eq 2 ] || fail 'core should clone only ds and Neovim'
 	[ "$(grep -c '^compile$' "$DS_TEST_LOG")" -eq 1 ] || fail 'runtime not built'
 	printf '%s\n' keep >"$prefix/ds/local-edit"
 	: >"$DS_TEST_LOG"
 	sh "$root/scripts/install.sh" --prefix "$prefix" --layer remote --skip docker >/dev/null
 	grep -qx 'apply remote --skip docker' "$DS_TEST_LOG" || fail 'apply arguments lost'
 	[ "$(cat "$prefix/ds/local-edit")" = keep ] || fail 'local edits changed'
+	[ "$(grep -c '^clone ' "$DS_TEST_LOG")" -eq 1 ] || fail 'remote should add only Tmux'
+	grep -q '^clone .*tmux.conf.git$' "$DS_TEST_LOG" || fail 'Tmux source missing'
+	: >"$DS_TEST_LOG"
+	sh "$root/scripts/install.sh" --prefix "$prefix" --layer remote --skip docker >/dev/null
 	if grep -Eq '^(clone|compile)' "$DS_TEST_LOG"; then
 		fail 'reinstall replaced existing sources or runtime'
 	fi

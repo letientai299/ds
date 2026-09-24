@@ -8,7 +8,7 @@ die() {
 }
 
 usage() {
-	printf '%s\n' 'usage: install.sh [--layer core|remote] [--version TAG] [--platform PLATFORM] [--prefix DIR] [--no-apply]'
+	printf '%s\n' 'usage: install.sh [--layer LAYER] [--version TAG] [--platform PLATFORM] [--prefix DIR] [--no-apply]'
 }
 
 repository=${DS_REPOSITORY:-letientai299/ds}
@@ -45,7 +45,7 @@ while [ "$#" -gt 0 ]; do
 	esac
 done
 
-case "$layer" in core | remote) ;; *) die "unknown layer: $layer" ;; esac
+case "$layer" in core | remote | extra | ui | all) ;; *) die "unknown layer: $layer" ;; esac
 
 if [ -z "$platform" ]; then
 	operating_system=$(uname -s)

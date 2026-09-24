@@ -14,7 +14,7 @@
 (assert= "/isolated/home/.local/share/mise" (get configured "MISE_DATA_DIR") "isolated data")
 (assert= "/snapshot/src/mise" (get configured "MISE_GLOBAL_CONFIG_ROOT") "global config root")
 (assert= "/snapshot/src/mise" (get configured "MISE_TRUSTED_CONFIG_PATHS") "trusted root")
-(assert= "" (get configured "MISE_ENV") "core environment")
+(assert= "core" (get configured "MISE_ENV") "core environment")
 (assert= "/snapshot/src/runtime/bin/linux-x64-musl/mise"
          (mise/binary "/snapshot" configured)
          "static Linux mise")
@@ -29,6 +29,6 @@
           "-C" "/snapshot/src/mise" "bootstrap" "--yes" "--dry-run"]
          (tuple ;(get apply-call 0))
          "bootstrap argv")
-(assert= "remote" (get (get apply-call 1) "MISE_ENV") "remote environment")
+(assert= "core,remote" (get (get apply-call 1) "MISE_ENV") "remote environment")
 
 (print "mise: ok")

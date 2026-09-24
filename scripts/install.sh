@@ -9,7 +9,7 @@ die() {
 
 usage() {
 	cat <<'USAGE'
-usage: scripts/install.sh [--no-apply] [--layer core|remote] [--prefix DIR]
+usage: scripts/install.sh [--no-apply] [--layer LAYER] [--prefix DIR]
                          [--skip docker] [--shell]
 
 Uses the current checkout, including from subdirectories.
@@ -52,7 +52,7 @@ while [ "$#" -gt 0 ]; do
 	*) die "unknown argument: $1" ;;
 	esac
 done
-case "$layer" in core | remote) ;; *) die "unknown layer: $layer" ;; esac
+case "$layer" in core | remote | extra | ui | all) ;; *) die "unknown layer: $layer" ;; esac
 case "$skip" in '' | docker) ;; *) die "unsupported skip: $skip" ;; esac
 [ "$apply:$shell" != false:true ] || die '--shell requires applying'
 
@@ -155,10 +155,18 @@ fi
 [ -f "$root/.config/mise/config.toml" ] || die "missing project configuration: $root"
 printf '%s\n' "ds setup: checkout $root" >&2
 
-for name in nvim tmux; do
+case "$layer" in
+core) sources=nvim ;;
+remote) sources="nvim tmux" ;;
+ui) sources=kitty ;;
+all) sources="nvim tmux kitty" ;;
+extra) sources= ;;
+esac
+for name in $sources; do
 	case "$name" in
 	nvim) configured=${DS_NVIM_SOURCE:-} ;;
 	tmux) configured=${DS_TMUX_SOURCE:-} ;;
+	kitty) configured=${DS_KITTY_SOURCE:-} ;;
 	esac
 	if [ -n "$configured" ]; then
 		[ -d "$configured" ] || die "missing configuration: $configured"
@@ -169,6 +177,11 @@ for name in nvim tmux; do
 		configured=$(CDPATH='' cd "$configured" && pwd -P)
 	fi
 	case "$name" in
+	kitty)
+		DS_KITTY_SOURCE=$configured
+		export DS_KITTY_SOURCE
+		CGO_ENABLED=0 mise exec go@1.27.1 -- go -C "$configured" build -trimpath -o bin/kt ./cmd/kt
+		;;
 	nvim)
 		DS_NVIM_SOURCE=$configured
 		export DS_NVIM_SOURCE

@@ -66,14 +66,14 @@ ZSH
 	DS_ROOT=/stale/version zsh -dfc '
         source "$1"
         : >"$HOME/refresh.log"
-        [[ "$MISE_ENV" == example ]] || exit 1
+        [[ "$MISE_ENV" == core,example ]] || exit 1
         ds remove example --dry-run >/dev/null
         ds remove --help >/dev/null
         [[ ! -s "$HOME/refresh.log" ]] || exit 1
-        [[ "$MISE_ENV" == example ]] || exit 1
+        [[ "$MISE_ENV" == core,example ]] || exit 1
         ds remove example >/dev/null
         [[ -s "$HOME/refresh.log" ]] || exit 1
-        [[ -z "$MISE_ENV" ]] || exit 1
+        [[ "$MISE_ENV" == core ]] || exit 1
     ' ds-ux "$root/src/dotfiles/shell.zsh" || fail 'shell selection refresh failed'
 fi
 
@@ -142,12 +142,12 @@ reject remove core --adopt
 reject status --unknown
 
 "$root/ds" apply --dry-run --skip docker >"$work/default-plan"
-grep -qx 'layer: remote' "$work/default-plan" || fail 'apply ignored saved layer'
-grep -qx 'would apply remote:' "$work/default-plan" || fail 'apply default target missing'
+grep -qx 'layer: core,remote' "$work/default-plan" || fail 'apply ignored saved layer'
+grep -qx 'would apply core,remote:' "$work/default-plan" || fail 'apply default target missing'
 "$root/ds" apply --dry-run core >"$work/explicit-plan"
 grep -qx 'layer: core' "$work/explicit-plan" || fail 'explicit layer ignored'
 "$root/ds" status --json >"$work/default-json"
-"$root/ds" status remote --json >"$work/explicit-json"
+"$root/ds" status --json >"$work/explicit-json"
 cmp "$work/default-json" "$work/explicit-json" || fail 'status ignored saved layer'
 "$root/ds" status core >"$work/brief"
 "$root/ds" status --verbose core >"$work/verbose"
@@ -208,7 +208,7 @@ bash -c '
     [[ "${COMPREPLY[*]}" == "shell apply status remove push help --help" ]] || exit 1
     COMP_WORDS=(ds roll); _ds_complete
     [[ "${COMPREPLY[*]}" == rollback ]] || exit 2
-    COMP_WORDS=(ds apply ex); COMP_CWORD=2; _ds_complete
+    COMP_WORDS=(ds apply exam); COMP_CWORD=2; _ds_complete
     [[ "${COMPREPLY[*]}" == example ]] || exit 3
     COMP_WORDS=(ds apply --skip ""); COMP_CWORD=3; _ds_complete
     [[ "${COMPREPLY[*]}" == docker ]] || exit 4

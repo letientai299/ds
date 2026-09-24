@@ -8,32 +8,19 @@ core = [
   "fd",
   "fzf",
   "ripgrep",
-  "worktrunk",
   "zoxide",
   "jq",
-  "gokill",
   "xh",
 ]
-remote = [
-  "mise",
-  "git",
-  "curl",
-  "zsh",
-  "neovim",
-  "fd",
-  "fzf",
-  "ripgrep",
-  "worktrunk",
-  "zoxide",
-  "jq",
-  "gokill",
-  "xh",
-  "tmux",
-  "docker",
-  "bat",
-  "delta",
-]
+remote = ["tmux", "docker"]
+extra = ["bat", "delta", "worktrunk", "gokill"]
+ui = ["kitty"]
+all = []
 optional = []
+
+[extends]
+remote = ["core"]
+all = ["*"]
 
 [components.mise]
 commands = ["mise"]
@@ -105,3 +92,8 @@ owner = "mise"
 commands = ["delta"]
 owner = "mise"
 tool = "http-delta"
+
+[components.kitty]
+commands = ["kitty", "kitten"]
+owner = "mise"
+tool = "http-kitty"

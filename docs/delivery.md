@@ -76,10 +76,13 @@ mise run runtime:build
 mise run runtime:fetch-mise
 ```
 
+The controller uses the pinned Go toolchain to build the Kitty launcher and
+Taplo to resolve layer definitions. Target hosts need neither tool.
+
 Then build for one supported platform:
 
 ```sh
-src/bundle/build.sh \
+mise exec -- src/bundle/build.sh \
   --version 1.0.0 \
   --platform macos-arm64 \
   --janet dist/runtime/bin/macos-arm64/janet \

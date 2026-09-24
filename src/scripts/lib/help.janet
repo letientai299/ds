@@ -5,7 +5,7 @@
    {:name "apply" :group :primary :args "[TARGET]" :targets :all
     :summary "Apply a layer or optional component"
     :flags ["--dry-run" "--force" "--skip"]
-    :details ["Omitted targets use the saved layer, initially core."
+    :details ["Omitted targets use selected layers, initially core."
               "--dry-run previews changes without writing."
               "--force backs up conflicts before applying."
               "Conflict policies require a layer target."
@@ -15,7 +15,7 @@
    {:name "status" :group :primary :args "[TARGET]" :targets :all
     :summary "Show health and problems"
     :flags ["--verbose" "--json" "--check"]
-    :details ["Omitted targets use the saved layer, initially core."
+    :details ["Omitted targets use selected layers, initially core."
               "--verbose includes healthy entries and Docker diagnostics."
               "--json prints the complete machine-readable report."
               "--check exits 0 when complete, 1 when unhealthy."
@@ -128,8 +128,14 @@
   (emit "")
   (emit "components by layer:")
   (each layer (sort (keys (get catalog :layers)))
+    (def components (get-in catalog [:layers layer]))
+    (def core (get-in catalog [:layers :core] []))
+    (def additions (if (= layer :remote)
+                     (filter (fn [component] (not (find |(= $ component) core))) components)
+                     components))
     (emit (string "  " layer ": "
-                  (string/join (map string (get-in catalog [:layers layer])) ", "))))
+                  (if (= layer :remote) "core tools, plus " "")
+                  (if (= layer :all) "all layers combined" (string/join (map string additions) ", ")))))
   (unless (empty? (get catalog :optional))
     (emit (string "  optional (any layer): "
                   (string/join (map string (get catalog :optional)) ", "))))

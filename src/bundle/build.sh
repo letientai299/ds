@@ -60,6 +60,7 @@ files=$output/files
 payload=$files/src
 nvim_source=${DS_NVIM_SOURCE:-$root/../nvim.conf}
 tmux_source=${DS_TMUX_SOURCE:-$root/../tmux.conf}
+kitty_source=${DS_KITTY_SOURCE:-$root/../kitty.conf}
 DS_MISE=${DS_GENERATOR_MISE:-mise} "$root/src/scripts/generate.sh" --check >/dev/null
 mkdir -p "$payload/runtime/bin/$platform" "$payload/scripts" "$payload/mise" \
 	"$payload/vendor/nvim.conf" "$payload/vendor/tmux.conf"
@@ -71,7 +72,7 @@ cp "$root/src/catalog.toml" "$payload/catalog.toml"
 # MIT requires the notice to travel with the redistributed Janet and mise
 # binaries, so it becomes a manifest entry like any other payload file.
 cp "$root/src/THIRD-PARTY.md" "$payload/THIRD-PARTY.md"
-[ ! -f "$root/src/mise/mise.remote.toml" ] || cp "$root/src/mise/mise.remote.toml" "$payload/mise/mise.remote.toml"
+cp "$root"/src/mise/mise.*.toml "$payload/mise/"
 cp -R "$root/src/scripts/." "$payload/scripts/"
 cp -R "$root/src/dotfiles" "$payload/dotfiles"
 cp -R "$root/src/tools" "$payload/tools"
@@ -84,6 +85,14 @@ rm "$output/nvim-conf.tar"
 git -C "$tmux_source" archive --format=tar --output="$output/tmux-conf.tar" HEAD
 tar -xf "$output/tmux-conf.tar" -C "$payload/vendor/tmux.conf"
 rm "$output/tmux-conf.tar"
+[ -d "$kitty_source" ] || die "Kitty source is missing: $kitty_source"
+mkdir -p "$payload/vendor/kitty.conf"
+git -C "$kitty_source" archive --format=tar --output="$output/kitty-conf.tar" HEAD
+tar -xf "$output/kitty-conf.tar" -C "$payload/vendor/kitty.conf"
+rm "$output/kitty-conf.tar"
+case "$platform" in macos-*) kitty_os=darwin ;; *) kitty_os=linux ;; esac
+case "$platform" in *arm64*) kitty_arch=arm64 ;; *) kitty_arch=amd64 ;; esac
+CGO_ENABLED=0 GOOS=$kitty_os GOARCH=$kitty_arch go -C "$payload/vendor/kitty.conf" build -trimpath -o bin/kt ./cmd/kt
 cp "$janet" "$payload/runtime/bin/$platform/janet"
 cp "$mise" "$payload/runtime/bin/$platform/mise"
 chmod 0755 "$output/bootstrap.sh" "$payload/bootstrap.sh" "$files/ds" \

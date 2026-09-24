@@ -1,9 +1,12 @@
 (defn layer-components
   [catalog layer-name]
-  (def layer (get (get catalog :layers) (keyword layer-name)))
-  (if layer
-    layer
-    (error (string "unknown layer: " layer-name))))
+  (def result @[])
+  (each name (string/split "," layer-name)
+    (def components (get-in catalog [:layers (keyword name)]))
+    (unless components (error (string "unknown layer: " name)))
+    (each component components
+      (unless (find |(= $ component) result) (array/push result component))))
+  result)
 
 (defn known-layer?
   [catalog layer-name]
@@ -63,3 +66,13 @@
       (error (string "unknown optional component: " extra)))
     (append-unique resolved component))
   resolved)
+
+(defn profiles [catalog names]
+  (def result @[])
+  (each name (string/split "," names)
+    (each profile (get-in catalog [:profiles (keyword name)] [(keyword name)])
+      (append-unique result (string profile))))
+  result)
+
+(defn includes? [catalog names component]
+  (not= nil (find |(= $ component) (layer-components catalog names))))

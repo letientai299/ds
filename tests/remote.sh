@@ -69,8 +69,6 @@ run_case() {
             grep -q "^  missing docker$" "$HOME/status"
             grep -q "^  installed tmux$" "$HOME/status"
             grep -q "^  installed zoxide " "$HOME/status"
-            grep -q "^  installed bat " "$HOME/status"
-            grep -q "^  installed delta " "$HOME/status"
 
             find "$HOME" -print | sort > /tmp/ds-before-paths
             find "$HOME" -type f -exec sha256sum {} \; | sort > /tmp/ds-before-hashes
@@ -88,8 +86,6 @@ run_case() {
                 set -e
                 source \"$HOME/.config/ds/shell.zsh\"
                 zoxide --version >/dev/null
-                bat --version >/dev/null
-                delta --version >/dev/null
                 tm new-session -d -s ds-e2e sleep 30
                 [[ \"\$(tm show-options -sv set-clipboard)\" = on ]]
                 tm show-options -sv terminal-features | grep -q clipboard

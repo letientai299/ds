@@ -73,7 +73,7 @@ while [ "$#" -gt 0 ]; do
 	esac
 done
 
-case "$layer" in core | remote) ;; *) die "unknown layer: $layer" ;; esac
+case "$layer" in core | remote | extra | ui | all) ;; *) die "unknown layer: $layer" ;; esac
 case "$host" in -*) die 'host must not begin with a hyphen' ;; esac
 case "$prefix" in
 '' | /* | ../* | */../* | */.. | *[!0-9A-Za-z._/-]*) die 'prefix must be a safe relative path' ;;

@@ -1,11 +1,12 @@
 [tools]
 janet = "1.41.2"
+go = "1.27.1"
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
 taplo = "0.10.0"
 
 [env]
-DS_SHELL_SOURCES = "ds scripts/*.sh src/bootstrap.sh src/pull.sh src/install.sh src/try.sh src/lib/*.sh src/bundle/*.sh src/runtime/*.sh src/scripts/*.sh src/dotfiles/*.sh src/tools/serve tests/*.sh"
+DS_SHELL_SOURCES = "ds scripts/*.sh src/bootstrap.sh src/pull.sh src/install.sh src/try.sh src/lib/*.sh src/bundle/*.sh src/runtime/*.sh src/scripts/*.sh src/dotfiles/*.sh src/tools/serve src/tools/kt tests/*.sh"
 DS_ALPINE_IMAGE = "alpine@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40"
 DS_JANET_HEADER_SHA256 = "b82d7415df6826bdc3207624c56425bbfa5d783b88658330e58413f1f562f3e5"
 DS_JANET_SHELL_SHA256 = "63c964253bbed159ecb1df890202278402f556260f56ee8014ce50bfbd6f2834"
@@ -57,6 +58,7 @@ run = [
   "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/activation.janet",
   "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/help.janet",
   "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/inventory.janet",
+  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/kitty.janet",
   "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/json.janet",
   "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/mutation.janet",
   "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/filesystem.janet",
@@ -86,6 +88,7 @@ run = [
   "sh tests/exports.sh",
   "sh tests/navigation.sh",
   "sh tests/activation.sh",
+  "sh tests/independent-layers.sh",
   "sh tests/ux.sh",
   "sh tests/decisions.sh",
   "sh tests/checksum.sh",

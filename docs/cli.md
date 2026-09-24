@@ -46,7 +46,7 @@ source <(ds completion zsh) # after compinit
 # Bash: source <(ds completion bash)
 ```
 
-The installed shell also provides [serve and fkill][tools].
+The installed shell also provides [serve and gokill][tools].
 
 ## Status for automation
 

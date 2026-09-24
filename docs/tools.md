@@ -1,8 +1,8 @@
 # Shell tools
 
-`ds apply core` installs `serve` and `fkill` in `~/.local/bin`. Trial shells
-expose the same commands through their isolated bin directory. Existing files
-at the installed paths follow the normal adoption and conflict rules.
+`ds apply core` installs `serve` in `~/.local/bin` and manages gokill through
+mise. Trial shells expose both commands. Existing files at the managed `serve`
+path follow the normal adoption and conflict rules.
 
 ## Serve a directory
 
@@ -25,26 +25,24 @@ each second, so use a build-output directory rather than a large checkout.
 ## Select processes to stop
 
 ```sh
-fkill
-fkill node
-fkill 3000
+gokill
+gokill node
+gokill 3000
 ```
 
-`fkill` delegates process discovery, fuzzy selection, and signaling to
-[gokill][gokill]. Queries match process names, PIDs, users, and ports. `/` edits
+[gokill][gokill] provides process discovery, fuzzy selection, and signaling.
+Queries match process names, PIDs, users, and ports. `/` edits
 the filter; Enter leaves filtering, then Enter sends TERM to the selected
 process. Ctrl+R refreshes, `i` shows details, `T` opens the dependency tree, `P`
 shows listening processes, and Ctrl+C quits.
 
 The picker lists all users and signals one selected PID. Tree browsing does
-not imply recursive killing. The old multi-selection, recursive tree killing,
-`-a`, `-9`, and `-s` options are not retained; unsupported flags fail explicitly.
+not imply recursive killing. Multi-selection and custom signals are unsupported.
 For a different signal, use the PID shown in the picker with `kill`.
 
 Mise manages gokill as the `http:gokill` tool. Its version and platform
 checksums are pinned in the [core profile][profile]; `ds apply core`
-installs it. The wrapper calls that mise-managed executable directly, avoiding
-unrelated tools on PATH. Neither command adds work to shell startup.
+installs it. Neither command adds work to shell startup.
 
 [caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server
 [gokill]: https://github.com/w31r4/gokill

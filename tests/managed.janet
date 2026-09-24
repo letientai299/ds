@@ -194,7 +194,7 @@
   (each relative ["/ds" "/src/dotfiles/shell.zsh" "/src/dotfiles/gitconfig"
                   "/src/dotfiles/gitignore" "/src/mise/mise.toml"
                   "/src/mise/mise.remote.toml" "/src/mise/mise.starship.toml"
-                  "/src/tools/serve" "/src/tools/fkill"]
+                  "/src/tools/serve"]
     (def file (string target relative))
     (filesystem/ensure-parent file)
     (spit file (string version "\n")))

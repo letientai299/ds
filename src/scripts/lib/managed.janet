@@ -4,7 +4,7 @@
 
 (def rc-start "# >>> ds managed >>>")
 (def rc-end "# <<< ds managed <<<")
-(def tool-names ["serve" "fkill"])
+(def tool-names ["serve"])
 
 (defn path [home relative]
   (string home "/" relative))

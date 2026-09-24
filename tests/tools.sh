@@ -67,19 +67,4 @@ cmp "$work/capture/site/line
 break.html" "$work/original"
 [ ! -e "$work/capture/reload" ]
 
-export MISE_DATA_DIR="$work/mise"
-mkdir -p "$MISE_DATA_DIR/installs/http-gokill/latest"
-cat >"$MISE_DATA_DIR/installs/http-gokill/latest/gokill" <<'SH'
-#!/bin/sh
-printf '%s\n' "$@" >"$DS_TEST_CAPTURE/gokill-args"
-exit 37
-SH
-chmod +x "$MISE_DATA_DIR/installs/http-gokill/latest/gokill"
-"$tools/fkill" --help >"$work/help"
-"$tools/fkill" 'query with spaces' && code=0 || code=$?
-[ "$code" -eq 37 ]
-printf '%s\n' 'query with spaces' >"$work/expected"
-cmp "$work/expected" "$work/capture/gokill-args"
-"$tools/fkill" -9 >"$work/out" 2>&1 && code=0 || code=$?
-[ "$code" -eq 2 ]
 printf '%s\n' 'tools: ok'

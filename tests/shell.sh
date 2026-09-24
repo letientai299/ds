@@ -52,8 +52,6 @@ cat >"$work/input" <<'ZSH'
 [[ -o auto_cd && $galiases[...] == '../..' ]] || exit 29
 [[ $commands[serve] == $DS_SHELL_STATE/bin/serve ]] || exit 35
 serve --help >/dev/null || exit 36
-[[ $commands[fkill] == $DS_SHELL_STATE/bin/fkill ]] || exit 38
-fkill --help >/dev/null || exit 39
 print -r -- trial-ready
 exit 0
 ZSH

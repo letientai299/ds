@@ -172,6 +172,7 @@ grep -q '	src/THIRD-PARTY.md$' "$work/snapshot/manifest.tsv" ||
 [ "$(readlink "$work/snapshot-install/current")" = versions/0.0.0-snapshot ] ||
 	fail 'current does not name the installed version relatively'
 [ -x "$work/snapshot-install/current/ds" ] || fail 'current does not resolve to a usable install'
+sh "$root/tests/plugins.sh" "$work/snapshot-install/current/src/dotfiles/shell.zsh"
 
 pull_root=$(
 	"$root/src/pull.sh" \

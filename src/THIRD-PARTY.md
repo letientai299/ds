@@ -24,6 +24,20 @@ on `compdef` being available. Docker completion generation and Git prompt hooks
 are omitted so the aliases work without Oh My Zsh startup or cache directories.
 Personal overrides live in [`aliases.zsh`][aliases].
 
+## Interactive Zsh plugins
+
+`src/dotfiles/plugins` contains the runtime sources from the old dotfiles'
+plugin checkouts. Each plugin's `REVISION` records its upstream commit.
+Sources and licenses travel together in every snapshot:
+
+- `zsh-defer`: GPL-3.0, see its `LICENSE`.
+- `zsh-autosuggestions`: MIT, see its `LICENSE`.
+- `fzf-tab`: MIT, see its `LICENSE` and `lib/zsh-ls-colors/LICENSE`.
+- `zsh-syntax-highlighting`: BSD-3-Clause, see its `COPYING.md`.
+
+[`interactive.zsh`][interactive] loads completion and these plugins after the
+first prompt, in dependency order. Shell startup needs no plugin downloads.
+
 ## Janet
 
 The pinned Janet runtime is compiled from the upstream amalgamation and shipped
@@ -82,3 +96,4 @@ SOFTWARE.
 [mise]: https://github.com/jdx/mise
 [omz-license]: dotfiles/omz/LICENSE.txt
 [aliases]: dotfiles/aliases.zsh
+[interactive]: dotfiles/interactive.zsh

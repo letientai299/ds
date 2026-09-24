@@ -44,7 +44,7 @@ cat >"$work/input" <<'ZSH'
 [[ $commands[ds] == $DS_SHELL_STATE/bin/ds ]] || exit 23
 [[ $commands[mise] == $DS_SHELL_STATE/bin/mise ]] || exit 24
 [[ $aliases[vi] == nvim ]] || exit 25
-[[ -n $functions[_ds_complete] ]] || exit 26
+[[ -z $functions[_zsh_autosuggest_start] ]] || exit 26
 [[ $(fd) == trial-pinned-fd ]] || exit 27
 [[ $aliases[gs] == 'git status' && $aliases[dcp] == 'docker pull' ]] || exit 28
 [[ -o auto_cd && $galiases[...] == '../..' ]] || exit 29

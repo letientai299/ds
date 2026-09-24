@@ -1,0 +1,88 @@
+zmodload zsh/zpty
+zmodload zsh/zselect
+
+function fail() {
+  print -ru2 -- "plugins: $*"
+  [[ ! -r $HOME/probe ]] || cat "$HOME/probe" >&2
+  [[ ! -r $HOME/terminal ]] || cat "$HOME/terminal" >&2
+  exit 1
+}
+
+function await_file() {
+  local output
+  repeat 600; do
+    while zpty -r shell output; do
+      print -r -- "$output" >>"$HOME/terminal"
+    done
+    [[ -f $1 ]] && return 0
+    zpty -t shell || fail 'shell exited early'
+    zselect -t 5
+  done
+  fail "timeout: ${1:t}"
+}
+
+function expect_probe() {
+  repeat 100; do
+    rm -f "$HOME/probe"
+    zpty -w -n shell $'\x18\x14'
+    await_file "$HOME/probe"
+    [[ $(<"$HOME/probe") == ${~1} ]] && return 0
+    zselect -t 5
+  done
+  fail "$2"
+}
+
+cat >"$HOME/.zshrc" <<'ZSH'
+if [[ $DS_TEST_MODE == existing ]]; then
+  autoload -Uz compinit
+  compinit -D
+  function compinit() { print duplicate >"$HOME/duplicate"; }
+fi
+export DS_SHELL_ROOT="${DS_TEST_SHELL:A:h:h:h}"
+source "$DS_TEST_SHELL"
+function reload() { source "$DS_TEST_SHELL"; }
+reload
+PROMPT='plugins> '
+function first_prompt() {
+  print -r -- "$+functions[_zsh_autosuggest_start] $+functions[_zsh_highlight] $+functions[enable-fzf-tab]" >"$HOME/first"
+  precmd_functions=(${precmd_functions:#first_prompt})
+}
+precmd_functions+=(first_prompt)
+function _ds_test_probe() {
+  print -r -- "$BUFFER|$POSTDISPLAY|${(j:,:)region_highlight}" >"$HOME/probe"
+}
+zle -N _ds_test_probe
+bindkey '^X^T' _ds_test_probe
+bindkey '^X^F' autosuggest-fetch
+print -r -- $#_zsh_defer_tasks >"$HOME/queued"
+zsh-defer -dm +1 +2 -c 'print ready >"$HOME/ready"'
+ZSH
+
+zpty -b shell zsh -d
+trap 'zpty -d shell' EXIT
+zpty -w shell 'print early >"$HOME/early"'
+await_file "$HOME/ready"
+[[ $(<"$HOME/early") == early ]] || fail 'early input lost'
+[[ $(<"$HOME/first") == '0 0 0' ]] || fail 'plugins blocked first prompt'
+[[ $(<"$HOME/queued") == 4 ]] || fail 'reload duplicated queue'
+[[ ! -e $HOME/duplicate ]] || fail 'completion initialized twice'
+
+zpty -w shell 'print -r -- "$_ds_plugins_ready|$_comps[ds]|$+functions[enable-fzf-tab]|$+functions[_zsh_autosuggest_start]|$+functions[_zsh_highlight]" >"$HOME/check"'
+await_file "$HOME/check"
+[[ $(<"$HOME/check") == '1|_ds_complete|1|1|1' ]] || fail "plugin state: $(<"$HOME/check")"
+zpty -w shell 'before="$(bindkey "^I")"; reload; [[ $(bindkey "^I") == "$before" && $before == *fzf-tab-complete* && $#_zsh_defer_tasks == 0 ]] && print ready >"$HOME/reload"'
+await_file "$HOME/reload"
+
+zpty -w shell 'echo ds-suggestion-value'
+zpty -w -n shell 'echo ds-sugg'
+zselect -t 10
+# Request after batched terminal input.
+zpty -w -n shell $'\x18\x06'
+expect_probe 'echo ds-sugg|estion-value|*' 'autosuggestion missing'
+
+zpty -w -n shell $'\x15ds_missing_command'
+zselect -t 10
+expect_probe '*fg=red*' 'syntax highlight missing'
+zpty -w -n shell $'\x15'
+zpty -w shell 'exit'
+print -r -- "plugins: $DS_TEST_MODE ok"

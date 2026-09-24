@@ -69,8 +69,9 @@ n() {
 _ds_fzf="$MISE_DATA_DIR/installs/fzf/latest/fzf"
 _ds_zoxide="$MISE_DATA_DIR/installs/zoxide/latest/zoxide"
 _ds_starship="$MISE_DATA_DIR/installs/starship/latest/starship"
-if [[ -x "$_ds_fzf" ]]; then
+if [[ -x "$_ds_fzf" ]] && (( ! ${+_ds_fzf_loaded} )); then
   source <("$_ds_fzf" --zsh)
+  typeset -g _ds_fzf_loaded=1
 fi
 if [[ "$_ds_layer" == remote && -x "$_ds_zoxide" ]]; then
   eval "$("$_ds_zoxide" init zsh)"
@@ -83,3 +84,4 @@ export DS_DS="$_ds_root/ds"
 unset _ds_fzf _ds_zoxide _ds_starship _ds_layer _ds_component _ds_environments _ds_root
 
 [[ ! -r "$XDG_CONFIG_HOME/ds/local.zsh" ]] || source "$XDG_CONFIG_HOME/ds/local.zsh"
+source "${${(%):-%x}:A:h}/interactive.zsh"

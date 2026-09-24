@@ -36,13 +36,16 @@ your own home, and the container disappears on exit.
 
 ## Without a checkout
 
+Start an Ubuntu container on the host:
+
 ```sh
-curl -fsSL https://raw.githubusercontent.com/letientai299/ds/main/src/try.sh | sh
+docker run --rm -it ubuntu:24.04 bash
 ```
 
-The container installs the latest release with
-[`src/install.sh`][install-sh], applies `core`, then opens Zsh. Only
-Docker is needed on the host.
+Copy `scripts/install.sh` into the container and run `sh install.sh --shell`,
+or use the single Docker command in [Try it first][try-first]. In an
+already running container, skip `docker run`. Source installation needs no
+published release or Docker engine inside the container.
 
 ## From a checkout
 
@@ -113,7 +116,8 @@ at the result. Zsh reads `.zshrc` only when interactive, so a non-interactive
 command has to source the fragment itself:
 
 ```sh
-./src/try.sh --command 'zsh -fc "source \$HOME/.config/ds/shell.zsh; command -v rg fzf nvim jq"'
+./src/try.sh --command \
+  'zsh -fc "source \$HOME/.config/ds/shell.zsh; command -v rg fzf nvim jq"'
 ```
 
 ## Limits
@@ -124,7 +128,7 @@ use are all outside its reach. See [Testing][testing] for the full list of
 manual boundaries.
 
 [docker]: https://www.docker.com/
-[install-sh]: ../src/install.sh
+[try-first]: ../README.md#try-it-first
 [readme]: ../README.md
 [shell-zsh]: ../src/dotfiles/shell.zsh
 [testing]: testing.md

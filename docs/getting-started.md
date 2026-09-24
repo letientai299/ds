@@ -8,11 +8,21 @@ this feel like" without a decision.
 
 ## Install
 
-Installing a published release needs neither a checkout nor Git, Janet, mise, or
-a preinstalled downloader on the target:
+Follow [Install from main][install-main] for macOS, Ubuntu, Debian, or Alpine,
+including a running container. `scripts/install.sh --no-apply` prepares sources
+and runtimes, then previews `core`. Without that flag it applies the layer.
+The installer uses the project containing the current directory, or clones
+`main` outside a checkout. This path needs no published `ds` release.
+
+### Published releases
+
+The following alternative requires a published release with installer and
+platform archive assets. It needs Curl or Wget and tar on the target, but no
+checkout, Git, Janet, or mise:
 
 ```sh
-curl -fsSL https://github.com/letientai299/ds/releases/latest/download/install.sh | sh
+curl -fsSL \
+  https://github.com/letientai299/ds/releases/latest/download/install.sh | sh
 ```
 
 Useful flags. All except `--no-apply` also read a `DS_`-prefixed environment
@@ -32,8 +42,8 @@ content-addressed, so the installer reuses an existing one.
 
 ## Prepare a checkout
 
-A checkout is needed only to develop `ds` or to push to an SSH host. It supports
-macOS and Linux on ARM64 and x64, and building the complete runtime matrix
+A checkout supports source installation, development, and SSH delivery. It runs
+on macOS and Linux on ARM64 and x64, and building the complete runtime matrix
 requires mise, Git, a C toolchain, and Docker.
 
 ```sh
@@ -141,5 +151,6 @@ disk.
 Avoid `ds apply --force` unless discarding each reported conflict is intentional.
 It removes conflicting targets without backups.
 
+[install-main]: ../README.md#install-from-main
 [layers]: ../README.md#layers
 [try]: try.md

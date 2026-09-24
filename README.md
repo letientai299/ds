@@ -36,12 +36,19 @@ project directory. It builds a reusable Ubuntu image with `core` installed,
 mounts the current directory at `/work`, and removes the container on exit.
 Use `ds shell --docker --rebuild` to refresh the image and capture checkout changes.
 
-Nothing is written to your home. The demo builds a snapshot, applies it inside a
-throwaway container, and hands over an interactive Zsh:
+From this checkout, install `main` inside a disposable Ubuntu container and
+open Zsh:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/letientai299/ds/main/src/try.sh | sh
+docker run --rm -it \
+  -v "$PWD/scripts/install.sh:/install.sh:ro" \
+  ubuntu:24.04 sh /install.sh --shell
 ```
+
+Only the installer is mounted. The cloned sources, tools, and configuration
+stay inside the container. Use `--no-apply` instead of `--shell` to preview.
+Inside an existing container with this checkout mounted at `/work`, run
+`sh /work/scripts/install.sh` from `/work` to use the mounted checkout.
 
 See [Try ds in Docker][try] for what to look at once the prompt appears,
 how to try the `remote` layer, and how to run the demo from a checkout.
@@ -77,29 +84,50 @@ and `ds help --all` for advanced operations. `ds apply` and `ds status` use the
 saved layer, initially `core`; status and previews identify the active
 configuration scope.
 
-### Install a release
+### Install from main
 
-Install the latest release into your own home. No checkout, no Git, and no
-language runtime on the machine:
-
-```sh
-curl -fsSL https://github.com/letientai299/ds/releases/latest/download/install.sh | sh
-```
-
-The installer detects the platform, downloads the matching release archive,
-verifies its checksum and every payload digest, installs an immutable version
-directory under `~/.local/share/ds`, and applies `core`.
-
-To preview instead of applying, install without converging and use the normal
-commands:
+Run the [source installer][source-installer] on macOS, Ubuntu, Debian, or Alpine:
 
 ```sh
-curl -fsSL https://github.com/letientai299/ds/releases/latest/download/install.sh | sh -s -- --no-apply
-~/.local/share/ds/versions/*/ds status core
-~/.local/share/ds/versions/*/ds apply core --dry-run
+sh scripts/install.sh --no-apply
+sh scripts/install.sh --shell
 ```
 
-Installer flags are documented in [Getting started and recovery][getting-started]; the release layout is in [Gitless delivery][delivery].
+The first command prepares the checkout and previews `core`. The second applies
+`core` and opens Zsh. Omit `--shell` to install without opening a shell.
+`--no-apply` still installs build prerequisites and downloads sources and
+runtimes; it does not apply dotfiles or install the layer's tools.
+
+The installer finds this project by walking up from the current directory.
+From a subdirectory, invoke the script by its relative or absolute path. Outside
+this project, it clones `main` under
+`${XDG_DATA_HOME:-~/.local/share}/ds-source`, or `--prefix DIR`. Existing
+checkouts and their local edits are reused without pulling or resetting them.
+Keep the sources: managed files link to them.
+
+For a new machine, copy `scripts/install.sh` there and run `sh install.sh`.
+The standalone script installs missing Linux prerequisites using root or
+`sudo`, fetches checksum-verified runtimes, builds Janet if needed, and clones
+missing sibling Neovim and Tmux configurations. No `ds` release or Docker engine
+is needed. macOS needs Command Line Tools (`xcode-select --install`) and
+[Homebrew][brew] for applying packages. `DS_NVIM_SOURCE` and `DS_TMUX_SOURCE`
+can select existing configuration directories.
+
+To install on an SSH host from this checkout:
+
+```sh
+scp scripts/install.sh my-host:ds-install.sh
+ssh -t my-host 'sh ~/ds-install.sh --layer remote --no-apply'
+ssh -t my-host 'sh ~/ds-install.sh --layer remote'
+```
+
+Use `--skip docker` with `--layer remote` on restricted hosts or containers.
+See `sh scripts/install.sh --help` for options. After applying, the launcher is
+available at `~/.local/bin/ds`.
+
+For development and portable delivery bundles, see [Working on ds][working-on-ds]
+and [Prepare a checkout][prepare-checkout]. Published release packaging remains
+in [Gitless delivery][delivery].
 
 Normal apply refuses conflicting managed targets. To preserve and replace
 conflicts, preview adoption first:
@@ -146,8 +174,8 @@ mise run check
 ```
 
 The payload itself lives under `src/`, which keeps the repository root to the
-`ds` launcher, `docs/`, `src/`, and `tests/`. A delivered snapshot uses the same
-shape, so `DS_ROOT` means one thing in both.
+`ds` launcher, `scripts/`, `docs/`, `src/`, and `tests/`. A delivered snapshot
+uses the same shape, so `DS_ROOT` means one thing in both.
 
 ## Verification
 
@@ -176,16 +204,20 @@ notices ship with every archive in [`src/THIRD-PARTY.md`][third-party].
 
 [alpine]: https://alpinelinux.org/
 [architecture]: docs/architecture.md
+[brew]: https://brew.sh/
 [cli]: docs/cli.md
 [conflict-ops]: docs/cli.md#conflict-operations
 [delivery]: docs/delivery.md
 [docker]: https://www.docker.com/
 [getting-started]: docs/getting-started.md
+[prepare-checkout]: docs/getting-started.md#prepare-a-checkout
 [janet]: https://janet-lang.org/
 [license]: LICENSE
 [mise]: https://mise.jdx.dev/
 [rocky]: https://rockylinux.org/
+[source-installer]: scripts/install.sh
 [testing]: docs/testing.md
 [third-party]: src/THIRD-PARTY.md
 [try]: docs/try.md
 [ubuntu]: https://ubuntu.com/
+[working-on-ds]: #working-on-ds

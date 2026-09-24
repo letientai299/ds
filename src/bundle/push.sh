@@ -98,7 +98,7 @@ fi
 printf '%s\n' "ds push: transferring $version" >&2
 if command -v tar >/dev/null 2>&1 && remote 'command -v tar' >/dev/null 2>&1; then
 	# Stream only verified files; dereference source links.
-	tar -chf - -C "$snapshot" -T "$transfer_list" |
+	tar --no-xattrs -chf - -C "$snapshot" -T "$transfer_list" |
 		remote "mkdir -p \"$remote_source\" && tar -xf - -C \"$remote_source\""
 else
 	remote "mkdir -p \"$remote_source\" && cat >\"$remote_source/manifest.tsv\" && chmod 0644 \"$remote_source/manifest.tsv\"" \

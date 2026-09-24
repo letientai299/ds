@@ -81,6 +81,7 @@ run = [
   "sh tests/shell.sh",
   "sh tests/aliases.sh",
   "sh tests/plugins.sh",
+  "zsh -df tests/prompt.zsh",
   "sh tests/tools.sh",
   "sh tests/exports.sh",
   "sh tests/ux.sh",
@@ -203,3 +204,7 @@ depends = [
 ]
 description = "Run the complete reproducible validation matrix"
 run = "printf '%s\\n' 'verify: ok'"
+
+[tasks."bench:prompt"]
+description = "Measure prompt refresh latency in disposable repositories"
+run = "zsh -df tests/prompt-bench.zsh"

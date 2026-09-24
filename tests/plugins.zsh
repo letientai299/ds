@@ -51,6 +51,12 @@ precmd_functions+=(first_prompt)
 function _ds_test_probe() {
   print -r -- "$BUFFER|$POSTDISPLAY|${(j:,:)region_highlight}" >"$HOME/probe"
 }
+function _ds_test_ready() {
+  [[ ${_ds_test_waiting:-0} == 1 ]] && print ready >"$HOME/prompt-ready"
+  return 0
+}
+autoload -Uz add-zle-hook-widget
+add-zle-hook-widget line-init _ds_test_ready
 zle -N _ds_test_probe
 bindkey '^X^T' _ds_test_probe
 bindkey '^X^F' autosuggest-fetch
@@ -73,7 +79,11 @@ await_file "$HOME/check"
 zpty -w shell 'before="$(bindkey "^I")"; reload; [[ $(bindkey "^I") == "$before" && $before == *fzf-tab-complete* && $#_zsh_defer_tasks == 0 ]] && print ready >"$HOME/reload"'
 await_file "$HOME/reload"
 
+zpty -w shell '_ds_test_waiting=1'
+await_file "$HOME/prompt-ready"
+rm -f "$HOME/prompt-ready"
 zpty -w shell 'echo ds-suggestion-value'
+await_file "$HOME/prompt-ready"
 zpty -w -n shell 'echo ds-sugg'
 zselect -t 10
 # Request after batched terminal input.

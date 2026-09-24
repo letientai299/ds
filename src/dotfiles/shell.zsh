@@ -50,9 +50,7 @@ alias vim=nvim
 source "${${(%):-%x}:A:h}/aliases.zsh"
 source "${${(%):-%x}:A:h}/bindkeys.zsh"
 
-# Minimal two-line prompt. Optional Starship replaces this when installed.
-PROMPT='%F{cyan}%n@%m%f %F{blue}%~%f
-%(?.%F{green}.%F{red})❯%f '
+source "${${(%):-%x}:A:h}/prompt.zsh"
 
 # Keep nnn in the current shell after quitting with q.
 n() {
@@ -79,6 +77,8 @@ if [[ "$_ds_layer" == remote && -x "$_ds_zoxide" ]]; then
   eval "$("$_ds_zoxide" init zsh)"
 fi
 if (( ${_ds_environments[(Ie)starship]} )) && [[ -x "$_ds_starship" ]]; then
+  add-zsh-hook -d preexec _ds_prompt_preexec
+  add-zsh-hook -d precmd _ds_prompt_precmd
   eval "$("$_ds_starship" init zsh)"
 fi
 export DS_DS="$_ds_root/ds"

@@ -93,6 +93,44 @@ PATH=/missing
 expect '' 'missing git'
 PATH=$local_path
 cd "$work/repo"
+# PATH changes must bypass Apple's cached executable.
+mkdir "$work/bin"
+export DS_TEST_GIT=${commands[git]} DS_TEST_GIT_LOG="$work/git.log"
+cat > "$work/bin/git" <<'GIT'
+#!/bin/sh
+printf '%s\n' "$1" >> "$DS_TEST_GIT_LOG"
+if [ "$1" = log ] && [ -n "${DS_TEST_LOG_FAIL:-}" ]; then
+  exit 1
+fi
+exec "$DS_TEST_GIT" "$@"
+GIT
+chmod +x "$work/bin/git"
+PATH="$work/bin:$PATH"
+_ds_prompt_oid=''
+expect '*⑂ literal*' 'PATH wrapper'
+[[ $(<"$DS_TEST_GIT_LOG") == $'status\nlog' ]] || fail 'wrapper bypassed'
+_ds_prompt_oid=''
+export DS_TEST_LOG_FAIL=1
+expect '*⑂ literal*' 'log failure'
+[[ -z $_ds_prompt_oid && -z $_ds_prompt_subject ]] || fail 'failed log cached'
+unset DS_TEST_LOG_FAIL
+expect '*literal %%F{red}*' 'log retry'
+[[ -n $_ds_prompt_oid && -n $_ds_prompt_subject ]] || fail 'log retry missing'
+PATH=$local_path
+if [[ $OSTYPE == darwin* && ${commands[git]} == /usr/bin/git ]]; then
+  _ds_prompt_resolve_git
+  [[ $_ds_prompt_command == "$(/usr/bin/xcrun --find git)" ]] || fail 'Apple resolution'
+  _ds_prompt_apple_git="$work/missing"
+  _ds_prompt_resolve_git
+  [[ -x $_ds_prompt_command ]] || fail 'missing executable recovery'
+  () {
+    local -x DEVELOPER_DIR="$work/missing"
+    _ds_prompt_resolve_git
+    [[ $_ds_prompt_command == git ]] || fail 'resolver fallback'
+  }
+  _ds_prompt_resolve_git
+  [[ -x $_ds_prompt_command ]] || fail 'developer selection recovery'
+fi
 source "$root/src/dotfiles/prompt.zsh"
 [[ ${(M)#precmd_functions:#_ds_prompt_precmd} == 1 ]] || fail 'duplicate hook'
 preexec_functions=()

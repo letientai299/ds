@@ -20,6 +20,8 @@ an abbreviated commit ID; repositories without commits omit the commit subject.
 Git status refreshes before each prompt without fetching or locking the index.
 The commit subject stays cached until HEAD changes. Large repositories and slow
 filesystems can increase refresh time because status runs synchronously.
+On macOS, the prompt resolves Apple's Git launcher to its selected executable
+and reuses that path. Changes to PATH or developer-tool selection are respected.
 
 The second line shows `•` for one background or stopped job and `2•` for two.
 A pipeline counts as one job. Command duration appears only above ten seconds;
@@ -30,6 +32,9 @@ Run `zsh -df tests/prompt.zsh` for disposable Git fixtures and interactive job
 checks. Run `mise run bench:prompt` for refresh latency percentiles across small,
 large, dirty, and non-repository directories. `DS_BENCH_SAMPLES` sets repetitions.
 The benchmark includes the old static prompt as a baseline.
+Pass checkout paths to `mise run bench:prompt -- /path/to/checkout` to measure
+existing repositories with their normal Git configuration. New-head samples
+clear the subject cache; they do not change HEAD or flush filesystem caches.
 
 Implementation: [prompt source][source]. Protocols: [Git status][git-status] and
 [Zsh prompt expansion][zsh-prompt].

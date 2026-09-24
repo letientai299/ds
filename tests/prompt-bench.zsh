@@ -4,11 +4,6 @@ root=${0:A:h:h}
 mkdir -p "$root/.ai/prompt"
 work=$(mktemp -d "$root/.ai/prompt/bench.XXXXXX")
 trap 'cd "$root"; rm -rf "$work"' EXIT
-export GIT_CEILING_DIRECTORIES=${work:h}
-export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
-export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.invalid
-export GIT_COMMITTER_NAME=$GIT_AUTHOR_NAME GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 source "$root/src/dotfiles/prompt.zsh"
 preexec_functions=()
 COLUMNS=160
@@ -38,6 +33,21 @@ bench() {
     "$label" "$timings[$(( (samples + 1) / 2 ))]" "$timings[$(( (samples * 95 + 99) / 100 ))]" "$timings[-1]" "$samples"
 }
 print -r -- "zsh=$ZSH_VERSION git=$(git --version) os=$(uname -sm)"
+if (( $# )); then
+  # Preserve each checkout's normal Git configuration.
+  for checkout in "${(@)argv:A}"; do
+    cd "$checkout"
+    print -r -- "repo=$PWD"
+    bench "${PWD}:warm"
+    bench "${PWD}:new-head" cold
+  done
+  exit 0
+fi
+export GIT_CEILING_DIRECTORIES=${work:h}
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.invalid
+export GIT_COMMITTER_NAME=$GIT_AUTHOR_NAME GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 cd "$work"
 baseline='%F{cyan}%n@%m%f %F{blue}%~%f
 %(?.%F{green}.%F{red})❯%f '

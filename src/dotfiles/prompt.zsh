@@ -5,13 +5,33 @@ autoload -Uz add-zsh-hook
 setopt prompt_subst prompt_percent no_prompt_bang
 typeset -g _ds_prompt_git='' _ds_prompt_duration='' _ds_prompt_char='%F{green}❯'
 typeset -g _ds_prompt_oid='' _ds_prompt_subject=''
+typeset -g _ds_prompt_command=git _ds_prompt_apple_git='' _ds_prompt_apple_key=''
 typeset -gF _ds_prompt_started=0
+# Reserve one column against automatic wrapping.
 PROMPT='%$(( COLUMNS > 1 ? COLUMNS - 1 : 1 ))>…>%F{blue}%(5~|…/%4~|%~)%f${_ds_prompt_git}%>>
 %F{yellow}%(1j.%(2j.%j.)• .)%f${_ds_prompt_duration}%F{yellow}%D{%H:%M:%S}%f ${_ds_prompt_char}%f '
 RPROMPT=''
 
 _ds_prompt_preexec() {
+  # Exclude time spent editing the command.
   _ds_prompt_started=$EPOCHREALTIME
+}
+
+_ds_prompt_resolve_git() {
+  emulate -L zsh
+  _ds_prompt_command=git
+  # Preserve PATH-selected wrappers and alternate installations.
+  [[ $OSTYPE == darwin* && ${commands[git]} == /usr/bin/git ]] || return 0
+  local selected=/var/db/xcode_select_link
+  local key="${(q)DEVELOPER_DIR}:${(q)SDKROOT}:${(q)TOOLCHAINS}:${selected:A}"
+  # Re-resolve after developer-tool selection changes.
+  if [[ $key != $_ds_prompt_apple_key || ! -x $_ds_prompt_apple_git ]]; then
+    _ds_prompt_apple_git=$(/usr/bin/xcrun --find git 2>/dev/null) || _ds_prompt_apple_git=''
+    _ds_prompt_apple_key=$key
+  fi
+  # Avoid Apple's launcher on every refresh.
+  [[ ! -x $_ds_prompt_apple_git ]] || _ds_prompt_command=$_ds_prompt_apple_git
+  return 0
 }
 
 _ds_prompt_git() {
@@ -19,7 +39,12 @@ _ds_prompt_git() {
   local report line branch oid xy sub ahead=0 behind=0 stash=0
   local -i staged=0 changed=0 untracked=0 conflicts=0
   _ds_prompt_git=''
-  report=$(GIT_OPTIONAL_LOCKS=0 command git status --porcelain=v2 --branch --ahead-behind --show-stash --untracked-files=normal --ignore-submodules=none 2>/dev/null) || return 0
+  _ds_prompt_resolve_git
+  # Keep fresh counts without index-lock contention.
+  report=$(GIT_OPTIONAL_LOCKS=0 command "$_ds_prompt_command" status \
+    --porcelain=v2 --branch --ahead-behind --show-stash \
+    --untracked-files=normal --ignore-submodules=none 2>/dev/null) || return 0
+  # Porcelain quotes newlines inside filenames.
   for line in ${(f)report}; do
     case $line in
       '# branch.head '*) branch=${line#\# branch.head } ;;
@@ -33,6 +58,7 @@ _ds_prompt_git() {
         xy=${${line#? }%% *}
         sub=${${line#?????}%% *}
         [[ ${xy[1]} == . ]] || (( ++staged ))
+        # Submodule dirtiness also counts as unstaged.
         if [[ ${xy[2]} != . || $sub == S*[MU]* ]]; then
           (( ++changed ))
         fi
@@ -42,6 +68,7 @@ _ds_prompt_git() {
     esac
   done
   [[ $branch != '(detached)' ]] || branch="@${oid[1,8]}"
+  # Neutralize terminal controls and prompt escapes.
   branch=${branch//[[:cntrl:]]/ }
   branch=${branch//\%/%%}
   _ds_prompt_git=" %F{magenta}⑂ $branch%f"
@@ -54,10 +81,15 @@ _ds_prompt_git() {
   (( conflicts )) && stats+=" ×$conflicts"
   (( stash )) && stats+=" ≡$stash"
   [[ -z $stats ]] || _ds_prompt_git+="%F{yellow}$stats%f"
+  # Commit subjects only change with HEAD.
   if [[ $oid != $_ds_prompt_oid ]]; then
     _ds_prompt_subject=''
     if [[ $oid != '(initial)' ]]; then
-      _ds_prompt_subject=$(command git log -1 --format=%s --no-show-signature "$oid" -- 2>/dev/null)
+      # Retry transient failures on subsequent prompts.
+      _ds_prompt_subject=$(command "$_ds_prompt_command" log -1 --format=%s --no-show-signature "$oid" -- 2>/dev/null) || {
+        _ds_prompt_oid=''
+        return 0
+      }
     fi
     _ds_prompt_subject=${_ds_prompt_subject//[[:cntrl:]]/ }
     _ds_prompt_oid=$oid
@@ -69,10 +101,12 @@ _ds_prompt_git() {
 }
 
 _ds_prompt_precmd() {
+  # Capture status before any command overwrites it.
   local -i code=$?
   emulate -L zsh
   local -F elapsed=0
   (( _ds_prompt_started )) && elapsed=$(( EPOCHREALTIME - _ds_prompt_started ))
+  # Empty prompts must not reuse command duration.
   _ds_prompt_started=0
   _ds_prompt_duration=''
   if (( elapsed > 10 )); then

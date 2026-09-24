@@ -3,12 +3,13 @@ autoload -Uz add-zsh-hook
 
 # Expand data once; never evaluate repository text.
 setopt prompt_subst prompt_percent no_prompt_bang
-typeset -g _ds_prompt_git='' _ds_prompt_duration='' _ds_prompt_char='%F{green}❯'
+typeset -g _ds_prompt_git='' _ds_prompt_context='' _ds_prompt_duration=''
+typeset -g _ds_prompt_char='%F{green}❯'
 typeset -g _ds_prompt_oid='' _ds_prompt_subject=''
 typeset -g _ds_prompt_command=git _ds_prompt_apple_git='' _ds_prompt_apple_key=''
 typeset -gF _ds_prompt_started=0
 # Reserve one column against automatic wrapping.
-PROMPT='%$(( COLUMNS > 1 ? COLUMNS - 1 : 1 ))>…>%F{blue}%(5~|…/%4~|%~)%f${_ds_prompt_git}%>>
+PROMPT='%$(( COLUMNS > 1 ? COLUMNS - 1 : 1 ))>…>${_ds_prompt_context}%F{blue}%(5~|…/%4~|%~)%f${_ds_prompt_git}%>>
 %F{yellow}%(1j.%(2j.%j.)• .)%f${_ds_prompt_duration}%F{yellow}%D{%H:%M:%S}%f ${_ds_prompt_char}%f '
 RPROMPT=''
 
@@ -100,6 +101,58 @@ _ds_prompt_git() {
   return 0
 }
 
+_ds_prompt_context() {
+  emulate -L zsh
+  local context='' host=${HOST%%.*}
+  local line mountpoint options super_options physical_pwd
+  local -a fields
+  local -i separator index best_length=0 readonly_mount=0
+
+  if [[ -n ${SSH_CONNECTION:-}${SSH_TTY:-} ]]; then
+    host=${host//[[:cntrl:]]/ }
+    host=${host//\%/%%}
+    context+="%F{cyan}ssh:$host%f "
+  fi
+  (( EUID == 0 )) && context+='%F{red}⚙️%f '
+
+  if [[ $OSTYPE == linux* && -r /proc/self/mountinfo ]]; then
+    physical_pwd=${PWD:A}
+    while IFS= read -r line; do
+      fields=("${(@s: :)line}")
+      (( $#fields >= 10 )) || continue
+      separator=0
+      for (( index=7; index <= $#fields; ++index )); do
+        if [[ ${fields[index]} == '-' ]]; then
+          separator=$index
+          break
+        fi
+      done
+      (( separator > 0 && separator + 3 <= $#fields )) || continue
+      mountpoint=${fields[5]}
+      mountpoint=${mountpoint//\\040/$' '}
+      mountpoint=${mountpoint//\\011/$'\t'}
+      mountpoint=${mountpoint//\\012/$'\n'}
+      mountpoint=${mountpoint//\\134/$'\\'}
+      if [[ $physical_pwd != $mountpoint && $mountpoint != / && $physical_pwd != "$mountpoint"/* ]]; then
+        continue
+      fi
+      options=${fields[6]}
+      super_options=${fields[separator + 3]}
+      if (( ${#mountpoint} > best_length )); then
+        best_length=${#mountpoint}
+        if [[ ",$options," == *,ro,* || ",$super_options," == *,ro,* ]]; then
+          readonly_mount=1
+        else
+          readonly_mount=0
+        fi
+      fi
+    done < /proc/self/mountinfo
+  fi
+  (( readonly_mount )) && context+='%F{yellow}🔒%f '
+
+  _ds_prompt_context=$context
+}
+
 _ds_prompt_precmd() {
   # Capture status before any command overwrites it.
   local -i code=$?
@@ -117,6 +170,7 @@ _ds_prompt_precmd() {
   fi
   _ds_prompt_char='%F{green}❯'
   (( code == 0 )) || _ds_prompt_char="%F{red}[$code]❯"
+  _ds_prompt_context
   _ds_prompt_git
   return 0
 }

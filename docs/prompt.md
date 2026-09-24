@@ -3,9 +3,11 @@
 The built-in prompt uses Zsh and Git. No prompt plugin is required.
 Open a new shell after installing an updated checkout.
 
-The first line shows the directory, `⑂` branch, Git counts, and latest commit
-subject. Long lines truncate to fit the terminal. Detached HEAD shows `@` and
-an abbreviated commit ID; repositories without commits omit the commit subject.
+The first line shows the SSH host when connected remotely, `⚙️` for an effective
+root shell, and `🔒` when the current Linux filesystem is mounted read-only. It
+also shows the directory, `⑂` branch, Git counts, and latest commit subject.
+Long lines truncate to fit the terminal. Detached HEAD shows `@` and an
+abbreviated commit ID; repositories without commits omit the commit subject.
 
 | Symbol | Count                                      |
 | ------ | ------------------------------------------ |

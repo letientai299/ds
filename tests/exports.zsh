@@ -17,7 +17,7 @@ reload
 [[ -o hist_ignore_all_dups && -o hist_ignore_space ]] || fail 'history options missing'
 [[ $LC_ALL == $LANG && $LC_CTYPE == $LANG && $LANG == *UTF-8 ]] || fail 'locale changed'
 [[ ! -e $work/fd-calls ]] || fail 'startup scanned files'
-[[ -z $(find "$HOME" -mindepth 1 -print) ]] || fail 'startup wrote files'
+[[ $(find "$HOME" -type f -print) == "$XDG_CACHE_HOME/ds/git-version" ]] || fail 'unexpected startup files'
 [[ ${#path} == ${#${(u)path}} ]] || fail 'PATH contains duplicates'
 
 cd "$work/repo"

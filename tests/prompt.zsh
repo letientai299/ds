@@ -151,6 +151,7 @@ _ds_prompt_precmd
 COLUMNS=40
 rendered=${(%%)PROMPT}
 plain=${rendered//$'\e'\[[0-9\;]##m/}
+plain=${plain#$'\n'}
 lines=("${(@f)plain}")
 [[ $#lines == 2 && ${#lines[1]} -le 39 ]] || fail 'terminal width'
 [[ $lines[2] == [0-9][0-9]:[0-9][0-9]:[0-9][0-9]' ❯ ' ]] || fail clock

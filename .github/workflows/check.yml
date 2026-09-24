@@ -26,6 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y zsh
+
       # The sibling Neovim and Tmux checkouts that build.sh git-exports are not
       # part of this repository, so tests/contract.sh cannot build a snapshot
       # here. check:unit is everything that does not need them.

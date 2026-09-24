@@ -29,6 +29,8 @@
   (put result "MISE_DATA_DIR" (env-path result "MISE_DATA_DIR" (string data-home "/mise")))
   (put result "MISE_STATE_DIR" (env-path result "MISE_STATE_DIR" (string state-home "/mise")))
   (put result "MISE_SYSTEM_CONFIG_DIR" (string config-home "/ds/mise-system"))
+  # Keep staged applies off old config hooks.
+  (put result "MISE_GLOBAL_CONFIG_FILE" (string (config-root root) "/mise.toml"))
   (put result "MISE_OVERRIDE_CONFIG_FILENAMES" "mise.toml")
   (put result "MISE_GLOBAL_CONFIG_ROOT" (config-root root))
   (put result "MISE_TRUSTED_CONFIG_PATHS" (config-root root))

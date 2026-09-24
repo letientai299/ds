@@ -38,7 +38,7 @@ matrix.
 | ---------------------- | ---------------------------------------------------------------------------------- |
 | `e2e:containers`       | Gitless snapshots on Alpine and Ubuntu, ARM64 and x64, read-only and unprivileged  |
 | `e2e:controller`       | Platform probe, content-addressed SSH push, isolated-home preview, and idempotence |
-| `e2e:core`             | Two convergent core applies on Alpine and Ubuntu plus optional Starship lifecycle  |
+| `e2e:core`             | Two convergent core applies on Alpine and Ubuntu                                   |
 | `e2e:remote`           | Remote tools and dedicated Tmux behavior on Alpine musl and Ubuntu glibc           |
 | `e2e:docker-readiness` | Existing engine, Buildx, Compose, pinned pull/run, and tiny image build/run        |
 | `e2e:macos`            | No-write isolated-home previews and Homebrew package selection                     |

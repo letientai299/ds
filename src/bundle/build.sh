@@ -72,7 +72,6 @@ cp "$root/src/catalog.toml" "$payload/catalog.toml"
 # binaries, so it becomes a manifest entry like any other payload file.
 cp "$root/src/THIRD-PARTY.md" "$payload/THIRD-PARTY.md"
 [ ! -f "$root/src/mise/mise.remote.toml" ] || cp "$root/src/mise/mise.remote.toml" "$payload/mise/mise.remote.toml"
-[ ! -f "$root/src/mise/mise.starship.toml" ] || cp "$root/src/mise/mise.starship.toml" "$payload/mise/mise.starship.toml"
 cp -R "$root/src/scripts/." "$payload/scripts/"
 cp -R "$root/src/dotfiles" "$payload/dotfiles"
 cp -R "$root/src/tools" "$payload/tools"

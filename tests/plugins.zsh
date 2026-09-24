@@ -76,6 +76,8 @@ await_file "$HOME/ready"
 zpty -w shell 'print -r -- "$_ds_plugins_ready|$_comps[ds]|$+functions[enable-fzf-tab]|$+functions[_zsh_autosuggest_start]|$+functions[_zsh_highlight]" >"$HOME/check"'
 await_file "$HOME/check"
 [[ $(<"$HOME/check") == '1|_ds_complete|1|1|1' ]] || fail "plugin state: $(<"$HOME/check")"
+zpty -w shell '[[ $_comps[cmake] == _cmake && ${fpath[(Ie)$HOME/.local/share/zsh/site-functions]} -gt 0 && ${#fpath} == ${#${(u)fpath}} ]] && print ready >"$HOME/completions"'
+await_file "$HOME/completions"
 zpty -w shell 'before="$(bindkey "^I")"; reload; [[ $(bindkey "^I") == "$before" && $before == *fzf-tab-complete* && $#_zsh_defer_tasks == 0 ]] && print ready >"$HOME/reload"'
 await_file "$HOME/reload"
 

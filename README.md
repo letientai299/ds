@@ -11,11 +11,10 @@ Linux][rocky], and macOS.
 
 ## Layers
 
-| Layer    | Contents                                                                |
-| -------- | ----------------------------------------------------------------------- |
-| `core`   | mise, Git, Curl, Zsh, Neovim, fd, FZF, ripgrep, nnn, jq, gokill, and xh |
-| `remote` | `core` plus Tmux, [Docker][docker] readiness, Zoxide, Bat, Delta        |
-| optional | Starship, enabled independently with `ds apply starship`                |
+| Layer    | Contents                                                                              |
+| -------- | ------------------------------------------------------------------------------------- |
+| `core`   | mise, Git, Curl, Zsh, Neovim, fd, FZF, ripgrep, Worktrunk, Zoxide, jq, gokill, and xh |
+| `remote` | `core` plus Tmux, [Docker][docker] readiness, Bat, Delta                              |
 
 `src/catalog.toml` defines the layers. `ds status LAYER --verbose` shows
 resolved components and managed files. `remote` is an extended local preset;

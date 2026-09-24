@@ -69,7 +69,7 @@ run_case() {
 				set -e
 				source \"$HOME/.config/ds/shell.zsh\"
 				echo shell-sourced
-                command -v mise fd fzf rg nvim nnn jq xh ds >/dev/null
+                command -v mise fd fzf rg nvim wt zoxide jq xh ds >/dev/null
 				echo commands-present
                 [ -f \"$HOME/.config/nvim/init.lua\" ]
 				echo nvim-config-present
@@ -91,6 +91,8 @@ run_case() {
 			zsh -f -c "
 				set -e
 				source \"$HOME/.config/ds/shell.zsh\"
+                wt --version >/dev/null
+                zoxide --version >/dev/null
                 fd --version >/dev/null
                 fzf --version >/dev/null
                 rg --version >/dev/null
@@ -100,27 +102,6 @@ run_case() {
                 nvim --headless --clean +qa
 				echo tools-executed
 			"
-			if [ "$2" = alpine ]; then
-				zsh -f -c "
-					set -e
-					source \"$HOME/.config/ds/shell.zsh\"
-					[[ -z \"\${STARSHIP_SHELL:-}\" ]]
-					ds add starship
-					[[ \"\$STARSHIP_SHELL\" = zsh ]]
-					starship --version >/dev/null
-					echo optional-refresh-ready
-				"
-				"$installed/ds" status starship
-				"$installed/ds" unapply starship
-				if "$installed/ds" status starship | grep -q "^starship: complete$"; then
-					exit 1
-				fi
-				zsh -f -c "
-					set -e
-					source \"$HOME/.config/ds/shell.zsh\"
-					[[ -z \"\${STARSHIP_SHELL:-}\" ]]
-				"
-			fi
             printf "%s\n" shell-ready
             chown -R "$HOST_UID:$HOST_GID" "$HOME"
 		' ds-core "$manifest_sha" "$name" >"$work/$platform-$name.out"; then

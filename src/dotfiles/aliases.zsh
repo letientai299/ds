@@ -7,6 +7,10 @@ source "$_ds_alias_root/omz/docker.plugin.zsh"
 unset _ds_alias_root
 
 alias ..='cd ..'
+alias so=source
+alias :q=exit
+alias wrap='tput smam'
+alias nowrap='tput rmam'
 
 alias gcf!="git commit --amend --no-edit"
 alias gll='git log --pretty="%C(Yellow)%h  %C(reset)%ad (%C(Green)%cr%C(reset))%x09 %C(Cyan)%an: %C(reset)%s"'

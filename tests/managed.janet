@@ -193,8 +193,8 @@
   (def target (string prefix "/versions/" version))
   (each relative ["/ds" "/src/dotfiles/shell.zsh" "/src/dotfiles/gitconfig"
                   "/src/dotfiles/gitignore" "/src/dotfiles/rgrc" "/src/mise/mise.toml"
-                  "/src/mise/mise.remote.toml" "/src/mise/mise.starship.toml"
-                  "/src/tools/serve" "/src/tools/fzf-files"]
+                  "/src/mise/mise.remote.toml"
+                  "/src/tools/serve" "/src/tools/fzf-files" "/src/tools/fzf-dirs"]
     (def file (string target relative))
     (filesystem/ensure-parent file)
     (spit file (string version "\n")))

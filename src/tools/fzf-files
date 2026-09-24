@@ -1,31 +1,5 @@
 #!/usr/bin/env zsh
 set -euo pipefail
-
-source "${0:A:h:h}/dotfiles/fzf-includes.zsh"
-if (( $+commands[fd] )); then
-  finder=$commands[fd]
-elif (( $+commands[fdfind] )); then
-  finder=$commands[fdfind]
-else
-  print -ru2 -- 'fzf-files: fd is unavailable'
-  exit 1
-fi
-
-{
-  "$finder" --hidden --type f --exclude .git --strip-cwd-prefix
-
-  # Restrict ignored scans to explicit roots.
-  search_paths=()
-  for directory in "${include_dirs[@]}"; do
-    [[ ! -d $directory ]] || search_paths+=(--search-path "$directory")
-  done
-  if (( $#search_paths )); then
-    "$finder" --no-ignore --hidden --type f --exclude .git "${search_paths[@]}"
-  fi
-
-  for pattern in "${include_files[@]}"; do
-    for file in ./${~pattern}(N); do
-      [[ ! -f $file ]] || print -r -- "${file#./}"
-    done
-  done
-} | awk '!seen[$0]++'
+program=${0:t}
+kind=f
+source "${0:A:h:h}/dotfiles/fzf-paths.zsh"

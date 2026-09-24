@@ -1,7 +1,7 @@
 # Shell tools
 
-`ds apply core` installs `serve` and `fzf-files` in `~/.local/bin` and manages
-gokill through mise. Trial shells expose the same commands. Existing files at
+`ds apply core` installs `serve`, `fzf-files`, and `fzf-dirs` in `~/.local/bin` and
+manages gokill, Worktrunk, and zoxide through mise. Trial shells expose the same commands. Existing files at
 managed paths follow the normal adoption and conflict rules.
 
 ## File selection and search
@@ -16,6 +16,55 @@ to match case for one invocation. The [shell exports][exports] also select
 Neovim as the editor and configure history. The UTF-8 locale uses `en_US.UTF-8`
 on macOS and `C.UTF-8` on Linux. Local overrides belong in
 `$XDG_CONFIG_HOME/ds/local.zsh`.
+
+## Navigate directories and worktrees
+
+Use `z` and `zi` for [zoxide][zoxide] navigation across projects. Use `j query`
+to jump to a remembered directory inside the current Git checkout. With no
+match, or no query, `j` opens the scoped `fzf-dirs` picker. Outside Git, the
+picker stays under the current directory. Ignored directory searches use the
+same bounded include settings as file selection.
+
+[Worktrunk][worktrunk] is available as `wt` in core. Its upstream shell
+integration loads after completion initializes, or on the first invocation,
+so `wt switch` can change the current shell's directory. ds owns this integration;
+there is no need to run `wt config shell install`. Use native Git commands
+alongside Worktrunk; the old Git automation scripts are not included.
+
+No terminal file manager is selected by ds. Existing independently installed
+file managers are left under their current package manager's ownership.
+
+## Completion and shell conveniences
+
+[zsh-completions][completions] joins the existing deferred completion setup.
+`~/.local/share/zsh/site-functions` and the corresponding XDG data path accept
+personal completion definitions. SSH completion combines config aliases with
+known hosts, follows user config includes, and re-reads them when completing.
+It skips include cycles and bounds config traversal. It does not scan SSH files
+at startup or on each prompt.
+
+`local_todo` opens `.dump/todo.md` in `$EDITOR`, shared by a repository's
+worktrees. `so` sources a file, `:q` exits, and `wrap` / `nowrap` control terminal
+line wrapping. Interactive comments are enabled, the bell is disabled, and
+Ctrl-D does not exit the shell. `exit` and `:q` still exit normally.
+
+`gon` retains its existing `git open` alias. The separate `git-open` dependency
+must already be available if this alias is used.
+
+## Automatic project environments
+
+To enable mise's interactive environment activation, add this to
+`$XDG_CONFIG_HOME/ds/local.zsh` and start a new shell:
+
+```zsh
+export DS_MISE_ACTIVATE=1
+```
+
+Activation runs before the first command and installs directory/prompt hooks.
+This makes project variables available in the shell itself. It is deliberately
+not deferred, since that could leave early commands with the wrong environment.
+Repeated sourcing does not install duplicate hooks. Without this option, ds
+uses shims; `mise exec` and `mise run` still load project environments explicitly.
 
 ## Serve a directory
 
@@ -63,3 +112,6 @@ installs it. Neither command adds work to shell startup.
 [fzf-includes]: ../src/dotfiles/fzf-includes.zsh
 [rgrc]: ../src/dotfiles/rgrc
 [exports]: ../src/dotfiles/exports.zsh
+[worktrunk]: https://worktrunk.dev/
+[zoxide]: https://github.com/ajeetdsouza/zoxide
+[completions]: https://github.com/zsh-users/zsh-completions

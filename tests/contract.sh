@@ -85,14 +85,6 @@ if grep -q '^  packages .*docker\|^  converge Docker' "$work/skip.out"; then
 fi
 [ ! -e "$work/dry-remote" ] || fail 'remote skip dry-run wrote to the isolated home'
 
-HOME=$work/dry-optional \
-	XDG_CONFIG_HOME=$work/dry-optional/config \
-	XDG_STATE_HOME=$work/dry-optional/state \
-	DS_ROOT=$root DS_JANET=$janet DS_MISE=$mise \
-	"$root/ds" add starship --dry-run >"$work/optional.out"
-grep -q '^would add starship$' "$work/optional.out" || fail 'optional dry-run is missing'
-[ ! -e "$work/dry-optional" ] || fail 'optional dry-run wrote to the isolated home'
-
 mkdir -p "$work/selected-home/config/ds"
 printf '%s\n' starship >"$work/selected-home/config/ds/components"
 HOME=$work/selected-home \
@@ -100,7 +92,7 @@ HOME=$work/selected-home \
 	XDG_STATE_HOME=$work/selected-home/state \
 	DS_ROOT=$root DS_JANET=$janet DS_MISE=$mise \
 	"$root/ds" apply core --dry-run >"$work/selected.out"
-grep -q '^  packages .*starship' "$work/selected.out" || fail 'preview omitted selected Starship'
+if grep -q '^  packages .*starship' "$work/selected.out"; then fail 'preview included retired component'; fi
 [ "$(cat "$work/selected-home/config/ds/components")" = starship ] || fail 'preview changed selections'
 [ ! -e "$work/selected-home/.local" ] || fail 'preview wrote managed links'
 
@@ -177,6 +169,8 @@ sh "$root/tests/shell.sh" "$snapshot_root"
 sh "$root/tests/plugins.sh" "$work/snapshot-install/current/src/dotfiles/shell.zsh"
 sh "$root/tests/tools.sh" "$work/snapshot-install/current/src/tools"
 sh "$root/tests/exports.sh" "$work/snapshot-install/current/src"
+sh "$root/tests/navigation.sh" "$work/snapshot-install/current/src"
+sh "$root/tests/activation.sh" "$work/snapshot-install/current/src"
 
 pull_root=$(
 	"$root/src/pull.sh" \

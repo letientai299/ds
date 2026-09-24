@@ -11,7 +11,7 @@
   (or (get environment key) fallback))
 
 # The payload mise profiles live beside each other so MISE_ENV can select
-# mise.remote.toml and mise.starship.toml next to mise.toml.
+# mise.remote.toml next to mise.toml.
 (defn config-root [root]
   (string root "/src/mise"))
 

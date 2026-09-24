@@ -4,7 +4,7 @@
 
 (def rc-start "# >>> ds managed >>>")
 (def rc-end "# <<< ds managed <<<")
-(def tool-names ["serve" "fzf-files"])
+(def tool-names ["serve" "fzf-files" "fzf-dirs"])
 
 (defn path [home relative]
   (string home "/" relative))
@@ -106,7 +106,6 @@
      {:kind :link :target (path config-home "ds/rgrc") :source (string base "/src/dotfiles/rgrc")}
      {:kind :link :target (path config-home "ds/mise/config.toml") :source (string base "/src/mise/mise.toml")}
      {:kind :link :target (path config-home "ds/mise/config.remote.toml") :source (string base "/src/mise/mise.remote.toml")}
-     {:kind :link :target (path config-home "ds/mise/config.starship.toml") :source (string base "/src/mise/mise.starship.toml")}
      {:kind :layer :target (path config-home "ds/layer") :contents layer}
      {:kind :link :target (path config-home "nvim") :source (source-root base environment "nvim")}
      {:kind :marker :target zshrc :line (string "source \"" config-home "/ds/shell.zsh\"")}

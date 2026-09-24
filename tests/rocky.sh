@@ -66,9 +66,10 @@ docker run --rm \
         zsh -f -c "
             set -e
             source \"$HOME/.config/ds/shell.zsh\"
-            command -v mise fd fzf rg nvim nnn jq xh ds >/dev/null
+            command -v mise fd fzf rg nvim wt zoxide jq xh ds >/dev/null
             nvim --version >/dev/null
-            nnn -V >/dev/null
+            wt --version >/dev/null
+            zoxide --version >/dev/null
         "
     ' ds-rocky "$manifest_sha"
 

@@ -123,20 +123,6 @@ Skip Docker only on a deliberately restricted host:
 
 The layer remains incomplete until Docker is ready.
 
-## Optional Starship prompt
-
-```sh
-./ds apply starship --dry-run
-./ds apply starship
-./ds status starship
-```
-
-Remove the selection with:
-
-```sh
-./ds remove starship
-```
-
 ## Recovery
 
 ```sh

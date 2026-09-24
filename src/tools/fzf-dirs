@@ -1,0 +1,5 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+program=${0:t}
+kind=d
+source "${0:A:h:h}/dotfiles/fzf-paths.zsh"

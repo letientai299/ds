@@ -1,6 +1,5 @@
 [tools]
 bat = "0.25.0"
-zoxide = "0.9.8"
 
 [tools."http:delta"]
 version = "0.18.2"

@@ -107,7 +107,7 @@ docker run --rm \
 				printf "mise_component_%s_kib\t%s\n" "$name" "$(du -skL "$directory" | cut -f1)"
             done
 
-		for package in ca-certificates curl git nnn tmux zsh; do
+		for package in ca-certificates curl git tmux zsh; do
 			size=$(dpkg-query -W -f="\${Installed-Size}" "$package")
             printf "native_package_%s_kib\t%s\n" "$package" "$size"
         done

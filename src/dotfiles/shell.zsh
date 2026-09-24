@@ -31,7 +31,9 @@ fi
 [[ "$_ds_layer" != remote ]] || _ds_environments+=(remote)
 if [[ -r "$XDG_CONFIG_HOME/ds/components" ]]; then
   while IFS= read -r _ds_component; do
-    [[ -z "$_ds_component" ]] || _ds_environments+=("$_ds_component")
+    if [[ -n "$_ds_component" && -f "$_ds_root/src/mise/mise.$_ds_component.toml" ]]; then
+      _ds_environments+=("$_ds_component")
+    fi
   done <"$XDG_CONFIG_HOME/ds/components"
 fi
 export MISE_ENV="${(j:,:)_ds_environments}"
@@ -44,46 +46,38 @@ HISTFILE="$XDG_STATE_HOME/zsh/history"
 [[ -z "${DS_SHELL_STATE:-}" ]] || HISTFILE="$DS_SHELL_STATE/zsh/history"
 source "${${(%):-%x}:A:h}/exports.zsh"
 setopt append_history hist_ignore_all_dups hist_ignore_space share_history
+setopt interactive_comments no_beep ignore_eof
 
 alias vi=nvim
 alias vim=nvim
 source "${${(%):-%x}:A:h}/aliases.zsh"
 source "${${(%):-%x}:A:h}/bindkeys.zsh"
+source "${${(%):-%x}:A:h}/functions.zsh"
 
 source "${${(%):-%x}:A:h}/prompt.zsh"
-
-# Keep nnn in the current shell after quitting with q.
-n() {
-  local lastdir="$XDG_STATE_HOME/nnn/lastdir"
-  mkdir -p "${lastdir:h}"
-  NNN_TMPFILE="$lastdir" command nnn "$@"
-  if [[ -s "$lastdir" ]]; then
-    source "$lastdir"
-    rm -f "$lastdir"
-  fi
-}
 
 # Tool-generated initialization is guarded and ordered after static setup. Use
 # mise's stable install links directly so initialization does not invoke a shim
 # and write config-tracking state during shell startup.
 _ds_fzf="$MISE_DATA_DIR/installs/fzf/latest/fzf"
 _ds_zoxide="$MISE_DATA_DIR/installs/zoxide/latest/zoxide"
-_ds_starship="$MISE_DATA_DIR/installs/starship/latest/starship"
 if [[ -x "$_ds_fzf" ]] && (( ! ${+_ds_fzf_loaded} )); then
   source <("$_ds_fzf" --zsh)
   typeset -g _ds_fzf_loaded=1
 fi
-if [[ "$_ds_layer" == remote && -x "$_ds_zoxide" ]]; then
+if [[ -x "$_ds_zoxide" ]] && (( ! ${+_ds_zoxide_loaded} )); then
   eval "$("$_ds_zoxide" init zsh)"
-fi
-if (( ${_ds_environments[(Ie)starship]} )) && [[ -x "$_ds_starship" ]]; then
-  add-zsh-hook -d preexec _ds_prompt_preexec
-  add-zsh-hook -d precmd _ds_prompt_precmd
-  eval "$("$_ds_starship" init zsh)"
+  typeset -g _ds_zoxide_loaded=1
 fi
 export DS_DS="$_ds_root/ds"
 [[ ! -r "$_ds_root/src/dotfiles/command.sh" ]] || source "$_ds_root/src/dotfiles/command.sh"
-unset _ds_fzf _ds_zoxide _ds_starship _ds_layer _ds_component _ds_environments _ds_root
+unset _ds_fzf _ds_zoxide _ds_layer _ds_component _ds_environments _ds_root
 
 [[ ! -r "$XDG_CONFIG_HOME/ds/local.zsh" ]] || source "$XDG_CONFIG_HOME/ds/local.zsh"
+if [[ -o interactive && ${DS_MISE_ACTIVATE:-0} == 1 ]] && (( ! ${+_ds_mise_loaded} )); then
+  if _ds_activation=$(command mise activate zsh); then
+    eval "$_ds_activation" && typeset -g _ds_mise_loaded=1
+  fi
+  unset _ds_activation
+fi
 source "${${(%):-%x}:A:h}/interactive.zsh"

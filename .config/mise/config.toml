@@ -40,7 +40,7 @@ description = "Lint and format-check shell, C, TOML, and the generated catalog"
 run = [
   "shellcheck -x $DS_SHELL_SOURCES",
   "shfmt -d $DS_SHELL_SOURCES",
-  "zsh -fc 'for source in src/dotfiles/**/*.zsh src/tools/fzf-files tests/*.zsh; do zsh -n \"$source\" || exit; done'",
+  "zsh -fc 'for source in src/dotfiles/**/*.zsh src/tools/fzf-* src/dotfiles/completions/* tests/*.zsh; do zsh -n \"$source\" || exit; done'",
   "if [ \"$(uname -s)\" = Darwin ]; then xcrun clang -std=c99 -Wall -Wextra -Werror -fsyntax-only src/runtime/normalize-macho.c; fi",
   "if [ \"$(uname -s)\" = Darwin ]; then xcrun clang-format --dry-run -Werror src/runtime/normalize-macho.c; fi",
   "taplo fmt --check .config/mise/config.toml src/catalog.toml src/mise/*.toml",
@@ -84,6 +84,8 @@ run = [
   "zsh -df tests/prompt.zsh",
   "sh tests/tools.sh",
   "sh tests/exports.sh",
+  "sh tests/navigation.sh",
+  "sh tests/activation.sh",
   "sh tests/ux.sh",
   "sh tests/decisions.sh",
   "sh tests/checksum.sh",

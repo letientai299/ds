@@ -73,7 +73,7 @@
     :details ["Prefer ds apply LAYER --force."] :example "ds apply core --force --dry-run"}
    {:name "add" :group :compatibility :args "COMPONENT" :targets :optional :flags ["--dry-run"]
     :summary "Enable an optional component"
-    :details ["Prefer ds apply COMPONENT."] :example "ds apply starship"}
+    :details ["Prefer ds apply COMPONENT."] :example "ds apply core"}
    {:name "unapply" :group :compatibility :args "LAYER|COMPONENT" :targets :all :flags ["--dry-run"]
     :summary "Remove managed configuration; keep packages"
     :details ["Prefer ds remove TARGET."] :example "ds remove core --dry-run"}

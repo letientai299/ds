@@ -6,6 +6,9 @@ root=$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-ux.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 trap 'exit 143' HUP INT TERM
+. "$root/tests/optional-fixture.sh"
+optional_fixture "$root" "$work/source"
+root=$work/source
 
 fail() {
 	printf '%s\n' "ux: $*" >&2
@@ -21,15 +24,15 @@ export DS_NVIM_SOURCE="$work/nvim" DS_TMUX_SOURCE="$work/tmux"
 mkdir -p "$XDG_CONFIG_HOME/ds" "$DS_NVIM_SOURCE" "$DS_TMUX_SOURCE" "$work/bin"
 printf '%s\n' '#!/bin/sh' 'exit 0' >"$DS_MISE"
 chmod 0755 "$DS_MISE"
-printf '%s\n' starship >"$XDG_CONFIG_HOME/ds/components"
+printf '%s\n' example >"$XDG_CONFIG_HOME/ds/components"
 "$root/ds" apply core >/dev/null
 cp "$HOME/.zshrc" "$work/zshrc"
 
-for target in core starship; do
+for target in core example; do
 	"$root/ds" unapply "$target" --dry-run >"$work/preview"
 	grep -qx "would unapply $target" "$work/preview" || fail 'missing unapply preview'
 	[ -L "$HOME/.local/bin/ds" ] || fail 'preview removed launcher'
-	[ "$(cat "$XDG_CONFIG_HOME/ds/components")" = starship ] || fail 'preview removed selection'
+	[ "$(cat "$XDG_CONFIG_HOME/ds/components")" = example ] || fail 'preview removed selection'
 	cmp "$HOME/.zshrc" "$work/zshrc" || fail 'preview changed shell configuration'
 done
 
@@ -40,7 +43,7 @@ reject() {
 	grep -q '^ds: ' "$work/err" || fail 'missing argument diagnostic'
 }
 reject unapply core --dryrun
-reject unapply starship extra
+reject unapply example extra
 reject status core extra
 reject diff core extra
 reject doctor core extra
@@ -48,7 +51,7 @@ reject shell extra
 reject shell-init extra
 reject docker-rootful --approve-rootful --grant-docker-group extra
 [ -L "$HOME/.local/bin/ds" ] || fail 'invalid arguments removed launcher'
-[ "$(cat "$XDG_CONFIG_HOME/ds/components")" = starship ] || fail 'invalid arguments removed selection'
+[ "$(cat "$XDG_CONFIG_HOME/ds/components")" = example ] || fail 'invalid arguments removed selection'
 for command in apply unapply adopt force add status diff doctor push; do
 	"$root/ds" "$command" --help >"$work/help"
 	grep -q '^usage:' "$work/help" || fail "missing help: $command"
@@ -63,12 +66,12 @@ ZSH
 	DS_ROOT=/stale/version zsh -dfc '
         source "$1"
         : >"$HOME/refresh.log"
-        [[ "$MISE_ENV" == starship ]] || exit 1
-        ds unapply starship --dry-run >/dev/null
+        [[ "$MISE_ENV" == example ]] || exit 1
+        ds unapply example --dry-run >/dev/null
         ds unapply --help >/dev/null
         [[ ! -s "$HOME/refresh.log" ]] || exit 1
-        [[ "$MISE_ENV" == starship ]] || exit 1
-        ds unapply starship >/dev/null
+        [[ "$MISE_ENV" == example ]] || exit 1
+        ds unapply example >/dev/null
         [[ -s "$HOME/refresh.log" ]] || exit 1
         [[ -z "$MISE_ENV" ]] || exit 1
     ' ds-ux "$root/src/dotfiles/shell.zsh" || fail 'shell selection refresh failed'
@@ -130,9 +133,9 @@ if grep -q '^targets:' "$work/help"; then fail 'integration help includes target
 reject remove
 reject remove --dry-run
 reject remove core extra
-reject apply starship --adopt
-reject apply --force starship
-reject apply starship --skip docker
+reject apply example --adopt
+reject apply --force example
+reject apply example --skip docker
 reject apply --skip
 reject apply --skip fzf
 reject remove core --adopt
@@ -193,9 +196,9 @@ cmp "$work/force-plan" "$work/alias-plan" || fail 'aliases changed force plan'
 [ "$(cat "$XDG_CONFIG_HOME/ds/gitignore")" = original ] || fail 'force backup not restored'
 "$root/ds" force core >/dev/null
 [ "$(cat "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted")" = original ] || fail 'legacy force lost original'
-"$root/ds" apply starship >/dev/null
-[ "$(cat "$XDG_CONFIG_HOME/ds/components")" = starship ] || fail 'apply did not select component'
-"$root/ds" remove starship >/dev/null
+"$root/ds" apply example >/dev/null
+[ "$(cat "$XDG_CONFIG_HOME/ds/components")" = example ] || fail 'apply did not select component'
+"$root/ds" remove example >/dev/null
 [ ! -e "$XDG_CONFIG_HOME/ds/components" ] || fail 'remove did not clear selection'
 
 "$root/ds" completion bash >"$work/completion.bash"
@@ -205,8 +208,8 @@ bash -c '
     [[ "${COMPREPLY[*]}" == "shell apply status remove push help --help" ]] || exit 1
     COMP_WORDS=(ds roll); _ds_complete
     [[ "${COMPREPLY[*]}" == rollback ]] || exit 2
-    COMP_WORDS=(ds apply st); COMP_CWORD=2; _ds_complete
-    [[ "${COMPREPLY[*]}" == starship ]] || exit 3
+    COMP_WORDS=(ds apply ex); COMP_CWORD=2; _ds_complete
+    [[ "${COMPREPLY[*]}" == example ]] || exit 3
     COMP_WORDS=(ds apply --skip ""); COMP_CWORD=3; _ds_complete
     [[ "${COMPREPLY[*]}" == docker ]] || exit 4
     COMP_WORDS=(ds help --a); COMP_CWORD=2; _ds_complete

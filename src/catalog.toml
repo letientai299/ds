@@ -8,7 +8,8 @@ core = [
   "fd",
   "fzf",
   "ripgrep",
-  "nnn",
+  "worktrunk",
+  "zoxide",
   "jq",
   "gokill",
   "xh",
@@ -22,17 +23,17 @@ remote = [
   "fd",
   "fzf",
   "ripgrep",
-  "nnn",
+  "worktrunk",
+  "zoxide",
   "jq",
   "gokill",
   "xh",
   "tmux",
   "docker",
-  "zoxide",
   "bat",
   "delta",
 ]
-optional = ["starship"]
+optional = []
 
 [components.mise]
 commands = ["mise"]
@@ -66,9 +67,10 @@ owner = "mise"
 commands = ["rg"]
 owner = "mise"
 
-[components.nnn]
-commands = ["nnn"]
-owner = "native"
+[components.worktrunk]
+commands = ["wt"]
+owner = "mise"
+tool = "http-worktrunk"
 
 [components.jq]
 commands = ["jq"]
@@ -103,7 +105,3 @@ owner = "mise"
 commands = ["delta"]
 owner = "mise"
 tool = "http-delta"
-
-[components.starship]
-commands = ["starship"]
-owner = "mise"

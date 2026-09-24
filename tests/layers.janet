@@ -1,6 +1,8 @@
 (import scripts/generated/layers :as generated)
 (import scripts/lib/layers :as layers)
 
+(def fixture (merge generated/catalog {:optional [:example] :components (merge (get generated/catalog :components) {:example {:commands ["example"] :owner :mise}})}))
+
 (defn assert= [expected actual message]
   (unless (= expected actual)
     (error (string message ": expected " expected ", got " actual))))
@@ -8,7 +10,7 @@
 (assert= true (layers/validate generated/catalog) "catalog is valid")
 
 (def core (layers/resolve generated/catalog "core" []))
-(assert= 12 (length core) "core component count")
+(assert= 13 (length core) "core component count")
 (assert= :mise (first core) "core starts with mise")
 (assert= :xh (last core) "core ends with xh")
 
@@ -17,10 +19,10 @@
 (eachp [index component] core
   (assert= component (get remote index) "remote includes core in order"))
 
-(def optional (layers/resolve generated/catalog "core" ["starship" "starship"]))
-(assert= 13 (length optional) "optional components are unique")
-(assert= :starship (last optional) "optional component is appended")
-(assert= true (layers/optional-component? generated/catalog :starship) "starship is optional")
+(def optional (layers/resolve fixture "core" ["example" "example"]))
+(assert= 14 (length optional) "optional components are unique")
+(assert= :example (last optional) "optional component is appended")
+(assert= true (layers/optional-component? fixture :example) "example is optional")
 
 (var unknown-failed? false)
 (try

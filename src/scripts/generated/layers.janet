@@ -1,8 +1,8 @@
 (def catalog
   @{:layers
-  {:core [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :nnn :jq :gokill :xh]
-   :remote [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :nnn :jq :gokill :xh :tmux :docker :zoxide :bat :delta]}
-  :optional [:starship]
+  {:core [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :worktrunk :zoxide :jq :gokill :xh]
+   :remote [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :worktrunk :zoxide :jq :gokill :xh :tmux :docker :bat :delta]}
+  :optional []
   :components
   {:bat {:commands ["bat"] :owner :mise :version "0.25.0"}
    :curl {:commands ["curl"] :owner :native}
@@ -15,10 +15,9 @@
    :jq {:commands ["jq"] :owner :mise :version "1.8.2"}
    :mise {:commands ["mise"] :owner :runtime}
    :neovim {:commands ["nvim"] :owner :mise :version "0.12.5"}
-   :nnn {:commands ["nnn"] :owner :native}
    :ripgrep {:commands ["rg"] :owner :mise :version "15.2.0"}
-   :starship {:commands ["starship"] :owner :mise :version "1.23.0"}
    :tmux {:commands ["tmux"] :owner :native}
+   :worktrunk {:commands ["wt"] :owner :mise :tool "http-worktrunk" :version "0.79.0"}
    :xh {:commands ["xh"] :owner :mise :version "0.26.2"}
    :zoxide {:commands ["zoxide"] :owner :mise :version "0.9.8"}
    :zsh {:commands ["zsh"] :owner :native}}})

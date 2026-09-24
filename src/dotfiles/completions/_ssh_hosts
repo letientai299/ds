@@ -1,0 +1,61 @@
+#autoload
+
+local -a hosts expl queue fields known_files
+local config="$HOME/.ssh/config" file line key rest token pattern entry
+local -A visited
+local index=1 position
+
+if ! zstyle -a ":completion:${curcontext}:hosts" hosts hosts; then
+  position=${words[(I)-F]}
+  (( ! position )) || config=${words[position+1]}
+  queue=("$config")
+  while (( index <= $#queue && index <= 128 )); do
+    file=${queue[index]:A}
+    (( ++index ))
+    [[ -z ${visited[$file]:-} && -f $file && -r $file ]] || continue
+    visited[$file]=1
+    while IFS= read -r line || [[ -n $line ]]; do
+      IFS=$' \t=' read -r key rest <<< "$line"
+      case ${key:l} in
+        include)
+          for token in ${(z)rest}; do
+            [[ $token != \#* ]] || break
+            pattern=${(Q)token}
+            [[ $pattern != '~/'* ]] || pattern="$HOME/${pattern#\~/}"
+            [[ $pattern == /* ]] || pattern="$HOME/.ssh/$pattern"
+            queue+=(${~pattern}(N))
+          done
+          ;;
+        host|hostname)
+          for token in ${(z)rest}; do
+            [[ $token != \#* ]] || break
+            entry=${(Q)token}
+            [[ $entry != [\!\#]* && $entry != *[\*\?]* ]] || continue
+            hosts+=("$entry")
+          done
+          ;;
+      esac
+    done < "$file"
+  done
+
+  zstyle -a ":completion:${curcontext}:hosts" known-hosts-files known_files ||
+    known_files=(/etc/ssh/ssh_known_hosts "$HOME/.ssh/known_hosts")
+  for file in "${known_files[@]}"; do
+    [[ -f $file && -r $file ]] || continue
+    while IFS= read -r line || [[ -n $line ]]; do
+      fields=(${(z)line})
+      [[ ${fields[1]:-} != @* ]] || fields[1]=()
+      [[ -n ${fields[1]:-} ]] || continue
+      for entry in ${(s:,:)fields[1]}; do
+        [[ -n $entry && $entry != [\|\#\!]* && $entry != *[\*\?]* ]] || continue
+        if [[ $entry == \[*\]:<-> ]]; then
+          entry=${${entry#\[}%\]:*}
+        fi
+        hosts+=("$entry")
+      done
+    done < "$file"
+  done
+fi
+hosts=("${(@u)hosts}")
+_wanted hosts expl 'remote host name' \
+  compadd -M 'm:{a-zA-Z}={A-Za-z} r:|.=* r:|=*' "$@" -a hosts

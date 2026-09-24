@@ -5,6 +5,9 @@ root=$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-decisions.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 trap 'exit 143' HUP INT TERM
+. "$root/tests/optional-fixture.sh"
+optional_fixture "$root" "$work/source"
+root=$work/source
 fail() {
 	printf '%s\n' "decisions: $*" >&2
 	exit 1
@@ -95,23 +98,23 @@ status=0
 status=0
 "$root/ds" status core --invalid >"$work/out" 2>"$work/err" || status=$?
 [ "$status" -eq 2 ] || fail 'usage exit contract'
-mkdir -p "$MISE_DATA_DIR/installs/starship/1.22.0" "$XDG_CONFIG_HOME/ds"
-printf '%s\n' starship >"$XDG_CONFIG_HOME/ds/components"
-printf '%s\n' '#!/bin/sh' >"$MISE_DATA_DIR/installs/starship/1.22.0/starship"
-chmod 0755 "$MISE_DATA_DIR/installs/starship/1.22.0/starship"
-"$root/ds" status starship --json >"$work/status.json"
+mkdir -p "$MISE_DATA_DIR/installs/example/1.22.0" "$XDG_CONFIG_HOME/ds"
+printf '%s\n' example >"$XDG_CONFIG_HOME/ds/components"
+printf '%s\n' '#!/bin/sh' >"$MISE_DATA_DIR/installs/example/1.22.0/example"
+chmod 0755 "$MISE_DATA_DIR/installs/example/1.22.0/example"
+"$root/ds" status example --json >"$work/status.json"
 check_json -e '.components[0].state == "outdated" and .components[0].expected == "1.23.0"' "$work/status.json" >/dev/null
-mkdir -p "$MISE_DATA_DIR/installs/starship/1.23.0/release/bin"
-"$root/ds" status starship --json >"$work/status.json"
+mkdir -p "$MISE_DATA_DIR/installs/example/1.23.0/release/bin"
+"$root/ds" status example --json >"$work/status.json"
 check_json -e '.components[0].state == "unavailable"' "$work/status.json" >/dev/null
-cp "$MISE_DATA_DIR/installs/starship/1.22.0/starship" "$MISE_DATA_DIR/installs/starship/1.23.0/release/bin/starship"
-"$root/ds" status starship --json --check >"$work/status.json"
+cp "$MISE_DATA_DIR/installs/example/1.22.0/example" "$MISE_DATA_DIR/installs/example/1.23.0/release/bin/example"
+"$root/ds" status example --json --check >"$work/status.json"
 check_json -e '.summary == "complete" and .components[0].state == "installed"' "$work/status.json" >/dev/null
 
 "$root/ds" help adopt >"$work/help"
 grep -q '^usage: ds adopt LAYER' "$work/help" || fail 'command-specific help missing'
 "$root/ds" completion bash >"$work/completion.bash"
-bash -c '. "$1"; COMP_WORDS=(ds add st); COMP_CWORD=2; _ds_complete; [[ "${COMPREPLY[*]}" == starship ]]' test "$work/completion.bash"
+bash -c '. "$1"; COMP_WORDS=(ds add ex); COMP_CWORD=2; _ds_complete; [[ "${COMPREPLY[*]}" == example ]]' test "$work/completion.bash"
 "$root/ds" completion zsh >"$work/completion.zsh"
 zsh -n "$work/completion.zsh"
 

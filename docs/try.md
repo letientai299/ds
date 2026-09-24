@@ -7,7 +7,7 @@ mounted read-write at `/work`:
 ds shell --docker
 ```
 
-The first run builds from `ubuntu:latest` and installs `core`, including `nnn`.
+The first run builds from `ubuntu:latest` and installs the `core` layer.
 Later runs reuse the local image without rebuilding or downloading packages.
 `exit` removes the container. Edits under `/work` remain on the host; changes
 elsewhere in the container are discarded. The shell runs as root, so files
@@ -80,7 +80,7 @@ ls -l ~/.config/ds    # the dedicated files ds owns
 cat ~/.zshrc          # the marker block ds inserted
 ```
 
-The prompt, history behaviour, aliases, and the `n` wrapper for `nnn` are the
+The prompt, history behaviour, aliases, and directory navigation are the
 daily-driver surface. Open Neovim with `vi` to see the linked configuration, and
 try `fzf`, `rg`, `fd`, and `jq` directly.
 
@@ -94,7 +94,7 @@ ds remove core       # remove everything ds owns, then look around again
 
 ## Other layers and images
 
-`remote` adds Tmux, Zoxide, Bat, and Delta. Docker readiness stays incomplete
+`remote` adds Tmux, Bat, and Delta. Docker readiness stays incomplete
 inside a container without a reachable engine, which is expected:
 
 ```sh

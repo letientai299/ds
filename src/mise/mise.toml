@@ -5,6 +5,16 @@ jq = "1.8.2"
 neovim = { version = "0.12.5", postinstall = 'sh "{{config_root}}/../scripts/neovim-postinstall.sh"', install_env = { DS_NVIM_SOURCE_SHA256 = "a810c95332317bd0017e1ca07e376a8472c79075cbed00fa3737d190a8a0a45a" } }
 ripgrep = "15.2.0"
 xh = "0.26.2"
+zoxide = "0.9.8"
+
+[tools."http:worktrunk"]
+version = "0.79.0"
+
+[tools."http:worktrunk".platforms]
+linux-arm64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-aarch64-unknown-linux-musl.tar.xz", checksum = "sha256:6bb148471c4f4e5e616a3d703a00f0095b2d0025d86658f8d610c95a7756e3e7" }
+linux-x64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-x86_64-unknown-linux-musl.tar.xz", checksum = "sha256:b8c190b1d652370ef9f6b8f4694a2d6831b5b22f4b789f047612aad32764c6cf" }
+macos-arm64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-aarch64-apple-darwin.tar.xz", checksum = "sha256:4d77ec416c3873c1364aa135022303723f9333372f693193537abe74e88aaec1" }
+macos-x64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-x86_64-apple-darwin.tar.xz", checksum = "sha256:160380bc5595ba2ab82170643315b58444f3108464c00fc5466b67cef3457ea0" }
 
 [tools."http:gokill"]
 version = "1.4.1"
@@ -25,22 +35,15 @@ macos-x64 = { url = "https://github.com/w31r4/gokill/releases/download/v1.4.1/go
 "apk:gettext-tiny-dev" = "latest"
 "apk:linux-headers" = "latest"
 "apk:samurai" = "latest"
-"apk:nnn" = "latest"
 "apk:zsh" = "latest"
 "apt:ca-certificates" = "latest"
 "apt:curl" = "latest"
 "apt:git" = "latest"
-"apt:nnn" = "latest"
 "apt:zsh" = "latest"
 "brew:ca-certificates" = { os = "macos" }
 "brew:git" = { os = "macos" }
-"brew:nnn" = { os = "macos" }
 "brew:zsh" = { os = "macos" }
 "dnf:ca-certificates" = "latest"
 "dnf:curl-minimal" = "latest"
 "dnf:git" = "latest"
-"dnf:nnn" = "latest"
 "dnf:zsh" = "latest"
-
-[bootstrap.hooks.pre-packages]
-run = "../scripts/pre-packages.sh"

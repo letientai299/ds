@@ -298,7 +298,7 @@
       :unavailable (print (string "  ? " (get entry :source) " unavailable")))))
 
 (defn print-shell-init []
-  (def ds-path (string (managed/link-root root) "/ds"))
+  (def ds-path (string (if (get base-environment "DS_SHELL_STATE") root (managed/link-root root)) "/ds"))
   (print (string "export DS_DS=\"" ds-path "\""))
   (print "if [ -r \"${XDG_CONFIG_HOME:-$HOME/.config}/ds/shell.zsh\" ]; then")
   (print "  source \"${XDG_CONFIG_HOME:-$HOME/.config}/ds/shell.zsh\"")

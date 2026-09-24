@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+case "${1:-}" in
+-h | --help)
+	cat <<'HELP'
+Usage: fkill [QUERY ...]
+
+Search processes with gokill; signal one PID with TERM.
+
+  /       Edit fuzzy filter
+  Enter   Leave filtering; Enter again sends TERM
+  Ctrl+R  Refresh processes
+  i       Show process details
+  T       Browse the dependency tree
+  P       Show listening processes
+  Ctrl+C  Quit
+
+Queries match names, PIDs, users, and ports.
+All users are listed; permissions still apply.
+Tree killing, multi-selection, and custom signals are unsupported.
+HELP
+	exit 0
+	;;
+--)
+	shift
+	;;
+-*)
+	printf 'fkill: unsupported option: %s\n' "$1" >&2
+	exit 2
+	;;
+esac
+
+gokill="${MISE_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/mise}/installs/http-gokill/latest/gokill"
+if [ ! -x "$gokill" ]; then
+	printf '%s\n' 'fkill: gokill unavailable; run ds apply core' >&2
+	exit 1
+fi
+exec "$gokill" "$@"

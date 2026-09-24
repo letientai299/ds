@@ -64,7 +64,8 @@
   (def selected (selection/selected catalog environment))
   (def component (get request :component))
   (def plan @[])
-  (when (and (not= mode :unapply) (not component) (activation/prefix root))
+  (def activate? (and (not (get environment "DS_SHELL_STATE")) (activation/prefix root)))
+  (when (and (not= mode :unapply) (not component) activate?)
     (try
       (do (activation/candidate (activation/prefix root) (last (string/split "/" root)))
           (activation/link-version (activation/prefix root) "current")
@@ -99,10 +100,11 @@
         (do
           (array/concat plan (files root environment layer mode))
           (array/push plan (action :directory
-            {:target (string (or (get environment "XDG_STATE_HOME")
+            {:target (string (or (get environment "DS_SHELL_STATE")
+                                 (get environment "XDG_STATE_HOME")
                                  (string (get environment "HOME") "/.local/state")) "/zsh/history")}))
           (when (get request :docker) (array/push plan (action :docker {})))
-          (when (activation/prefix root) (array/push plan (action :activate {:root root})))))))
+          (when activate? (array/push plan (action :activate {:root root})))))))
   plan)
 
 (defn describe [item]

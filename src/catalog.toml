@@ -10,6 +10,7 @@ core = [
   "ripgrep",
   "nnn",
   "jq",
+  "gokill",
   "xh",
 ]
 remote = [
@@ -23,6 +24,7 @@ remote = [
   "ripgrep",
   "nnn",
   "jq",
+  "gokill",
   "xh",
   "tmux",
   "docker",
@@ -75,6 +77,11 @@ owner = "mise"
 [components.xh]
 commands = ["xh"]
 owner = "mise"
+
+[components.gokill]
+commands = ["gokill"]
+owner = "mise"
+tool = "http-gokill"
 
 [components.tmux]
 commands = ["tmux"]

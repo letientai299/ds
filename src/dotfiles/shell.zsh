@@ -9,8 +9,9 @@ export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 # keeps the first occurrence, which leaves the ds entries in front.
 typeset -gU path PATH
 export PATH="$HOME/.local/bin:$XDG_DATA_HOME/mise/shims:$PATH"
+[[ -z "${DS_SHELL_PATH:-}" ]] || export PATH="$DS_SHELL_PATH:$PATH"
 _ds_root="${DS_SHELL_ROOT:-${${:-$HOME/.local/bin/ds}:A:h}}"
-if [[ "${_ds_root:h:t}" == versions ]]; then
+if [[ -z "${DS_SHELL_STATE:-}" && "${_ds_root:h:t}" == versions ]]; then
   _ds_root="${_ds_root:h:h}/current"
 fi
 export MISE_CACHE_DIR="${MISE_CACHE_DIR:-$XDG_CACHE_HOME/mise}"
@@ -40,6 +41,7 @@ fi
 
 # History is deliberately local and independent of plugin managers.
 HISTFILE="$XDG_STATE_HOME/zsh/history"
+[[ -z "${DS_SHELL_STATE:-}" ]] || HISTFILE="$DS_SHELL_STATE/zsh/history"
 HISTSIZE=100000
 SAVEHIST=100000
 setopt append_history hist_ignore_all_dups hist_ignore_space share_history

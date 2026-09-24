@@ -75,6 +75,7 @@ cp "$root/src/THIRD-PARTY.md" "$payload/THIRD-PARTY.md"
 [ ! -f "$root/src/mise/mise.starship.toml" ] || cp "$root/src/mise/mise.starship.toml" "$payload/mise/mise.starship.toml"
 cp -R "$root/src/scripts/." "$payload/scripts/"
 cp -R "$root/src/dotfiles" "$payload/dotfiles"
+cp -R "$root/src/tools" "$payload/tools"
 [ -d "$nvim_source" ] || die "Neovim source is missing: $nvim_source"
 command -v git >/dev/null 2>&1 || die 'Git is required to build the Neovim snapshot'
 git -C "$nvim_source" archive --format=tar --output="$output/nvim-conf.tar" HEAD

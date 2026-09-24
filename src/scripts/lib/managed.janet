@@ -4,6 +4,7 @@
 
 (def rc-start "# >>> ds managed >>>")
 (def rc-end "# <<< ds managed <<<")
+(def tool-names ["serve" "fkill"])
 
 (defn path [home relative]
   (string home "/" relative))
@@ -91,10 +92,14 @@
 (defn entries [root environment layer]
   (def home (or (get environment "HOME") (error "HOME is required")))
   (def config-home (or (get environment "XDG_CONFIG_HOME") (path home ".config")))
-  (def base (link-root root))
+  (def shell-state (get environment "DS_SHELL_STATE"))
+  (def bin (if shell-state (path shell-state "bin") (path home ".local/bin")))
+  (def zshrc (if shell-state (path shell-state "zsh/.zshrc") (path home ".zshrc")))
+  (def gitconfig (if shell-state (path shell-state "gitconfig") (path home ".gitconfig")))
+  (def base (if shell-state root (link-root root)))
   (def core
-    @[{:kind :link :target (path home ".local/bin/ds") :source (string base "/ds")}
-     {:kind :command-link :target (path home ".local/bin/mise") :source (mise/binary base environment)}
+    @[{:kind :link :target (path bin "ds") :source (string base "/ds")}
+     {:kind :command-link :target (path bin "mise") :source (mise/binary base environment)}
      {:kind :link :target (path config-home "ds/shell.zsh") :source (string base "/src/dotfiles/shell.zsh")}
      {:kind :link :target (path config-home "ds/gitconfig") :source (string base "/src/dotfiles/gitconfig")}
      {:kind :link :target (path config-home "ds/gitignore") :source (string base "/src/dotfiles/gitignore")}
@@ -103,13 +108,18 @@
      {:kind :link :target (path config-home "ds/mise/config.starship.toml") :source (string base "/src/mise/mise.starship.toml")}
      {:kind :layer :target (path config-home "ds/layer") :contents layer}
      {:kind :link :target (path config-home "nvim") :source (source-root base environment "nvim")}
-     {:kind :marker :target (path home ".zshrc") :line (string "source \"" config-home "/ds/shell.zsh\"")}
-     {:kind :marker :target (path home ".gitconfig") :line (string "[include]\n\tpath = " config-home "/ds/gitconfig")}])
+     {:kind :marker :target zshrc :line (string "source \"" config-home "/ds/shell.zsh\"")}
+     {:kind :marker :target gitconfig
+      :line (string "[include]\n\tpath = " config-home "/ds/gitconfig"
+                    (if shell-state (string "\n[core]\n\texcludesFile = " config-home "/ds/gitignore") ""))}])
+  (each name tool-names
+    (array/push core {:kind :link :target (path bin name)
+                     :source (string base "/src/tools/" name)}))
   (when (= layer "remote")
     (def tmux-source (source-root base environment "tmux"))
     (array/concat core
       @[{:kind :link :target (path config-home "tmux") :source tmux-source}
-        {:kind :link :target (path home ".local/bin/tm") :source (string tmux-source "/tm")}]))
+        {:kind :link :target (path bin "tm") :source (string tmux-source "/tm")}]))
   (map (fn [entry]
          (def source (get entry :source))
          (if (and source (string/has-prefix? (string base "/") source))

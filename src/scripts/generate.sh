@@ -33,7 +33,7 @@ while IFS= read -r component; do
 	version=
 	if [ "$owner" = mise ]; then
 		version_key=$component
-		[ "$tool" != http-delta ] || version_key=http:delta.version
+		case "$tool" in http-*) version_key="http:${tool#http-}" ;; esac
 		for profile in "$root"/src/mise/mise*.toml; do
 			version=$("$mise_command" toml get --file "$profile" "tools.$version_key.version" 2>/dev/null ||
 				"$mise_command" toml get --file "$profile" "tools.$version_key" 2>/dev/null || true)

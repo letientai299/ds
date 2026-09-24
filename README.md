@@ -11,11 +11,11 @@ Linux][rocky], and macOS.
 
 ## Layers
 
-| Layer    | Contents                                                         |
-| -------- | ---------------------------------------------------------------- |
-| `core`   | mise, Git, Curl, Zsh, Neovim, fd, FZF, ripgrep, nnn, jq, and xh  |
-| `remote` | `core` plus Tmux, [Docker][docker] readiness, Zoxide, Bat, Delta |
-| optional | Starship, enabled independently with `ds add starship`           |
+| Layer    | Contents                                                                |
+| -------- | ----------------------------------------------------------------------- |
+| `core`   | mise, Git, Curl, Zsh, Neovim, fd, FZF, ripgrep, nnn, jq, gokill, and xh |
+| `remote` | `core` plus Tmux, [Docker][docker] readiness, Zoxide, Bat, Delta        |
+| optional | Starship, enabled independently with `ds add starship`                  |
 
 `src/catalog.toml` is the source of truth for this table, and `ds status LAYER`
 prints what a layer actually resolves to on a given machine.
@@ -61,11 +61,16 @@ exec ~/.local/bin/ds
 ```
 
 `ds shell` does the same; omit `exec` to return with `exit`. The trial uses
-`core`, retains your home and working directory, and loads this checkout's Zsh,
-Git, and Neovim configuration. It reuses installed tools without installing
-packages or editing your startup files. Other application configurations remain
+`core` initially, retains your home and working directory, and loads this
+checkout's Zsh, Git, and Neovim configuration. It reuses installed tools without
+installing packages or editing your startup files. Other application
+configurations remain
 available through links, so their edits still affect the originals. Trial state
-and history live under `${XDG_STATE_HOME:-~/.local/state}/ds/shell`.
+and history live under `${XDG_STATE_HOME:-~/.local/state}/ds/shell`. Its persistent
+`ZDOTDIR` is the `zsh` directory there; local additions to its `.zshrc` survive
+new sessions. Running `ds apply core` inside this shell installs packages and
+updates its isolated configuration and command links. Your normal `.zshrc` and
+`.gitconfig` remain unchanged. Layer and component selections persist too.
 Open a new terminal to return to your normal setup. Use `ds --help` for commands.
 
 ### Install a release

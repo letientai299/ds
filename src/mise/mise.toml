@@ -6,6 +6,15 @@ neovim = { version = "0.12.5", postinstall = 'sh "{{config_root}}/../scripts/neo
 ripgrep = "15.2.0"
 xh = "0.26.2"
 
+[tools."http:gokill"]
+version = "1.4.1"
+
+[tools."http:gokill".platforms]
+linux-arm64 = { url = "https://github.com/w31r4/gokill/releases/download/v1.4.1/gokill_Linux_arm64.tar.gz", checksum = "sha256:0a1ee43da068ca40555bb4273c993f4286f9705cf86b4e644a5d5d66b8e1109d" }
+linux-x64 = { url = "https://github.com/w31r4/gokill/releases/download/v1.4.1/gokill_Linux_x86_64.tar.gz", checksum = "sha256:efad865d2e0b6207c5f10d548f2e332f1ebf34ce282e5cd39e26afc697ff0f0f" }
+macos-arm64 = { url = "https://github.com/w31r4/gokill/releases/download/v1.4.1/gokill_Darwin_arm64.tar.gz", checksum = "sha256:0068343c28ae040412f082f12d115d5bad5bc64d446c5e2e9cd6f2d0113c6415" }
+macos-x64 = { url = "https://github.com/w31r4/gokill/releases/download/v1.4.1/gokill_Darwin_x86_64.tar.gz", checksum = "sha256:84553f010b98480d320abe59ff98927fa66bb5848085626c8190085796de6702" }
+
 [bootstrap.packages]
 "apk:ca-certificates" = "latest"
 "apk:build-base" = "latest"

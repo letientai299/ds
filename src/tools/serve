@@ -1,0 +1,195 @@
+#!/bin/sh
+set -eu
+
+die() {
+	printf 'serve: %s\n' "$*" >&2
+	exit 1
+}
+
+usage() {
+	cat <<'HELP'
+Usage: serve [OPTIONS] [DIRECTORY]
+
+Serve files through Docker/Caddy with live reload.
+
+  -p, --port PORT  HTTP port (default: 8080)
+  --no-live        Disable live reload
+  --no-open        Skip opening the browser
+  -h, --help       Show help
+HELP
+}
+
+port=8080
+directory=
+live=true
+browser=true
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+	-h | --help)
+		usage
+		exit 0
+		;;
+	-p | --port)
+		[ "$#" -ge 2 ] || die 'missing port'
+		port=$2
+		shift 2
+		;;
+	--no-live)
+		live=false
+		shift
+		;;
+	--no-open)
+		browser=false
+		shift
+		;;
+	--)
+		shift
+		break
+		;;
+	-*) die "unknown option: $1" ;;
+	*)
+		[ -z "$directory" ] || die 'multiple directories'
+		directory=$1
+		shift
+		;;
+	esac
+done
+if [ "$#" -gt 0 ]; then
+	[ "$#" -eq 1 ] && [ -z "$directory" ] || die 'multiple directories'
+	directory=$1
+fi
+case "$port" in '' | *[!0-9]*) die 'invalid port' ;; esac
+[ "${#port}" -le 5 ] && [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || die 'invalid port'
+directory=$(CDPATH='' cd -- "${directory:-.}" && pwd -P) || die 'directory unavailable'
+command -v docker >/dev/null 2>&1 || die 'docker is unavailable'
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/ds-serve.XXXXXX")
+work=$(CDPATH='' cd "$work" && pwd -P)
+container="ds-serve-${work##*/}"
+watcher=
+opener=
+cleanup() {
+	[ -z "$watcher" ] || kill "$watcher" 2>/dev/null || true
+	[ -z "$opener" ] || kill "$opener" 2>/dev/null || true
+	docker stop "$container" >/dev/null 2>&1 || true
+	rm -rf "$work"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
+case "$work/" in "${directory%/}/"*) die 'temporary directory is inside source' ;; esac
+
+open_browser() {
+	sleep 1
+	if command -v open >/dev/null 2>&1; then
+		open "$url"
+	elif command -v xdg-open >/dev/null 2>&1; then
+		xdg-open "$url"
+	elif command -v wslview >/dev/null 2>&1; then
+		wslview "$url"
+	fi
+}
+
+site="$work/site"
+revision=0
+sync_files() {
+	find "$site" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+	cp -R "$directory/." "$site/"
+	find "$site" -type f \( -name '*.html' -o -name '*.htm' \) -exec sh -eu -c '
+for file do
+  if grep -q "</body>" "$file"; then
+    sed '\''s|</body>|<script src="/_livereload.js"></script></body>|'\'' "$file" >"$file.ds-tmp"
+    mv "$file.ds-tmp" "$file"
+  elif grep -q "</head>" "$file"; then
+    sed '\''s|</head>|<script src="/_livereload.js"></script></head>|'\'' "$file" >"$file.ds-tmp"
+    mv "$file.ds-tmp" "$file"
+  else
+    printf '\''\n<script src="/_livereload.js"></script>\n'\'' >>"$file"
+  fi
+done
+' sh {} +
+	revision=$((revision + 1))
+	printf '%s\n' "$revision" >"$work/reload/_livereload/token.next"
+	mv "$work/reload/_livereload/token.next" "$work/reload/_livereload/token"
+}
+
+if "$live"; then
+	mkdir -p "$site" "$work/reload/_livereload"
+	cat >"$work/Caddyfile" <<'CADDY'
+:80 {
+  handle /_livereload* {
+    root * /livereload
+    header Cache-Control "no-cache, no-store"
+    file_server
+  }
+  handle {
+    root * /usr/share/caddy
+    file_server
+  }
+}
+CADDY
+	cat >"$work/reload/_livereload.js" <<'JS'
+(function () {
+  var token = '';
+  setInterval(function () {
+    fetch('/_livereload/token', {cache: 'no-store'})
+      .then(function (response) { return response.text(); })
+      .then(function (next) {
+        next = next.trim();
+        if (token && next !== token) location.reload();
+        token = next;
+      }).catch(function () {});
+  }, 500);
+})();
+JS
+	sync_files
+	set -- -v "$site:/usr/share/caddy:ro" \
+		-v "$work/reload:/livereload:ro" \
+		-v "$work/Caddyfile:/etc/caddy/Caddyfile:ro"
+else
+	set -- -v "$directory:/usr/share/caddy:ro"
+fi
+
+url="http://localhost:$port"
+docker run --rm -d --name "$container" -p "$port:80" "$@" caddy:2.11.4 >/dev/null
+printf 'Serving %s at %s\n' "$directory" "$url"
+printf '%s\n' 'Press Ctrl+C to stop.'
+if "$browser"; then
+	open_browser >/dev/null 2>&1 &
+	opener=$!
+fi
+if ! "$live"; then
+	docker wait "$container" >/dev/null &
+	watcher=$!
+	wait "$watcher"
+	exit 0
+fi
+
+mkfifo "$work/events"
+if command -v fswatch >/dev/null 2>&1; then
+	fswatch -o -r -L 0.5 "$directory" >"$work/events" &
+	watcher=$!
+elif command -v inotifywait >/dev/null 2>&1; then
+	inotifywait -r -m -q -e modify,create,delete,move "$directory" --format '%w%f' >"$work/events" &
+	watcher=$!
+fi
+if [ -n "$watcher" ]; then
+	while IFS= read -r _event; do
+		sync_files
+		printf 'Reloaded %s\n' "$url"
+	done <"$work/events"
+	wait "$watcher"
+else
+	fingerprint() {
+		find "$directory" -type f -exec cksum {} + | LC_ALL=C sort | cksum
+	}
+	previous=$(fingerprint)
+	while true; do
+		sleep 1
+		current=$(fingerprint)
+		[ "$current" != "$previous" ] || continue
+		sync_files
+		previous=$current
+		printf 'Reloaded %s\n' "$url"
+	done
+fi

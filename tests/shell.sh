@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-root=$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)
+root=${1:-$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)}
+root=$(CDPATH='' cd -P "$root" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-shell.XXXXXX")
 work=$(CDPATH='' cd -P "$work" && pwd)
 trap 'rm -rf "$work"' EXIT
@@ -41,6 +42,7 @@ cat >"$work/input" <<'ZSH'
 [[ ${XDG_CONFIG_HOME:A} != ${DS_SHELL_CONFIG_HOME:A} ]] || exit 20
 [[ ${XDG_CONFIG_HOME}/nvim -ef $DS_NVIM_SOURCE ]] || exit 21
 [[ $HISTFILE == $DS_SHELL_STATE/zsh/history ]] || exit 22
+[[ $ZDOTDIR == $DS_SHELL_STATE/zsh ]] || exit 40
 [[ $commands[ds] == $DS_SHELL_STATE/bin/ds ]] || exit 23
 [[ $commands[mise] == $DS_SHELL_STATE/bin/mise ]] || exit 24
 [[ $aliases[vi] == nvim ]] || exit 25
@@ -48,6 +50,10 @@ cat >"$work/input" <<'ZSH'
 [[ $(fd) == trial-pinned-fd ]] || exit 27
 [[ $aliases[gs] == 'git status' && $aliases[dcp] == 'docker pull' ]] || exit 28
 [[ -o auto_cd && $galiases[...] == '../..' ]] || exit 29
+[[ $commands[serve] == $DS_SHELL_STATE/bin/serve ]] || exit 35
+serve --help >/dev/null || exit 36
+[[ $commands[fkill] == $DS_SHELL_STATE/bin/fkill ]] || exit 38
+fkill --help >/dev/null || exit 39
 print -r -- trial-ready
 exit 0
 ZSH
@@ -90,4 +96,66 @@ exec "$DS_DS"
 [[ $(git config user.name) == 'Custom User' ]] || exit 34
 exit 0
 ZSH
+
+# Apply stays inside the persistent shell.
+mv "$HOME/.zshrc" "$work/daily-zshrc"
+ln -s "$work/daily-zshrc" "$HOME/.zshrc"
+mv "$HOME/.gitconfig" "$work/daily-gitconfig"
+ln -s "$work/daily-gitconfig" "$HOME/.gitconfig"
+cp "$work/daily-gitconfig" "$work/gitconfig-before"
+mkdir -p "$HOME/.local/bin" "$XDG_CONFIG_HOME/nvim" "$work/tmux"
+printf '%s\n' daily >"$XDG_CONFIG_HOME/nvim/user-config"
+ln -s "$root/ds" "$HOME/.local/bin/ds"
+printf '%s\n' '#!/bin/sh' 'exit 95' >"$HOME/.local/bin/serve"
+printf '%s\n' '#!/bin/sh' 'exit 0' >"$work/tmux/tm"
+export DS_TMUX_SOURCE="$work/tmux" DS_TEST_LOG="$work/packages"
+cat >"$DS_MISE" <<'SH'
+#!/bin/sh
+printf '%s\n' "$*" >>"$DS_TEST_LOG"
+SH
+chmod +x "$DS_MISE" "$HOME/.local/bin/serve" "$work/tmux/tm"
+cat >"$work/apply" <<'ZSH'
+ds apply core --dry-run >"$DS_SHELL_STATE/plan" || exit 41
+if grep -q blocked "$DS_SHELL_STATE/plan"; then exit 42; fi
+ds apply core || exit 43
+ds apply core || exit 44
+[[ $HISTFILE == $ZDOTDIR/history ]] || exit 45
+[[ $commands[serve] == $DS_SHELL_STATE/bin/serve ]] || exit 46
+[[ $(git config core.excludesFile) == $XDG_CONFIG_HOME/ds/gitignore ]] || exit 47
+zsh -d -ic '[[ $HISTFILE == $ZDOTDIR/history && $aliases[gst] == "git status" ]]' || exit 48
+print -r -- 'export DS_TEST_LOCAL=kept' >>"$ZDOTDIR/.zshrc"
+print -s -- ds-persistent-history
+fc -AI
+ds add starship || exit 49
+ds apply remote --skip docker || exit 50
+[[ $MISE_ENV == remote,starship ]] || exit 51
+exit 0
+ZSH
+"$HOME/.local/bin/ds" shell <"$work/apply" >"$work/out" 2>"$work/err" || {
+	cat "$work/out" "$work/err"
+	exit 1
+}
+[ -s "$DS_TEST_LOG" ]
+"$HOME/.local/bin/ds" shell >"$work/out" 2>"$work/err" <<'ZSH' || {
+[[ $DS_TEST_LOCAL == kept ]] || exit 52
+[[ $MISE_ENV == remote,starship ]] || exit 53
+grep -qx ds-persistent-history "$HISTFILE" || exit 54
+[[ $(git config trial.setting) == kept ]] || exit 55
+ds unapply remote || exit 56
+[[ -f $ZDOTDIR/.zshrc ]] || exit 57
+[[ -z $(grep 'ds managed' "$ZDOTDIR/.zshrc") ]] || exit 58
+ds --help >/dev/null || exit 59
+exit 0
+ZSH
+	cat "$work/out" "$work/err"
+	exit 1
+}
+[ "$(readlink "$HOME/.zshrc")" = "$work/daily-zshrc" ]
+[ "$(cat "$HOME/.zshrc")" = 'exit 91' ]
+[ "$(readlink "$HOME/.gitconfig")" = "$work/daily-gitconfig" ]
+cmp "$HOME/.gitconfig" "$work/gitconfig-before"
+[ "$(readlink "$HOME/.local/bin/ds")" = "$root/ds" ]
+[ "$(tail -n 1 "$HOME/.local/bin/serve")" = 'exit 95' ]
+[ "$(cat "$XDG_CONFIG_HOME/nvim/user-config")" = daily ]
+[ ! -e "$XDG_CONFIG_HOME/ds" ]
 printf '%s\n' 'trial shell: ok'

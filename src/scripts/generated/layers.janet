@@ -1,7 +1,7 @@
 (def catalog
   @{:layers
-  {:core [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :nnn :jq :xh]
-   :remote [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :nnn :jq :xh :tmux :docker :zoxide :bat :delta]}
+  {:core [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :nnn :jq :gokill :xh]
+   :remote [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :nnn :jq :gokill :xh :tmux :docker :zoxide :bat :delta]}
   :optional [:starship]
   :components
   {:bat {:commands ["bat"] :owner :mise :version "0.25.0"}
@@ -11,6 +11,7 @@
    :fd {:commands ["fd"] :owner :mise :version "10.4.2"}
    :fzf {:commands ["fzf"] :owner :mise :version "0.74.2"}
    :git {:commands ["git"] :owner :native}
+   :gokill {:commands ["gokill"] :owner :mise :tool "http-gokill" :version "1.4.1"}
    :jq {:commands ["jq"] :owner :mise :version "1.8.2"}
    :mise {:commands ["mise"] :owner :runtime}
    :neovim {:commands ["nvim"] :owner :mise :version "0.12.5"}

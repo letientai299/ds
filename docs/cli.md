@@ -46,6 +46,8 @@ source <(ds completion zsh) # after compinit
 # Bash: source <(ds completion bash)
 ```
 
+The installed shell also provides [serve and fkill][tools].
+
 ## Status for automation
 
 `ds status TARGET --json` emits one JSON object with `schema: 1`, `target`,
@@ -127,3 +129,4 @@ implicitly.
 
 [delivery]: delivery.md
 [try]: try.md
+[tools]: tools.md

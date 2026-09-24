@@ -8,17 +8,17 @@
 (assert= true (layers/validate generated/catalog) "catalog is valid")
 
 (def core (layers/resolve generated/catalog "core" []))
-(assert= 11 (length core) "core component count")
+(assert= 12 (length core) "core component count")
 (assert= :mise (first core) "core starts with mise")
 (assert= :xh (last core) "core ends with xh")
 
 (def remote (layers/resolve generated/catalog "remote" []))
-(assert= 16 (length remote) "remote component count")
+(assert= 17 (length remote) "remote component count")
 (eachp [index component] core
   (assert= component (get remote index) "remote includes core in order"))
 
 (def optional (layers/resolve generated/catalog "core" ["starship" "starship"]))
-(assert= 12 (length optional) "optional components are unique")
+(assert= 13 (length optional) "optional components are unique")
 (assert= :starship (last optional) "optional component is appended")
 (assert= true (layers/optional-component? generated/catalog :starship) "starship is optional")
 

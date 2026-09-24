@@ -38,7 +38,7 @@ for version in one two; do
 	candidate=$prefix/versions/$version
 	mkdir -p "$candidate/src"
 	cp "$root/ds" "$candidate/ds"
-	cp -R "$root/src/scripts" "$root/src/mise" "$root/src/dotfiles" "$candidate/src/"
+	cp -R "$root/src/scripts" "$root/src/mise" "$root/src/dotfiles" "$root/src/tools" "$candidate/src/"
 done
 one=$prefix/versions/one/ds
 two=$prefix/versions/two/ds

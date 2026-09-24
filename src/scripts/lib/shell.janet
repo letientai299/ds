@@ -3,6 +3,7 @@
 (import scripts/lib/layers)
 (import scripts/lib/managed)
 (import scripts/lib/mise)
+(import scripts/lib/selection)
 
 (defn link [source target]
   (unless (managed/same-link? target source)
@@ -25,40 +26,38 @@
     (os/rename temporary target)))
 
 (defn prepare [root base catalog]
-  (def environment (mise/environment base root "core"))
   (def home (or (get base "HOME") (error "HOME is required")))
   (def original (or (get base "DS_SHELL_CONFIG_HOME")
                    (get base "XDG_CONFIG_HOME") (string home "/.config")))
   (def state (string (or (get base "XDG_STATE_HOME") (string home "/.local/state")) "/ds/shell"))
   (def config (string state "/config"))
+  (def layer-path (string config "/ds/layer"))
+  (def layer (if (os/stat layer-path) (string/trim (string (slurp layer-path))) "core"))
+  (unless (layers/known-layer? catalog layer) (error (string "unknown shell layer: " layer)))
+  (def environment (mise/environment base root layer))
   (filesystem/ensure-parent (string config "/ds/layer"))
   (filesystem/ensure-parent (string state "/zsh/history"))
   # Other applications retain their existing configuration.
   (when (= :directory (os/stat original :mode))
     (each name (os/dir original)
-      (unless (find |(= $ name) ["ds" "nvim"])
+      (unless (or (find |(= $ name) ["ds" "nvim"])
+                  (and (= layer "remote") (= name "tmux")))
         (link (string original "/" name) (string config "/" name)))))
-  (each name ["shell.zsh" "gitconfig" "gitignore"]
-    (link (string root "/src/dotfiles/" name) (string config "/ds/" name)))
-  (link (managed/source-root root base "nvim") (string config "/nvim"))
-  (link (string root "/ds") (string state "/bin/ds"))
-  (link (mise/binary root environment) (string state "/bin/mise"))
-  (write-config (string config "/ds/layer") "core\n")
+  (unless (os/stat layer-path) (write-config layer-path (string layer "\n")))
   (def global (or (get base "DS_SHELL_GIT_GLOBAL") (get base "GIT_CONFIG_GLOBAL") ""))
   (def includes (if (= global "")
                   [(string original "/git/config") (string home "/.gitconfig")]
                   [global]))
   (def gitconfig @"")
-  (each source (array/concat (array/slice includes) [(string config "/ds/gitconfig")])
+  (each source includes
     (buffer/push-string gitconfig "[include]\npath = " (git-quote source) "\n"))
-  (buffer/push-string gitconfig "[core]\nexcludesFile = "
-    (git-quote (string config "/ds/gitignore")) "\n")
   (write-config (string state "/git-base") gitconfig)
   (unless (os/lstat (string state "/gitconfig"))
     (write-config (string state "/gitconfig") "[include]\npath = git-base\n"))
   (def paths @[(string state "/bin")])
   (def installed (inventory/collect catalog root environment))
-  (each component (layers/resolve catalog "core" [])
+  (each component (layers/resolve catalog layer
+                    (map string (selection/selected catalog {"XDG_CONFIG_HOME" config})))
     (each executable (get-in installed [component :executables] [])
       (when executable
         (layers/append-unique paths (string/join (slice (string/split "/" executable) 0 -2) "/")))))
@@ -72,7 +71,14 @@
   (put environment "XDG_CONFIG_HOME" config)
   (put environment "MISE_CONFIG_DIR" (string config "/ds/mise"))
   (put environment "MISE_SYSTEM_CONFIG_DIR" (string config "/ds/mise-system"))
-  (put environment "ZDOTDIR" (string root "/src/dotfiles/trial"))
+  (put environment "ZDOTDIR" (string state "/zsh"))
+  (each entry (managed/entries root environment layer)
+    (when (managed/link-kind? (get entry :kind))
+      (link (get entry :source) (get entry :target)))
+    (when (= :marker (get entry :kind))
+      (when (= :conflict (managed/state entry))
+        (error (string "trial path conflict: " (get entry :target))))
+      (managed/apply-entry entry)))
   environment)
 
 (defn start [root base catalog]

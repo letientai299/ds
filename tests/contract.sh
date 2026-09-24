@@ -168,11 +168,14 @@ sh "$root/tests/aliases.sh" "$snapshot_root/src/dotfiles/shell.zsh"
 grep -q '	src/THIRD-PARTY.md$' "$work/snapshot/manifest.tsv" ||
 	fail 'third-party notices are not covered by the manifest'
 [ ! -L "$work/snapshot-install/current" ] || fail 'bootstrap activated a staged version'
+sh "$root/tests/shell.sh" "$snapshot_root"
+[ ! -L "$work/snapshot-install/current" ] || fail 'trial shell activated a staged version'
 "$snapshot_root/ds" activate 0.0.0-snapshot --prefix "$work/snapshot-install" >/dev/null
 [ "$(readlink "$work/snapshot-install/current")" = versions/0.0.0-snapshot ] ||
 	fail 'current does not name the installed version relatively'
 [ -x "$work/snapshot-install/current/ds" ] || fail 'current does not resolve to a usable install'
 sh "$root/tests/plugins.sh" "$work/snapshot-install/current/src/dotfiles/shell.zsh"
+sh "$root/tests/tools.sh" "$work/snapshot-install/current/src/tools"
 
 pull_root=$(
 	"$root/src/pull.sh" \

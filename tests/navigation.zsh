@@ -41,6 +41,7 @@ local_todo
 
 fpath=("$DS_TEST_SRC/dotfiles/completions" $fpath)
 autoload -Uz _ssh_hosts
+zstyle ':completion:*:hosts' known-hosts-files "$HOME/.ssh/known_hosts"
 curcontext=':ssh:'
 words=(ssh '')
 _wanted() { print -rl -- "${hosts[@]}"; }

@@ -35,7 +35,7 @@ function expect_probe() {
 cat >"$HOME/.zshrc" <<'ZSH'
 if [[ $DS_TEST_MODE == existing ]]; then
   autoload -Uz compinit
-  compinit -D
+  compinit -D -i
   function compinit() { print duplicate >"$HOME/duplicate"; }
 fi
 export DS_SHELL_ROOT="${DS_TEST_SHELL:A:h:h:h}"

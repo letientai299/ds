@@ -47,6 +47,7 @@ setopt append_history hist_ignore_all_dups hist_ignore_space share_history
 alias vi=nvim
 alias vim=nvim
 source "${${(%):-%x}:A:h}/aliases.zsh"
+source "${${(%):-%x}:A:h}/bindkeys.zsh"
 
 # Minimal two-line prompt. Optional Starship replaces this when installed.
 PROMPT='%F{cyan}%n@%m%f %F{blue}%~%f

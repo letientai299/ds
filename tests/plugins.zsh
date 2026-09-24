@@ -79,6 +79,8 @@ zselect -t 10
 # Request after batched terminal input.
 zpty -w -n shell $'\x18\x06'
 expect_probe 'echo ds-sugg|estion-value|*' 'autosuggestion missing'
+zpty -w -n shell $'\x00'
+expect_probe 'echo ds-suggestion-value||*' 'autosuggestion acceptance failed'
 
 zpty -w -n shell $'\x15ds_missing_command'
 zselect -t 10

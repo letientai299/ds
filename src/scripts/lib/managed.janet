@@ -4,7 +4,7 @@
 
 (def rc-start "# >>> ds managed >>>")
 (def rc-end "# <<< ds managed <<<")
-(def tool-names ["serve"])
+(def tool-names ["serve" "fzf-files"])
 
 (defn path [home relative]
   (string home "/" relative))
@@ -103,6 +103,7 @@
      {:kind :link :target (path config-home "ds/shell.zsh") :source (string base "/src/dotfiles/shell.zsh")}
      {:kind :link :target (path config-home "ds/gitconfig") :source (string base "/src/dotfiles/gitconfig")}
      {:kind :link :target (path config-home "ds/gitignore") :source (string base "/src/dotfiles/gitignore")}
+     {:kind :link :target (path config-home "ds/rgrc") :source (string base "/src/dotfiles/rgrc")}
      {:kind :link :target (path config-home "ds/mise/config.toml") :source (string base "/src/mise/mise.toml")}
      {:kind :link :target (path config-home "ds/mise/config.remote.toml") :source (string base "/src/mise/mise.remote.toml")}
      {:kind :link :target (path config-home "ds/mise/config.starship.toml") :source (string base "/src/mise/mise.starship.toml")}

@@ -41,21 +41,16 @@
 (defn parse-mutation [command args]
   (var target nil)
   (var dry-run? false)
-  (var mode (if (= command "remove") "unapply" command))
+  (var mode (case command "remove" "unapply" "force" "adopt" command))
   (def skips @[])
   (var index 2)
   (while (< index (length args))
-    (def arg (get args index))
+    (def arg (if (= (get args index) "--adopt") "--force" (get args index)))
     (case arg
       "--dry-run" (set dry-run? true)
-      "--adopt" (do
-                  (unless (= command "apply") (fail "--adopt requires apply"))
-                  (when (= mode "force") (fail "--adopt conflicts with --force"))
-                  (set mode "adopt"))
       "--force" (do
                   (unless (= command "apply") (fail "--force requires apply"))
-                  (when (= mode "adopt") (fail "--force conflicts with --adopt"))
-                  (set mode "force"))
+                  (set mode "adopt"))
       "--skip" (do
                  (unless (= command "apply") (fail (string command " does not accept --skip")))
                  (++ index)
@@ -385,7 +380,7 @@
         (if (find |(= :unavailable (get $ :state)) files)
           (print "Resolve unavailable configuration sources before applying.")
           (print (string "preview: ds apply " target
-                         (if (= summary :conflict) " --adopt" "") " --dry-run"))))))
+                         (if (= summary :conflict) " --force" "") " --dry-run"))))))
   (when check? (os/exit (if (= summary :complete) 0 1))))
 
 (defn help-request? [args]

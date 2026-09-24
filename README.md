@@ -130,16 +130,16 @@ and [Prepare a checkout][prepare-checkout]. Published release packaging remains
 in [Gitless delivery][delivery].
 
 Normal apply refuses conflicting managed targets. To preserve and replace
-conflicts, preview adoption first:
+conflicts, preview with `--force` first:
 
 ```sh
-ds apply core --adopt --dry-run
-ds apply core --adopt
+ds apply core --force --dry-run
+ds apply core --force
 ```
 
-Adoption backs each conflict up to `<target>.ds-adopted` before replacing it.
+`--force` backs each conflict up to `<target>.ds-adopted` before replacing it.
 Marked blocks in `~/.zshrc` and `~/.gitconfig` are rewritten in place instead,
-so the rest of those files survives either takeover. See
+so the rest of those files survives the takeover. See
 [Conflict operations][conflict-ops].
 
 ## Remote delivery
@@ -154,6 +154,13 @@ Apply to the normal remote home after reviewing the preview:
 
 ```sh
 ./ds push my-host remote
+```
+
+To back up and replace conflicting remote configuration:
+
+```sh
+./ds push my-host remote --force --dry-run
+./ds push my-host remote --force
 ```
 
 The controller probes the target platform, creates a content-addressed bundle,

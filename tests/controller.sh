@@ -93,4 +93,32 @@ if DS_SSH=$work/fake-ssh "$root/ds" push fixture core \
 fi
 grep -q 'mutually exclusive' "$work/exclusive.err" || fail 'mutually exclusive diagnostic is missing'
 
+target_home=$DS_FAKE_REMOTE_HOME/.local/share/ds-controller-test-home
+mkdir -p "$target_home/.config/nvim"
+printf '%s\n' original >"$target_home/.config/nvim/keep"
+for flag in --force --adopt; do
+	if DS_SSH=$work/fake-ssh "$root/ds" push fixture core \
+		"$flag" --deliver-only >"$work/exclusive.out" 2>"$work/exclusive.err"; then
+		fail 'controller accepted force without application'
+	fi
+	grep -q 'remove --deliver-only' "$work/exclusive.err" || fail 'force diagnostic missing'
+	DS_SSH=$work/fake-ssh "$root/ds" push fixture core \
+		--prefix .local/share/ds-controller \
+		--home .local/share/ds-controller-test-home \
+		"$flag" --dry-run >"$work/force.out" 2>"$work/force.err"
+	grep -Fq "backup $target_home/.config/nvim -> $target_home/.config/nvim.ds-adopted" "$work/force.err" || fail 'remote force omitted backup'
+	[ "$(cat "$target_home/.config/nvim/keep")" = original ] || fail 'preview changed conflict'
+	[ ! -e "$target_home/.config/nvim.ds-adopted" ] || fail 'preview created backup'
+	[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] || fail 'force preview changed current'
+done
+
+printf '%s\n' '#!/bin/sh' 'exit 0' >"$work/mise"
+chmod 0755 "$work/mise"
+DS_MISE=$work/mise DS_SSH=$work/fake-ssh "$root/ds" push fixture core \
+	--prefix .local/share/ds-controller \
+	--home .local/share/ds-controller-test-home \
+	--force >"$work/force.out" 2>"$work/force.err"
+[ -L "$target_home/.config/nvim" ] || fail 'remote force did not apply'
+[ "$(cat "$target_home/.config/nvim.ds-adopted/keep")" = original ] || fail 'remote force lost original'
+
 printf '%s\n' 'controller: ok'

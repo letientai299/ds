@@ -89,15 +89,15 @@ Apply refuses conflicts:
 ./ds apply core
 ```
 
-If a conflict should be preserved and replaced, use adoption:
+If a conflict should be preserved and replaced, use `--force`:
 
 ```sh
-./ds apply core --adopt --dry-run
-./ds apply core --adopt
+./ds apply core --force --dry-run
+./ds apply core --force
 ```
 
 Each conflicting target is backed up to `<target>.ds-adopted` before it is
-replaced. Adoption never follows a linked Zsh rc into another repository.
+replaced. `--force` never follows a linked Zsh rc into another repository.
 
 ## Use the remote layer
 
@@ -148,8 +148,7 @@ available `.ds-adopted` backups when the original target is absent. Installed
 system packages, mise tools, and versioned snapshots are additive and remain on
 disk.
 
-Avoid `ds apply --force` unless discarding each reported conflict is intentional.
-It removes conflicting targets without backups.
+`--force` refuses to overwrite an existing `.ds-adopted` backup.
 
 [install-main]: ../README.md#install-from-main
 [layers]: ../README.md#layers

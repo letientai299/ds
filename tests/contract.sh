@@ -176,6 +176,7 @@ sh "$root/tests/shell.sh" "$snapshot_root"
 [ -x "$work/snapshot-install/current/ds" ] || fail 'current does not resolve to a usable install'
 sh "$root/tests/plugins.sh" "$work/snapshot-install/current/src/dotfiles/shell.zsh"
 sh "$root/tests/tools.sh" "$work/snapshot-install/current/src/tools"
+sh "$root/tests/exports.sh" "$work/snapshot-install/current/src"
 
 pull_root=$(
 	"$root/src/pull.sh" \

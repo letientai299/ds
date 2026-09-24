@@ -68,13 +68,13 @@ rm "$XDG_CONFIG_HOME/ds/gitignore"
 printf '%s\n' custom >"$XDG_CONFIG_HOME/ds/gitignore"
 printf '%s\n' backup >"$XDG_CONFIG_HOME/ds/gitignore.ds-adopted"
 : >"$DS_TEST_LOG"
-"$two" adopt core --dry-run >"$work/plan"
+"$two" apply core --force --dry-run >"$work/plan"
 grep -q 'backup exists' "$work/plan" || fail 'backup conflict missing from plan'
-if "$two" adopt core >"$work/out" 2>"$work/err"; then fail 'backup overwritten'; fi
+if "$two" apply core --force >"$work/out" 2>"$work/err"; then fail 'backup overwritten'; fi
 [ ! -s "$DS_TEST_LOG" ] || fail 'packages ran before conflict preflight'
 [ "$(cat "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted")" = backup ] || fail 'backup damaged'
 rm "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted"
-"$one" adopt core >/dev/null
+"$one" apply core --force >/dev/null
 "$one" unapply core --dry-run >"$work/plan"
 grep -q "restore $XDG_CONFIG_HOME/ds/gitignore.ds-adopted" "$work/plan" || fail 'restore absent from plan'
 "$one" unapply core >/dev/null

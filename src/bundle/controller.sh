@@ -8,7 +8,7 @@ die() {
 }
 
 usage() {
-	printf '%s\n' 'usage: ds push HOST LAYER [--platform PLATFORM] [--prefix RELATIVE_PATH] [--home RELATIVE_PATH] [--dry-run|--deliver-only]'
+	printf '%s\n' 'usage: ds push HOST LAYER [--platform PLATFORM] [--prefix RELATIVE_PATH] [--home RELATIVE_PATH] [--force] [--dry-run|--deliver-only]'
 	printf '%s\n' '--dry-run delivers and stages, then previews application.' \
 		'Use ds help push for options and examples.'
 }
@@ -24,6 +24,7 @@ prefix=.local/share/ds
 remote_home=
 dry_run=false
 deliver_only=false
+force=false
 
 case "$host" in -h | --help)
 	usage
@@ -52,6 +53,10 @@ while [ "$#" -gt 0 ]; do
 		esac
 		shift 2
 		;;
+	--force | --adopt)
+		force=true
+		shift
+		;;
 	--dry-run)
 		dry_run=true
 		shift
@@ -78,6 +83,7 @@ case "$remote_home" in
 /* | ../* | */../* | */.. | *[!0-9A-Za-z._/-]*) die 'home must be a safe relative path' ;;
 esac
 [ "$deliver_only" = false ] || [ "$dry_run" = false ] || die '--dry-run and --deliver-only are mutually exclusive'
+[ "$deliver_only" = false ] || [ "$force" = false ] || die '--force requires application; remove --deliver-only'
 
 if [ -z "$platform" ]; then
 	probe=$("$ssh_command" "$host" 'uname -s; uname -m') || die 'remote platform probe failed; pass --platform'
@@ -140,6 +146,7 @@ installed=$("$root/src/bundle/push.sh" \
 
 if [ "$deliver_only" = false ]; then
 	apply_args=$layer
+	[ "$force" = false ] || apply_args="$apply_args --force"
 	[ "$dry_run" = false ] || apply_args="$apply_args --dry-run"
 	if [ -n "$remote_home" ]; then
 		target_home=\$HOME/$remote_home

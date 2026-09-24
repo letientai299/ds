@@ -41,7 +41,7 @@ Existing commands remain available:
 
 | Existing command    | Preferred form               |
 | ------------------- | ---------------------------- |
-| `ds adopt LAYER`    | `ds apply LAYER --adopt`     |
+| `ds adopt LAYER`    | `ds apply LAYER --force`     |
 | `ds force LAYER`    | `ds apply LAYER --force`     |
 | `ds add COMPONENT`  | `ds apply COMPONENT`         |
 | `ds unapply TARGET` | `ds remove TARGET`           |
@@ -96,30 +96,25 @@ seconds. Only one set of probes runs per invocation. Missing Docker is distinct
 from a daemon that cannot be reached.
 
 `apply --skip docker` skips Docker convergence for layer applications, including
-explicit `--adopt` or `--force` policies. Optional-component applications reject
+the `--force` conflict policy. Optional-component applications reject
 `--skip` and conflict policies. Legacy `adopt` and `force` still reject `--skip`.
 
 ## Conflict operations
 
 Normal `apply` checks all managed-file conflicts and source availability before
-package changes and reports the adoption preview command. Adoption also checks
-every backup destination first. `--adopt` and `--force` are mutually exclusive.
+package changes and reports the `--force --dry-run` preview command.
 
-`apply --adopt` moves each conflict to `<target>.ds-adopted`, applies the managed
-version, and lets `remove` restore the original. Adoption fails rather than
-overwrite an existing backup.
+`apply --force` moves each conflict to `<target>.ds-adopted`, applies the managed
+version, and lets `remove` restore the original. It checks every backup destination
+first and refuses to overwrite an existing backup. `--adopt` remains a
+compatibility alias for `--force`; both preserve backups.
 
-`apply --force` removes conflicts recursively and creates no backup. Its dry-run lists
-the targets that would be replaced.
-
-Marked blocks in `.zshrc` and `.gitconfig` are the exception, because those
-files belong to the user and `ds` only ever appends a block to them. When such a
-block conflicts, `--adopt` and `--force` rewrite only the region between the
-markers, including a block whose end marker was lost to a hand edit, and leave
-the rest of the file untouched. `--adopt` copies the file to `<target>.ds-adopted`
-first. That copy is left for you to reconcile: `remove` restores a
-`.ds-adopted` backup only once the target itself is gone, which does not happen
-while the rc file still holds content of your own.
+Marked blocks in `.zshrc` and `.gitconfig` belong to files shared with the user.
+For a conflicting block, `--force` copies the file to `<target>.ds-adopted`, then
+rewrites only the region between the markers, including a block whose end marker
+was lost to a hand edit. The rest of the file remains unchanged. That copy is left
+for you to reconcile: `remove` restores a `.ds-adopted` backup only once the target
+itself is gone, which does not happen while the rc file holds your own content.
 
 ## Controller push options
 
@@ -128,6 +123,7 @@ ds push HOST LAYER \
   [--platform PLATFORM] \
   [--prefix RELATIVE_PATH] \
   [--home RELATIVE_PATH] \
+  [--force] \
   [--dry-run | --deliver-only]
 ```
 
@@ -136,8 +132,11 @@ ds push HOST LAYER \
 - `--prefix` changes the content-addressed installation root relative to the
   remote home. The default is `.local/share/ds`.
 - `--home` applies inside an isolated relative home beneath the remote home.
+- `--force` backs up conflicting remote targets before applying. Combine it with
+  `--dry-run` to preview. It cannot be combined with `--deliver-only`. The old
+  `--adopt` spelling remains an alias.
 - `--dry-run` delivers the snapshot and previews its layer application.
-- `--deliver-only` stages the versioned snapshot without applying or activating it.
+- `--deliver-only` stages the versioned snapshot without application or activation.
   `--dry-run` also leaves the active version unchanged.
 
 Push is available only from a controller checkout because delivered snapshots do

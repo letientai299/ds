@@ -42,8 +42,7 @@ fi
 # History is deliberately local and independent of plugin managers.
 HISTFILE="$XDG_STATE_HOME/zsh/history"
 [[ -z "${DS_SHELL_STATE:-}" ]] || HISTFILE="$DS_SHELL_STATE/zsh/history"
-HISTSIZE=100000
-SAVEHIST=100000
+source "${${(%):-%x}:A:h}/exports.zsh"
 setopt append_history hist_ignore_all_dups hist_ignore_space share_history
 
 alias vi=nvim

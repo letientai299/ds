@@ -4,12 +4,10 @@
     :example "exec ds"}
    {:name "apply" :group :primary :args "[TARGET]" :targets :all
     :summary "Apply a layer or optional component"
-    :flags ["--dry-run" "--adopt" "--force" "--skip"]
+    :flags ["--dry-run" "--force" "--skip"]
     :details ["Omitted targets use the saved layer, initially core."
               "--dry-run previews changes without writing."
-              "--adopt backs up conflicts before applying."
-              "--force replaces conflicts without backups."
-              "--adopt and --force are mutually exclusive."
+              "--force backs up conflicts before applying."
               "Conflict policies require a layer target."
               "--skip docker skips Docker convergence for layer applications."
               "Trial configuration is separate; package installations affect the host."]
@@ -31,10 +29,12 @@
     :example "ds remove core --dry-run"}
    {:name "push" :group :primary :controller true :args "HOST LAYER" :targets :layers
     :summary "Deploy over SSH; checkout only"
-    :flags ["--platform" "--prefix" "--home" "--dry-run" "--deliver-only"]
+    :flags ["--platform" "--prefix" "--home" "--force" "--dry-run" "--deliver-only"]
     :details ["--platform NAME overrides automatic platform detection."
               "--prefix PATH sets the relative installation root."
               "--home PATH sets an isolated relative home."
+              "--force backs up remote conflicts before applying."
+              "--force cannot be combined with --deliver-only."
               "--dry-run delivers and stages, then previews application."
               "--deliver-only stages without application or activation."
               "Both preview modes leave the active version unchanged."]
@@ -67,9 +67,9 @@
     :example "ds docker-rootful --approve-rootful --grant-docker-group"}
    {:name "adopt" :group :compatibility :args "LAYER" :targets :layers :flags ["--dry-run"]
     :summary "Back up conflicts, then apply"
-    :details ["Prefer ds apply LAYER --adopt."] :example "ds apply core --adopt --dry-run"}
+    :details ["Prefer ds apply LAYER --force."] :example "ds apply core --force --dry-run"}
    {:name "force" :group :compatibility :args "LAYER" :targets :layers :flags ["--dry-run"]
-    :summary "Replace conflicts without backups, then apply"
+    :summary "Back up conflicts, then apply"
     :details ["Prefer ds apply LAYER --force."] :example "ds apply core --force --dry-run"}
    {:name "add" :group :compatibility :args "COMPONENT" :targets :optional :flags ["--dry-run"]
     :summary "Enable an optional component"

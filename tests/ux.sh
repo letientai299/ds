@@ -114,14 +114,22 @@ done
 grep -q '^  rollback ' "$work/all-help" || fail 'advanced help missing recovery'
 "$root/ds" apply --help >"$work/help"
 grep -qx 'example: ds apply --dry-run' "$work/help" || fail 'apply example changed commands'
+for command in apply push; do
+	"$root/ds" help "$command" >"$work/help"
+	grep -q -- '--force' "$work/help" || fail 'force missing from help'
+	if grep -q -- '--adopt' "$work/help"; then fail 'help advertises old flag'; fi
+done
+for shell in bash zsh; do
+	"$root/ds" completion "$shell" >"$work/completion"
+	grep -q -- '--force' "$work/completion" || fail 'force missing from completion'
+	if grep -q -- '--adopt' "$work/completion"; then fail 'completion advertises old flag'; fi
+done
 "$root/ds" completion --help >"$work/help"
 if grep -q '^targets:' "$work/help"; then fail 'integration help includes targets'; fi
 
 reject remove
 reject remove --dry-run
 reject remove core extra
-reject apply core --adopt --force
-reject apply --force --adopt core
 reject apply starship --adopt
 reject apply --force starship
 reject apply starship --skip docker
@@ -161,9 +169,9 @@ grep -qx 'would apply core:' "$work/default-plan" || fail 'initial apply did not
 rm "$XDG_CONFIG_HOME/ds/gitignore"
 printf '%s\n' original >"$XDG_CONFIG_HOME/ds/gitignore"
 if "$root/ds" apply core >"$work/out" 2>"$work/err"; then fail 'apply accepted conflict'; fi
-grep -q 'ds apply core --adopt --dry-run' "$work/err" || fail 'conflict omitted preview command'
+grep -q 'ds apply core --force --dry-run' "$work/err" || fail 'conflict omitted preview command'
 "$root/ds" status core >"$work/conflict"
-grep -qx 'preview: ds apply core --adopt --dry-run' "$work/conflict" || fail 'status omitted conflict action'
+grep -qx 'preview: ds apply core --force --dry-run' "$work/conflict" || fail 'status omitted conflict action'
 "$root/ds" apply --adopt core --dry-run >"$work/adopt-plan"
 grep -q '^  backup ' "$work/adopt-plan" || fail 'adoption preview omitted backup'
 [ ! -e "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted" ] || fail 'adoption preview wrote backup'
@@ -174,10 +182,17 @@ grep -q '^  restore ' "$work/remove-plan" || fail 'removal preview omitted resto
 "$root/ds" remove core >/dev/null
 [ "$(cat "$XDG_CONFIG_HOME/ds/gitignore")" = original ] || fail 'removal did not restore original'
 "$root/ds" apply core --force --dry-run >"$work/force-plan"
-grep -q '(no backup)' "$work/force-plan" || fail 'force preview omitted replacement'
+grep -q '^  backup ' "$work/force-plan" || fail 'force preview omitted backup'
+[ ! -e "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted" ] || fail 'force preview wrote backup'
+"$root/ds" apply --force --adopt core --dry-run >"$work/alias-plan"
+cmp "$work/force-plan" "$work/alias-plan" || fail 'aliases changed force plan'
 "$root/ds" apply --force core >/dev/null
 [ -L "$XDG_CONFIG_HOME/ds/gitignore" ] || fail 'force did not replace conflict'
-[ ! -e "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted" ] || fail 'force created backup'
+[ "$(cat "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted")" = original ] || fail 'force lost original'
+"$root/ds" remove core >/dev/null
+[ "$(cat "$XDG_CONFIG_HOME/ds/gitignore")" = original ] || fail 'force backup not restored'
+"$root/ds" force core >/dev/null
+[ "$(cat "$XDG_CONFIG_HOME/ds/gitignore.ds-adopted")" = original ] || fail 'legacy force lost original'
 "$root/ds" apply starship >/dev/null
 [ "$(cat "$XDG_CONFIG_HOME/ds/components")" = starship ] || fail 'apply did not select component'
 "$root/ds" remove starship >/dev/null

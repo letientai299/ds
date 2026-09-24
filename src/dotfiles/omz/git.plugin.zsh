@@ -1,6 +1,33 @@
 # Git version checking
 autoload -Uz is-at-least
-git_version="${${(As: :)$(git version 2>/dev/null)}[3]}"
+zmodload zsh/stat
+_ds_git_path=${commands[git]}
+zstat -L +mtime -A _ds_git_stamp -- "$_ds_git_path" 2>/dev/null || _ds_git_stamp=()
+zstat -L +size -A _ds_git_size -- "$_ds_git_path" 2>/dev/null || _ds_git_size=()
+if [[ $OSTYPE == darwin* && $_ds_git_path == /usr/bin/git ]]; then
+  zstat +mtime -A _ds_git_selection -- /var/db/xcode_select_link 2>/dev/null || _ds_git_selection=()
+fi
+_ds_git_key="$_ds_git_path:${_ds_git_stamp[1]}:${_ds_git_size[1]}:${_ds_git_selection[1]}:${DEVELOPER_DIR}:${SDKROOT}:${TOOLCHAINS}"
+_ds_git_cache="$XDG_CACHE_HOME/ds/git-version"
+if [[ $_ds_git_key != ${_ds_git_version_key:-} ]]; then
+  _ds_git_cached=''
+  if [[ -r $_ds_git_cache ]]; then
+    _ds_git_cached=$(<"$_ds_git_cache")
+  fi
+  if [[ ${_ds_git_cached%%$'\n'*} == $_ds_git_key && $_ds_git_cached == *$'\n'* ]]; then
+    _ds_git_version_output=${_ds_git_cached#*$'\n'}
+  else
+    _ds_git_version_output=$(git version 2>/dev/null) || _ds_git_version_output=''
+    if [[ -n $_ds_git_version_output ]]; then
+      if mkdir -p "${_ds_git_cache:h}"; then
+        print -rl -- "$_ds_git_key" "$_ds_git_version_output" >| "$_ds_git_cache" || true
+      fi
+    fi
+  fi
+  [[ -z $_ds_git_version_output ]] || typeset -g _ds_git_version_key=$_ds_git_key
+fi
+git_version="${${(As: :)_ds_git_version_output}[3]}"
+unset _ds_git_path _ds_git_stamp _ds_git_size _ds_git_selection _ds_git_key _ds_git_cache _ds_git_cached
 
 #
 # Functions Current

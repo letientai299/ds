@@ -44,7 +44,7 @@ function reload() { source "$DS_TEST_SHELL"; }
 reload
 PROMPT='plugins> '
 function first_prompt() {
-  print -r -- "$+functions[_zsh_autosuggest_start] $+functions[_zsh_highlight] $+functions[enable-fzf-tab]" >"$HOME/first"
+  print -r -- "$+functions[_zsh_autosuggest_start] $+functions[_zsh_highlight] $+functions[enable-fzf-tab] ${+_ds_fzf_loaded} ${+_ds_zoxide_loaded} ${+DS_TEST_MISE_READY}" >"$HOME/first"
   precmd_functions=(${precmd_functions:#first_prompt})
 }
 precmd_functions+=(first_prompt)
@@ -69,13 +69,13 @@ trap 'zpty -d shell' EXIT
 zpty -w shell 'print early >"$HOME/early"'
 await_file "$HOME/ready"
 [[ $(<"$HOME/early") == early ]] || fail 'early input lost'
-[[ $(<"$HOME/first") == '0 0 0' ]] || fail 'plugins blocked first prompt'
-[[ $(<"$HOME/queued") == 4 ]] || fail 'reload duplicated queue'
+[[ $(<"$HOME/first") == '0 0 0 0 0 0' ]] || fail 'plugins blocked first prompt'
+[[ $(<"$HOME/queued") == 6 ]] || fail 'reload duplicated queue'
 [[ ! -e $HOME/duplicate ]] || fail 'completion initialized twice'
 
-zpty -w shell 'print -r -- "$_ds_plugins_ready|$_comps[ds]|$+functions[enable-fzf-tab]|$+functions[_zsh_autosuggest_start]|$+functions[_zsh_highlight]" >"$HOME/check"'
+zpty -w shell 'print -r -- "$_ds_plugins_ready|$_comps[ds]|$+functions[enable-fzf-tab]|$+functions[_zsh_autosuggest_start]|$+functions[_zsh_highlight]|${+_ds_fzf_loaded}|$+functions[zoxide-ready]|$DS_TEST_MISE_READY" >"$HOME/check"'
 await_file "$HOME/check"
-[[ $(<"$HOME/check") == '1|_ds_complete|1|1|1' ]] || fail "plugin state: $(<"$HOME/check")"
+[[ $(<"$HOME/check") == '1|_ds_complete|1|1|1|1|1|1' ]] || fail "plugin state: $(<"$HOME/check")"
 zpty -w shell '[[ $_comps[cmake] == _cmake && ${fpath[(Ie)$HOME/.local/share/zsh/site-functions]} -gt 0 && ${#fpath} == ${#${(u)fpath}} ]] && print ready >"$HOME/completions"'
 await_file "$HOME/completions"
 zpty -w shell 'before="$(bindkey "^I")"; reload; [[ $(bindkey "^I") == "$before" && $before == *fzf-tab-complete* && $#_zsh_defer_tasks == 0 ]] && print ready >"$HOME/reload"'

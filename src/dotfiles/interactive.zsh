@@ -10,6 +10,28 @@ if (( ! $+functions[zsh-defer] )); then
   source "$_ds_plugins_dir/zsh-defer/zsh-defer.plugin.zsh"
 fi
 
+_ds_mise_init() {
+  [[ ${DS_MISE_ACTIVATE:-0} == 1 ]] || return 0
+  (( ${+_ds_mise_loaded} )) && return 0
+  local activation
+  if activation=$(command mise activate zsh); then
+    eval "$activation" && typeset -g _ds_mise_loaded=1
+  fi
+}
+
+_ds_tool_init() {
+  local fzf="$MISE_DATA_DIR/installs/fzf/latest/fzf"
+  local zoxide="$MISE_DATA_DIR/installs/zoxide/latest/zoxide"
+  if [[ -x $fzf ]] && (( ! ${+_ds_fzf_loaded} )); then
+    source <("$fzf" --zsh)
+    typeset -g _ds_fzf_loaded=1
+  fi
+  if [[ -x $zoxide ]] && (( ! ${+_ds_zoxide_loaded} )); then
+    eval "$("$zoxide" init zsh)"
+    typeset -g _ds_zoxide_loaded=1
+  fi
+}
+
 _ds_completion_init() {
   if (( ! $+functions[compdef] )); then
     local cache="$XDG_CACHE_HOME/ds/zsh"
@@ -60,6 +82,8 @@ _ds_highlighting_init() {
 
 # Wait for idle ZLE after the first prompt. Keep errors visible, without
 # replaying directory or prompt hooks; highlighting must follow widget setup.
+zsh-defer -dm2 _ds_mise_init
+zsh-defer -dm2 _ds_tool_init
 zsh-defer -dm2 _ds_completion_init
 zsh-defer -dm2 _ds_fzf_tab_init
 zsh-defer -dm2 _ds_autosuggestions_init

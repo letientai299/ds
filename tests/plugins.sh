@@ -18,12 +18,28 @@ else
 fi
 SH
 chmod +x "$work/bin/fzf"
+cat >"$work/bin/zoxide" <<'SH'
+#!/bin/sh
+if [ "$1" = init ]; then
+  echo 'function zoxide-ready() { :; }'
+fi
+SH
+chmod +x "$work/bin/zoxide"
+cat >"$work/bin/mise" <<'SH'
+#!/bin/sh
+if [ "$1" = activate ] && [ "$2" = zsh ]; then
+  echo 'export DS_TEST_MISE_READY=1'
+fi
+SH
+chmod +x "$work/bin/mise"
 
 for mode in fresh existing; do
-	mkdir -p "$work/$mode/.local/state/zsh" "$work/$mode/.local/share/mise/installs/fzf/latest"
+	mkdir -p "$work/$mode/.local/state/zsh" "$work/$mode/.local/share/mise/installs/fzf/latest" \
+		"$work/$mode/.local/share/mise/installs/zoxide/latest"
 	ln -s "$work/bin/fzf" "$work/$mode/.local/share/mise/installs/fzf/latest/fzf"
+	ln -s "$work/bin/zoxide" "$work/$mode/.local/share/mise/installs/zoxide/latest/zoxide"
 	env -i HOME="$work/$mode" ZDOTDIR="$work/$mode" TERM=xterm-256color \
-		PATH="$work/bin:$PATH" DS_JANET="$(command -v janet)" \
+		PATH="$work/bin:$PATH" DS_JANET="$(command -v janet)" DS_MISE_ACTIVATE=1 \
 		DS_TEST_SHELL="${1:-$root/src/dotfiles/shell.zsh}" DS_TEST_MODE="$mode" \
 		zsh -df "$root/tests/plugins.zsh"
 done

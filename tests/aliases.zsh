@@ -9,12 +9,17 @@ function fail() {
   exit 1
 }
 
-# Startup avoids Docker calls and cache writes.
+# Startup avoids Docker calls.
 function docker() { fail 'Docker ran during startup'; }
 source "$shell"
 function reload() { source "$shell"; }
 reload
-[[ -z $(command find "$HOME" -mindepth 1 -print) ]] || fail 'startup wrote files'
+[[ -f $XDG_CACHE_HOME/ds/git-version ]] || fail 'Git version cache missing'
+[[ -z $(command find "$HOME" -type f ! -path "$XDG_CACHE_HOME/ds/git-version" -print) ]] || fail 'unexpected startup files'
+typeset -g _ds_git_version_key=''
+function git() { fail 'Git version queried again'; }
+source "${shell:A:h}/omz/git.plugin.zsh"
+unfunction git
 
 [[ -o auto_cd && -o auto_pushd && -o pushd_ignore_dups && -o pushdminus ]] || fail 'directory options missing'
 cd "$work/one/two/three/four/five"

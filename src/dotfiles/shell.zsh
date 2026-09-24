@@ -60,28 +60,9 @@ source "${${(%):-%x}:A:h}/functions.zsh"
 
 source "${${(%):-%x}:A:h}/prompt.zsh"
 
-# Tool-generated initialization is guarded and ordered after static setup. Use
-# mise's stable install links directly so initialization does not invoke a shim
-# and write config-tracking state during shell startup.
-_ds_fzf="$MISE_DATA_DIR/installs/fzf/latest/fzf"
-_ds_zoxide="$MISE_DATA_DIR/installs/zoxide/latest/zoxide"
-if [[ -x "$_ds_fzf" ]] && (( ! ${+_ds_fzf_loaded} )); then
-  source <("$_ds_fzf" --zsh)
-  typeset -g _ds_fzf_loaded=1
-fi
-if [[ -x "$_ds_zoxide" ]] && (( ! ${+_ds_zoxide_loaded} )); then
-  eval "$("$_ds_zoxide" init zsh)"
-  typeset -g _ds_zoxide_loaded=1
-fi
 export DS_DS="$_ds_root/ds"
 [[ ! -r "$_ds_root/src/dotfiles/command.sh" ]] || source "$_ds_root/src/dotfiles/command.sh"
-unset _ds_fzf _ds_zoxide _ds_selected _ds_layer _ds_component _ds_environments _ds_root
+unset _ds_selected _ds_layer _ds_component _ds_environments _ds_root
 
 [[ ! -r "$XDG_CONFIG_HOME/ds/local.zsh" ]] || source "$XDG_CONFIG_HOME/ds/local.zsh"
-if [[ -o interactive && ${DS_MISE_ACTIVATE:-0} == 1 ]] && (( ! ${+_ds_mise_loaded} )); then
-  if _ds_activation=$(command mise activate zsh); then
-    eval "$_ds_activation" && typeset -g _ds_mise_loaded=1
-  fi
-  unset _ds_activation
-fi
 source "${${(%):-%x}:A:h}/interactive.zsh"

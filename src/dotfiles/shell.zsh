@@ -46,7 +46,7 @@ setopt append_history hist_ignore_all_dups hist_ignore_space share_history
 
 alias vi=nvim
 alias vim=nvim
-alias gs='git status'
+source "${${(%):-%x}:A:h}/aliases.zsh"
 
 # Minimal two-line prompt. Optional Starship replaces this when installed.
 PROMPT='%F{cyan}%n@%m%f %F{blue}%~%f

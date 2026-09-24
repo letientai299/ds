@@ -162,6 +162,8 @@ grep -q '^would apply core:$' "$work/snapshot.out" || fail 'installed snapshot d
 [ -f "$snapshot_root/src/vendor/nvim.conf/init.lua" ] || fail 'snapshot is missing nvim.conf'
 [ -f "$snapshot_root/src/vendor/tmux.conf/tmux.conf" ] || fail 'snapshot is missing tmux.conf'
 [ -f "$snapshot_root/src/dotfiles/shell.zsh" ] || fail 'snapshot is missing shell configuration'
+sh "$root/tests/aliases.sh" "$snapshot_root/src/dotfiles/shell.zsh"
+[ -f "$snapshot_root/src/dotfiles/omz/LICENSE.txt" ] || fail 'snapshot is missing OMZ license'
 [ -f "$snapshot_root/src/THIRD-PARTY.md" ] || fail 'snapshot is missing third-party notices'
 grep -q '	src/THIRD-PARTY.md$' "$work/snapshot/manifest.tsv" ||
 	fail 'third-party notices are not covered by the manifest'

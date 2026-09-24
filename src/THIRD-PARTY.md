@@ -11,6 +11,19 @@ licenses.
 Vendored `nvim.conf` and `tmux.conf` trees are Git exports of the sibling
 checkouts named at build time and carry whatever license those repositories do.
 
+## Oh My Zsh
+
+`src/dotfiles/omz` contains shell code from the Oh My Zsh checkout used by the
+old dotfiles configuration, at commit
+`74965c96098134b192f00084f966b4b02438a739`. Its MIT [license][omz-license] ships
+beside the code in every snapshot.
+
+The port includes the Git plugin, its current-branch and clipboard helpers,
+directory shortcuts, and Docker aliases. Completion bindings are conditional
+on `compdef` being available. Docker completion generation and Git prompt hooks
+are omitted so the aliases work without Oh My Zsh startup or cache directories.
+Personal overrides live in [`aliases.zsh`][aliases].
+
 ## Janet
 
 The pinned Janet runtime is compiled from the upstream amalgamation and shipped
@@ -67,3 +80,5 @@ SOFTWARE.
 
 [janet]: https://github.com/janet-lang/janet
 [mise]: https://github.com/jdx/mise
+[omz-license]: dotfiles/omz/LICENSE.txt
+[aliases]: dotfiles/aliases.zsh

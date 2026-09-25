@@ -8,10 +8,27 @@ this feel like" without a decision.
 
 ## Install
 
-Follow [Install on a machine][install-main] for macOS, Ubuntu, Debian, Alpine,
-Fedora, or CentOS Stream. `sh ds-install.sh --no-apply` prepares sources and
+The [host snippet][readme-host] downloads the [source installer][installer]
+and applies `core`. `sh ds-install.sh --no-apply` prepares sources and
 runtimes, then previews `core`. Without that flag it applies the layer. The
 installer clones `main` outside a checkout and needs no published release.
+The launcher is at `~/.local/bin/ds`. `sh ds-install.sh --shell` opens Zsh
+after applying.
+
+The installer supports macOS, Ubuntu, Debian, Alpine, Fedora, and CentOS
+Stream on ARM64 and x64. Linux package installation needs root or `sudo`. On
+macOS, install Command Line Tools and [Homebrew][brew] first. Sources clone
+under `${XDG_DATA_HOME:-~/.local/share}/ds-source`; keep them because managed
+files link to them. An existing checkout there is reused without pulling or
+resetting. `sh ds-install.sh --help` lists `--layer`, `--prefix`, and
+`--skip docker`.
+
+## Layers
+
+`core` is the daily setup. `remote` extends it. `extra` and `ui` are
+independent, and `all` selects every layer. Run `ds help` for component lists
+or `ds status LAYER --verbose` for resolved files. SSH delivery and checkout
+workflows are in [Architecture][architecture].
 
 ## Apply core safely
 
@@ -44,6 +61,7 @@ If a conflict should be preserved and replaced, use `--force`:
 
 Each conflicting target is backed up to `<target>.ds-adopted` before it is
 replaced. `--force` never follows a linked Zsh rc into another repository.
+Managed blocks in shell and Git startup files are updated in place.
 
 ## Use the remote layer
 
@@ -82,6 +100,9 @@ disk.
 
 `--force` refuses to overwrite an existing `.ds-adopted` backup.
 
-[install-main]: ../README.md#install-on-a-machine
-[layers]: ../README.md#layers
+[architecture]: architecture.md
+[brew]: https://brew.sh/
+[installer]: ../scripts/install.sh
+[layers]: #layers
+[readme-host]: ../README.md#install-on-a-host
 [try]: try.md

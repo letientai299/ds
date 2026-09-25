@@ -94,7 +94,7 @@ ds remove core       # remove everything ds owns, then look around again
 
 ## Other layers and images
 
-`remote` adds Tmux and Docker to core. `extra` supplies Bat, Delta, Worktrunk,
+`remote` adds Tmux, Docker, and Yazi to core. `extra` supplies Bat, Delta, Worktrunk,
 and gokill independently. Docker readiness stays incomplete
 inside a container without a reachable engine, which is expected:
 

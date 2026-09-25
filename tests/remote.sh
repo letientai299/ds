@@ -65,17 +65,22 @@ run_case() {
                 --prefix "$HOME/.local/share/ds" \
                 --manifest-sha256 "$1")
             "$installed/ds" apply remote
-            "$installed/ds" status remote >"$HOME/status"
+            "$installed/ds" status remote --verbose >"$HOME/status"
             grep -q "^  missing docker$" "$HOME/status"
             grep -q "^  installed tmux$" "$HOME/status"
             grep -q "^  installed zoxide " "$HOME/status"
-
+            grep -q "^  installed yazi " "$HOME/status"
+            command -v file >/dev/null
+            # The first source primes the git-version cache; repeated sourcing must be stable.
+            zsh -f -c "source \"$HOME/.config/ds/shell.zsh\""
             find "$HOME" -print | sort > /tmp/ds-before-paths
             find "$HOME" -type f -exec sha256sum {} \; | sort > /tmp/ds-before-hashes
             zsh -f -c "
                 set -e
                 source \"$HOME/.config/ds/shell.zsh\"
-                (( \$+functions[z] ))
+                (( \$+functions[yazi_cd] ))
+                [[ \$YAZI_CONFIG_HOME == \$XDG_CONFIG_HOME/ds/yazi ]]
+                [[ \$aliases[r] == yazi_cd ]]
             "
             find "$HOME" -print | sort > /tmp/ds-after-paths
             find "$HOME" -type f -exec sha256sum {} \; | sort > /tmp/ds-after-hashes

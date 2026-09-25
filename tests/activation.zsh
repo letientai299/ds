@@ -1,6 +1,7 @@
 cd "$DS_TEST_WORK/one"
 source "$DS_TEST_SRC/dotfiles/shell.zsh"
 _ds_mise_init
+[[ ${path[1]} == $DS_SHELL_PATH ]] || exit 7
 if [[ $DS_MISE_ACTIVATE == 0 ]]; then
   [[ -z ${DS_TEST_PROJECT:-} && -z ${_ds_mise_loaded:-} ]] || exit 1
   exit

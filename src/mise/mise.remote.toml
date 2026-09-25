@@ -1,5 +1,10 @@
 [bootstrap.packages]
+"apk:file" = "latest"
 "apk:tmux" = "latest"
+"apt:file" = "latest"
 "apt:tmux" = "latest"
 "brew:tmux" = { os = "macos" }
+"dnf:file" = "latest"
 "dnf:tmux" = "latest"
+[tools]
+yazi = "26.9.1"

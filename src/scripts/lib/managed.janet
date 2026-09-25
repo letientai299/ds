@@ -130,6 +130,10 @@
     (array/concat core
       @[{:kind :link :target (path config-home "tmux") :source tmux-source}
         {:kind :link :target (path bin "tm") :source (string tmux-source "/tm")}]))
+  (when (layers/includes? generated/catalog layer :yazi)
+    (array/push core
+      {:kind :link :target (path config-home "ds/yazi")
+       :source (string base "/src/dotfiles/yazi")}))
   (when (layers/includes? generated/catalog layer :kitty)
     (def kitty-source (source-root base environment "kitty"))
     (array/push core

@@ -133,6 +133,8 @@ print -s -- ds-persistent-history
 fc -AI
 ds apply remote --skip docker || exit 50
 [[ $MISE_ENV == core,remote ]] || exit 51
+[[ -L $XDG_CONFIG_HOME/ds/yazi ]] || exit 71
+[[ $aliases[r] == yazi_cd ]] || exit 75
 exit 0
 ZSH
 "$HOME/.local/bin/ds" shell <"$work/apply" >"$work/out" 2>"$work/err" || {
@@ -140,9 +142,24 @@ ZSH
 	exit 1
 }
 [ -s "$DS_TEST_LOG" ]
-"$HOME/.local/bin/ds" shell >"$work/out" 2>"$work/err" <<'ZSH' || {
+mkdir -p "$work/bin"
+cat >"$work/bin/yazi" <<'SH'
+#!/bin/sh
+for argument do
+	case $argument in
+	--cwd-file=*) printf '%s' "$DS_TEST_TARGET" >"${argument#--cwd-file=}" ;;
+	esac
+done
+SH
+chmod +x "$work/bin/yazi"
+export DS_TEST_TARGET="$work"
+PATH="$work/bin:$PATH" "$HOME/.local/bin/ds" shell >"$work/out" 2>"$work/err" <<'ZSH' || {
 [[ $DS_TEST_LOCAL == kept ]] || exit 52
 [[ $MISE_ENV == core,remote ]] || exit 53
+[[ $YAZI_CONFIG_HOME == $XDG_CONFIG_HOME/ds/yazi ]] || exit 72
+[[ $aliases[r] == yazi_cd ]] || exit 73
+r
+[[ $PWD == $DS_TEST_TARGET ]] || exit 74
 grep -qx ds-persistent-history "$HISTFILE" || exit 54
 [[ $(git config trial.setting) == kept ]] || exit 55
 ds status --json >"$DS_SHELL_STATE/status" || exit 62

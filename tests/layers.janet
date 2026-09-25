@@ -16,7 +16,7 @@
 (assert= :xh (last core) "core ends with xh")
 
 (def remote (layers/resolve generated/catalog "remote" []))
-(assert= 13 (length remote) "remote component count")
+(assert= 14 (length remote) "remote component count")
 (eachp [index component] core
   (assert= component (get remote index) "remote includes core in order"))
 
@@ -27,7 +27,7 @@
   (each component (layers/resolve generated/catalog name [])
     (unless (find |(= $ component) all-components)
       (error (string "all is missing " component)))))
-(assert= 21 (length all-components) "all deduplicates components")
+(assert= 22 (length all-components) "all deduplicates components")
 
 (def optional (layers/resolve fixture "core" ["example" "example"]))
 (assert= 12 (length optional) "optional components are unique")

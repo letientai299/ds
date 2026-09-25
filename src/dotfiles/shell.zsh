@@ -41,6 +41,9 @@ if [[ -r "$XDG_CONFIG_HOME/ds/components" ]]; then
 fi
 typeset -gaU _ds_environments
 export MISE_ENV="${(j:,:)_ds_environments}"
+if [[ ,${MISE_ENV:-}, == *,remote,* ]]; then
+  export YAZI_CONFIG_HOME="$XDG_CONFIG_HOME/ds/yazi"
+fi
 if [[ -S "${XDG_RUNTIME_DIR:-/run/user/$UID}/docker.sock" ]]; then
   export DOCKER_HOST="unix://${XDG_RUNTIME_DIR:-/run/user/$UID}/docker.sock"
 fi

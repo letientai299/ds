@@ -1,10 +1,10 @@
 (def catalog
   @{:layers
   {:core [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :zoxide :jq :xh]
-   :remote [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :zoxide :jq :xh :tmux :docker]
+   :remote [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :zoxide :jq :xh :tmux :docker :yazi]
    :extra [:bat :delta :worktrunk :gokill :eza :gdu :ouch]
    :ui [:kitty]
-   :all [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :zoxide :jq :xh :bat :delta :worktrunk :gokill :eza :gdu :ouch :tmux :docker :kitty]}
+   :all [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :zoxide :jq :xh :bat :delta :worktrunk :gokill :eza :gdu :ouch :tmux :docker :yazi :kitty]}
   :profiles {:core [:core] :remote [:core :remote] :extra [:extra] :ui [:ui] :all [:core :extra :remote :ui]}
   :optional []
   :components
@@ -27,5 +27,6 @@
    :tmux {:commands ["tmux"] :owner :native}
    :worktrunk {:commands ["wt"] :owner :mise :tool "http-worktrunk" :version "0.79.0"}
    :xh {:commands ["xh"] :owner :mise :version "0.26.2"}
+   :yazi {:commands ["yazi" "ya"] :owner :mise :version "26.9.1"}
    :zoxide {:commands ["zoxide"] :owner :mise :version "0.9.8"}
    :zsh {:commands ["zsh"] :owner :native}}})

@@ -32,8 +32,9 @@ so `wt switch` can change the current shell's directory. ds owns this integratio
 there is no need to run `wt config shell install`. Use native Git commands
 alongside Worktrunk; the old Git automation scripts are not included.
 
-No terminal file manager is selected by ds. Existing independently installed
-file managers are left under their current package manager's ownership.
+The `remote` layer installs [Yazi][yazi]. Run `r` to open it and keep its final
+directory in the shell after quitting. Its managed configuration lives under
+`$XDG_CONFIG_HOME/ds/yazi`, leaving a personal `~/.config/yazi` independent.
 
 ## Completion and shell conveniences
 
@@ -133,6 +134,7 @@ formats. RAR supports extraction and listing only.
 [worktrunk]: https://worktrunk.dev/
 [zoxide]: https://github.com/ajeetdsouza/zoxide
 [completions]: https://github.com/zsh-users/zsh-completions
+[yazi]: https://yazi-rs.github.io/
 
 ## Kitty
 

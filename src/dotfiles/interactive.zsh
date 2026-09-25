@@ -15,7 +15,10 @@ _ds_mise_init() {
   (( ${+_ds_mise_loaded} )) && return 0
   local activation
   if activation=$(command mise activate zsh); then
-    eval "$activation" && typeset -g _ds_mise_loaded=1
+    if eval "$activation"; then
+      [[ -z ${DS_SHELL_PATH:-} ]] || export PATH="$DS_SHELL_PATH:$PATH"
+      typeset -g _ds_mise_loaded=1
+    fi
   fi
 }
 

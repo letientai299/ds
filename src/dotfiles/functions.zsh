@@ -46,3 +46,19 @@ if (( ! $+functions[wt] )); then
     wt "$@"
   }
 fi
+
+if [[ ,${MISE_ENV:-}, == *,remote,* ]]; then
+  yazi_cd() {
+    local tmp cwd result
+    tmp=$(mktemp -t yazi-cwd.XXXXXX) || return
+    command yazi "$@" --cwd-file="$tmp"
+    result=$?
+    IFS= read -r -d '' cwd < "$tmp"
+    command rm -f -- "$tmp"
+    if [[ -n $cwd && $cwd != $PWD && -d $cwd ]]; then
+      builtin cd -- "$cwd" || return
+    fi
+    return $result
+  }
+  alias r=yazi_cd
+fi

@@ -12,7 +12,7 @@ core = [
   "jq",
   "xh",
 ]
-remote = ["tmux", "docker"]
+remote = ["tmux", "docker", "yazi"]
 extra = ["bat", "delta", "worktrunk", "gokill", "eza", "gdu", "ouch"]
 ui = ["kitty"]
 all = []
@@ -92,6 +92,10 @@ owner = "native"
 [components.docker]
 commands = ["docker"]
 owner = "native"
+
+[components.yazi]
+commands = ["yazi", "ya"]
+owner = "mise"
 
 [components.zoxide]
 commands = ["zoxide"]

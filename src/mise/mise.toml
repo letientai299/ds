@@ -1,3 +1,4 @@
 [tools]
 "http:gokill" = "1.4.1"
+"npm:git-open" = "3.1.0"
 # Tools and packages belong to explicit layer profiles.

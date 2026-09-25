@@ -14,6 +14,7 @@
 (assert= "/isolated/home/.local/share/mise" (get configured "MISE_DATA_DIR") "isolated data")
 (assert= "/snapshot/src/mise" (get configured "MISE_GLOBAL_CONFIG_ROOT") "global config root")
 (assert= "/snapshot/src/mise" (get configured "MISE_TRUSTED_CONFIG_PATHS") "trusted root")
+(assert= "git-open" (get configured "AUBE_ALLOWED_UNPOPULAR_PACKAGES") "npm reputation exception")
 (assert= "core" (get configured "MISE_ENV") "core environment")
 (assert= "/snapshot/src/runtime/bin/linux-x64-musl/mise"
          (mise/binary "/snapshot" configured)

@@ -35,6 +35,7 @@
   (put result "MISE_GLOBAL_CONFIG_ROOT" (config-root root))
   (put result "MISE_TRUSTED_CONFIG_PATHS" (config-root root))
   (put result "MISE_YES" "1")
+  (put result "AUBE_ALLOWED_UNPOPULAR_PACKAGES" "git-open")
   (put result "MISE_ENV" (string/join (layers/profiles generated/catalog layer) ","))
   result)
 

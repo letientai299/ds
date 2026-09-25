@@ -15,6 +15,7 @@ reload
 [[ $RIPGREP_CONFIG_PATH == $XDG_CONFIG_HOME/ds/rgrc ]] || fail 'ripgrep escaped managed config'
 [[ $HISTSIZE == 10000000 && $SAVEHIST == 10000000 ]] || fail 'history limits changed'
 [[ -o hist_ignore_all_dups && -o hist_ignore_space ]] || fail 'history options missing'
+[[ -o complete_in_word && -o hist_verify ]] || fail 'interactive options missing'
 [[ $LC_ALL == $LANG && $LC_CTYPE == $LANG && $LANG == *UTF-8 ]] || fail 'locale changed'
 [[ ! -e $work/fd-calls ]] || fail 'startup scanned files'
 [[ $(find "$HOME" -type f -print) == "$XDG_CACHE_HOME/ds/git-version" ]] || fail 'unexpected startup files'

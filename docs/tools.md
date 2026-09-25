@@ -39,6 +39,9 @@ directory in the shell after quitting. Its managed configuration lives under
 ## Completion and shell conveniences
 
 [zsh-completions][completions] joins the existing deferred completion setup.
+Tab completion tries exact case first, then matches case insensitively. It also
+works with the cursor inside a word. History expansions return to the command
+line for review before execution.
 `~/.local/share/zsh/site-functions` and the corresponding XDG data path accept
 personal completion definitions. SSH completion combines config aliases with
 known hosts, follows user config includes, and re-reads them when completing.

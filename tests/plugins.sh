@@ -35,7 +35,7 @@ chmod +x "$work/bin/mise"
 
 for mode in fresh existing; do
 	mkdir -p "$work/$mode/.local/state/zsh" "$work/$mode/.local/share/mise/installs/fzf/latest" \
-		"$work/$mode/.local/share/mise/installs/zoxide/latest"
+		"$work/$mode/.local/share/mise/installs/zoxide/latest" "$work/$mode/CaseChoice"
 	ln -s "$work/bin/fzf" "$work/$mode/.local/share/mise/installs/fzf/latest/fzf"
 	ln -s "$work/bin/zoxide" "$work/$mode/.local/share/mise/installs/zoxide/latest/zoxide"
 	env -i HOME="$work/$mode" ZDOTDIR="$work/$mode" TERM=xterm-256color \

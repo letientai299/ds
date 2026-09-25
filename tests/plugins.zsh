@@ -81,9 +81,22 @@ await_file "$HOME/completions"
 zpty -w shell 'before="$(bindkey "^I")"; reload; [[ $(bindkey "^I") == "$before" && $before == *fzf-tab-complete* && $#_zsh_defer_tasks == 0 ]] && print ready >"$HOME/reload"'
 await_file "$HOME/reload"
 
+zpty -w -n shell $'\x15cd ~/casecho\t'
+expect_probe 'cd ~/CaseChoice/||*' 'case-insensitive completion failed'
+zpty -w -n shell $'\x15'
+zpty -w -n shell $'cd ~/CaseChce\x02\x02\t'
+expect_probe 'cd ~/CaseChoice/||*' 'midword completion failed'
+zpty -w -n shell $'\x15'
+
 zpty -w shell '_ds_test_waiting=1'
 await_file "$HOME/prompt-ready"
 rm -f "$HOME/prompt-ready"
+zpty -w shell 'echo ds-history-expansion'
+await_file "$HOME/prompt-ready"
+rm -f "$HOME/prompt-ready"
+zpty -w -n shell $'!!\n'
+expect_probe 'echo ds-history-expansion||*' 'history expansion ran without review'
+zpty -w -n shell $'\x15'
 zpty -w shell 'echo ds-suggestion-value'
 await_file "$HOME/prompt-ready"
 zpty -w -n shell 'echo ds-sugg'

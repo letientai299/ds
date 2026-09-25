@@ -15,13 +15,16 @@ export XDG_DATA_HOME="$work/home/data" MISE_DATA_DIR="$work/tools"
 export DS_NVIM_SOURCE="$work/nvim" DS_MISE="$work/mise"
 export DS_ROOT=/stale/root ZDOTDIR="$work/old-zdotdir"
 unset DS_SHELL_ROOT DS_SHELL_CONFIG_HOME DS_SHELL_GIT_GLOBAL DS_SHELL_STATE GIT_CONFIG_GLOBAL
-mkdir -p "$HOME" "$DS_NVIM_SOURCE" "$XDG_CONFIG_HOME/git" "$work/working dir" "$ZDOTDIR"
+mkdir -p "$HOME/.ssh" "$DS_NVIM_SOURCE" "$XDG_CONFIG_HOME/git" "$work/working dir" "$ZDOTDIR"
 mkdir -p "$XDG_CONFIG_HOME/ds/mise"
 printf '%s\n' '[tools]' 'marksman = "2026-02-08"' >"$XDG_CONFIG_HOME/ds/mise/config.personal.toml"
 mkdir -p "$work/ignore-repo"
 git -C "$work/ignore-repo" init -q
 printf '%s\n' 'exit 91' >"$HOME/.zshrc"
 printf '%s\n' 'exit 92' >"$ZDOTDIR/.zshrc"
+printf '%s\n' 'Host existing' '# >>> ds managed >>>' \
+	"Include \"$XDG_CONFIG_HOME/ds/ssh_config\"" '# <<< ds managed <<<' >"$HOME/.ssh/config"
+cp "$HOME/.ssh/config" "$work/ssh-config-before"
 printf '%s\n' '[user]' 'name = Daily User' >"$HOME/.gitconfig"
 printf '%s\n' '[user]' 'email = daily@example.invalid' >"$XDG_CONFIG_HOME/git/config"
 printf '%s\n' 'application settings' >"$XDG_CONFIG_HOME/application"
@@ -182,6 +185,7 @@ ZSH
 }
 [ "$(readlink "$HOME/.zshrc")" = "$work/daily-zshrc" ]
 [ "$(cat "$HOME/.zshrc")" = 'exit 91' ]
+[ "$(cat "$HOME/.ssh/config")" = "$(cat "$work/ssh-config-before")" ]
 [ "$(readlink "$HOME/.gitconfig")" = "$work/daily-gitconfig" ]
 cmp "$HOME/.gitconfig" "$work/gitconfig-before"
 [ "$(readlink "$HOME/.local/bin/ds")" = "$root/ds" ]

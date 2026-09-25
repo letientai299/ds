@@ -119,10 +119,12 @@
         {:kind :link :target (path config-home "ds/rgrc") :source (string base "/src/dotfiles/rgrc")}
         {:kind :link :target (path config-home "nvim") :source (source-root base environment "nvim")}
         {:kind :marker :target zshrc :line (string "source \"" config-home "/ds/shell.zsh\"")}
-        {:kind :marker :target ssh-config :line (string "Include \"" config-home "/ds/ssh_config\"")}
         {:kind :marker :target gitconfig
          :line (string "[include]\n\tpath = " config-home "/ds/gitconfig"
                         (if shell-state (string "\n[core]\n\texcludesFile = " config-home "/ds/gitignore") ""))}])
+    (unless shell-state
+      (array/push core {:kind :marker :target ssh-config
+                        :line (string "Include \"" config-home "/ds/ssh_config\"")}))
     (each name tool-names
       (array/push core {:kind :link :target (path bin name) :source (string base "/src/tools/" name)})))
   (when (layers/includes? generated/catalog layer :tmux)

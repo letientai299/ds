@@ -7,4 +7,4 @@
 "dnf:file" = "latest"
 "dnf:tmux" = "latest"
 [tools]
-yazi = "26.9.1"
+yazi = "latest"

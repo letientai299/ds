@@ -4,7 +4,7 @@
   (unless (= expected actual)
     (error (string message ": expected " expected ", got " actual))))
 
-(defn facts [& pairs]
+(defn facts [& options]
   (merge {:engine-ready? false
           :rootless? false
           :linger? false
@@ -13,7 +13,7 @@
           :command? (fn [_command] true)
           :subids? true
           :runtime? true}
-         (table ;pairs)))
+         (table ;options)))
 
 (assert= :reuse (docker/plan (facts :engine-ready? true)) "existing rootful daemon wins")
 (assert= :reuse

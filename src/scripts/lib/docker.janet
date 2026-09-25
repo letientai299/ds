@@ -9,8 +9,8 @@
            (or (= user (get fields 0)) (= uid (get fields 0)))
            # scan-number yields nil for a non-numeric or CRLF-terminated count,
            # and Janet orders nil above every number, so >= alone accepts it.
-           (let [count (scan-number (get fields 2))]
-             (and (number? count) (>= count 65536)))))
+           (let [size (scan-number (get fields 2))]
+             (and (number? size) (>= size 65536)))))
     (string/split "\n" contents)))
 
 (defn ready? [facts]

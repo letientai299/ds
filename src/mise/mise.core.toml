@@ -1,11 +1,11 @@
 [tools]
-fd = "10.4.2"
-fzf = "0.74.2"
-jq = "1.8.2"
+fd = "latest"
+fzf = "latest"
+jq = "latest"
 neovim = { version = "0.12.5", postinstall = 'sh "{{config_root}}/../scripts/neovim-postinstall.sh"', install_env = { DS_NVIM_SOURCE_SHA256 = "a810c95332317bd0017e1ca07e376a8472c79075cbed00fa3737d190a8a0a45a" } }
-ripgrep = "15.2.0"
-xh = "0.26.2"
-zoxide = "0.9.8"
+ripgrep = "latest"
+xh = "latest"
+zoxide = "latest"
 
 [bootstrap.packages]
 "apk:ca-certificates" = "latest"

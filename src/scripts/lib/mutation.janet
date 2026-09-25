@@ -132,7 +132,7 @@
           (when activate? (array/push plan (action :activate {:root root})))))))
   plan)
 
-(defn describe [item]
+(defn describe-action [item]
   (def entry (get item :entry))
   (def target (get entry :target))
   (case (get item :action)
@@ -156,13 +156,13 @@
 
 (defn execute [plan runner root environment docker-runner]
   (def blocked (find |(= :blocked (get $ :action)) plan))
-  (when blocked (error (describe blocked)))
+  (when blocked (error (describe-action blocked)))
   (each item plan
     (def entry (get item :entry))
     (def target (get entry :target))
     (case (get item :action)
       :packages
-      (let [status (mise/apply runner root (get item :profile) environment false)]
+      (let [status (mise/apply-profile runner root (get item :profile) environment false)]
         (unless (= 0 status) (error (string "mise bootstrap failed with status " status))))
       :takeover (managed/prepare-entry runner environment entry (get item :mode))
       :write (managed/apply-entry entry)

@@ -8,25 +8,25 @@
   :profiles {:core [:core] :remote [:core :remote] :extra [:extra] :ui [:ui] :all [:core :extra :remote :ui]}
   :optional []
   :components
-  {:bat {:commands ["bat"] :owner :mise :version "0.25.0"}
+  {:bat {:commands ["bat"] :owner :mise :version "latest"}
    :curl {:commands ["curl"] :owner :native}
    :delta {:commands ["delta"] :owner :mise :tool "http-delta" :version "0.18.2"}
    :docker {:commands ["docker"] :owner :native}
-   :eza {:commands ["eza"] :owner :mise :version "0.23.5"}
-   :fd {:commands ["fd"] :owner :mise :version "10.4.2"}
-   :fzf {:commands ["fzf"] :owner :mise :version "0.74.2"}
-   :gdu {:commands ["gdu"] :owner :mise :version "5.37.0"}
+   :eza {:commands ["eza"] :owner :mise :version "latest"}
+   :fd {:commands ["fd"] :owner :mise :version "latest"}
+   :fzf {:commands ["fzf"] :owner :mise :version "latest"}
+   :gdu {:commands ["gdu"] :owner :mise :version "latest"}
    :git {:commands ["git"] :owner :native}
    :gokill {:commands ["gokill"] :owner :mise :tool "http-gokill" :version "1.4.1"}
-   :jq {:commands ["jq"] :owner :mise :version "1.8.2"}
+   :jq {:commands ["jq"] :owner :mise :version "latest"}
    :kitty {:commands ["kitty" "kitten"] :owner :mise :tool "http-kitty" :version "0.49.1"}
    :mise {:commands ["mise"] :owner :runtime}
    :neovim {:commands ["nvim"] :owner :mise :version "0.12.5"}
    :ouch {:commands ["ouch"] :owner :mise :tool "http-ouch" :version "0.8.3"}
-   :ripgrep {:commands ["rg"] :owner :mise :version "15.2.0"}
+   :ripgrep {:commands ["rg"] :owner :mise :version "latest"}
    :tmux {:commands ["tmux"] :owner :native}
    :worktrunk {:commands ["wt"] :owner :mise :tool "http-worktrunk" :version "0.79.0"}
-   :xh {:commands ["xh"] :owner :mise :version "0.26.2"}
-   :yazi {:commands ["yazi" "ya"] :owner :mise :version "26.9.1"}
-   :zoxide {:commands ["zoxide"] :owner :mise :version "0.9.8"}
+   :xh {:commands ["xh"] :owner :mise :version "latest"}
+   :yazi {:commands ["yazi" "ya"] :owner :mise :version "latest"}
+   :zoxide {:commands ["zoxide"] :owner :mise :version "latest"}
    :zsh {:commands ["zsh"] :owner :native}}})

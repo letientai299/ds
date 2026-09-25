@@ -1,5 +1,5 @@
 [tools]
-janet = "1.41.2"
+janet = { version = "1.42.1", postinstall = 'sh "{{config_root}}/src/scripts/janet-postinstall.sh"' }
 go = "1.27.1"
 shellcheck = "0.11.0"
 shfmt = "3.13.1"
@@ -8,10 +8,10 @@ taplo = "0.10.0"
 [env]
 DS_SHELL_SOURCES = "ds scripts/*.sh src/bootstrap.sh src/pull.sh src/install.sh src/try.sh src/lib/*.sh src/bundle/*.sh src/runtime/*.sh src/scripts/*.sh src/dotfiles/*.sh src/tools/serve src/tools/kt tests/*.sh"
 DS_ALPINE_IMAGE = "alpine@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40"
-DS_JANET_HEADER_SHA256 = "b82d7415df6826bdc3207624c56425bbfa5d783b88658330e58413f1f562f3e5"
-DS_JANET_SHELL_SHA256 = "63c964253bbed159ecb1df890202278402f556260f56ee8014ce50bfbd6f2834"
-DS_JANET_SOURCE_SHA256 = "2a0afcbe83823025c67899a867017095565f8a0a51851ab2507c9416ff3246b7"
-DS_JANET_VERSION = "1.41.2"
+DS_JANET_HEADER_SHA256 = "6c4e408524381128dcb1f765a8c302146a02c169214cca0c7b81361e2f0a1455"
+DS_JANET_SHELL_SHA256 = "dbd05c7cc169c0e1bc031995d958ed1f6d0062b9bf6ae5b4c9b21b32fecff4c6"
+DS_JANET_SOURCE_SHA256 = "8a0ba3d69df856ff5cb3880ffb7aac9af7d673035cb689835347383ded838537"
+DS_JANET_VERSION = "1.42.1"
 DS_HELLO_WORLD_IMAGE = "hello-world@sha256:5dd0d3e6e255913fc30f90b9f2b1d359cc2cbdb48090cc4b65f1676e203243cc"
 DS_MISE_VERSION = "2026.8.6"
 DS_ROCKY_IMAGE = "rockylinux@sha256:d7be1c094cc5845ee815d4632fe377514ee6ebcf8efaed6892889657e5ddaaa6"

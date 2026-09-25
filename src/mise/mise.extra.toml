@@ -1,7 +1,7 @@
 [tools]
-bat = "0.25.0"
-eza = "0.23.5"
-gdu = "5.37.0"
+bat = "latest"
+eza = "latest"
+gdu = "latest"
 
 [tools."http:delta"]
 version = "0.18.2"

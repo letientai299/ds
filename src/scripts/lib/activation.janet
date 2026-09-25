@@ -40,13 +40,13 @@
 (defn activate [root]
   (def base (prefix root))
   (unless base (error "activation requires a staged version"))
-  (def next (version-name (last (string/split "/" root))))
-  (candidate base next)
+  (def version (version-name (last (string/split "/" root))))
+  (candidate base version)
   (def old (link-version base "current"))
   (link-version base "previous")
-  (unless (= old next)
+  (unless (= old version)
     (when old (replace-link base "previous" old))
-    (replace-link base "current" next)))
+    (replace-link base "current" version)))
 
 (defn with-lock [base operation]
   (def lock (string base "/.mutation-lock"))

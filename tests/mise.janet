@@ -24,7 +24,7 @@
 (defn fake-runner [argv environment]
   (array/push calls [argv environment])
   0)
-(assert= 0 (mise/apply fake-runner "/snapshot" "remote" base true) "dry-run result")
+(assert= 0 (mise/apply-profile fake-runner "/snapshot" "remote" base true) "dry-run result")
 (def apply-call (first calls))
 (assert= ["/snapshot/src/runtime/bin/linux-x64-musl/mise"
           "-C" "/snapshot/src/mise" "bootstrap" "--yes" "--dry-run"]

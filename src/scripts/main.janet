@@ -312,7 +312,7 @@
     (if (get parsed :dry-run)
       (do
         (print (string "would " command " " target (if (find |(= command $) ["add" "remove"]) "" ":")))
-        (each item plan (print (string "  " (mutation/describe item)))))
+        (each item plan (print (string "  " (mutation/describe-action item)))))
       (do
         (mutation/execute plan foreground-runner root base-environment converge-docker)
         (print (string (case command "apply" "applied" "add" "added"

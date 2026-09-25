@@ -39,12 +39,12 @@
   (put result "MISE_ENV" (string/join (layers/profiles generated/catalog layer) ","))
   result)
 
-(defn binary [root environment]
+(defn binary [root settings]
   (or
-    (get environment "DS_MISE")
+    (get settings "DS_MISE")
     (let [target (platform/runtime-platform
-                   {:os (platform/normalize-os (get environment "DS_OS"))
-                    :arch (platform/normalize-arch (get environment "DS_ARCH"))})
+                   {:os (platform/normalize-os (get settings "DS_OS"))
+                    :arch (platform/normalize-arch (get settings "DS_ARCH"))})
           bundled (string root "/src/runtime/bin/" target "/mise")
           checkout (string root "/dist/runtime/bin/" target "/mise")]
       (if (os/stat bundled)
@@ -57,7 +57,7 @@
     (array/push argv "--dry-run"))
   argv)
 
-(defn apply [runner root layer base-environment dry-run?]
+(defn apply-profile [runner root layer base-environment dry-run?]
   (def target-environment (environment base-environment root layer))
   (def mise (binary root target-environment))
   (process/execute runner (bootstrap-argv mise root dry-run?) target-environment))

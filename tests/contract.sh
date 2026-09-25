@@ -4,7 +4,7 @@ set -eu
 
 root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
-janet=${DS_JANET:?DS_JANET must point to Janet 1.41.2}
+janet=${DS_JANET:?DS_JANET must point to Janet 1.42.1}
 mise=$(command -v mise)
 
 fail() {

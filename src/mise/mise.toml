@@ -1,1 +1,3 @@
+[tools]
+"http:gokill" = "1.4.1"
 # Tools and packages belong to explicit layer profiles.

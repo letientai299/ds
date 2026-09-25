@@ -14,6 +14,7 @@ fail() {
 
 work=${TMPDIR:-/tmp}/ds-contract-$$
 trap 'rm -rf "$work"' EXIT HUP INT TERM
+export MISE_DATA_DIR="$work/mise-data"
 mkdir -p "$work/bundle/files/bin" "$work/install"
 
 case "$(uname -s):$(uname -m)" in

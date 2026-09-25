@@ -40,6 +40,9 @@ if [[ -r "$XDG_CONFIG_HOME/ds/components" ]]; then
   done <"$XDG_CONFIG_HOME/ds/components"
 fi
 typeset -gaU _ds_environments
+if [[ -n "${DS_SHELL_STATE:-}" && -r "$MISE_CONFIG_DIR/config.personal.toml" ]]; then
+  _ds_environments+=(personal)
+fi
 export MISE_ENV="${(j:,:)_ds_environments}"
 if [[ ,${MISE_ENV:-}, == *,remote,* ]]; then
   export YAZI_CONFIG_HOME="$XDG_CONFIG_HOME/ds/yazi"

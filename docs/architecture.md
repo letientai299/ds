@@ -68,14 +68,14 @@ macOS engine or VM provisioning is outside the repository's scope.
 
 ## Repository layout
 
-The repository root holds only the `ds` launcher, `docs/`, `src/`, `tests/`, and
-`.config/`. A delivered snapshot uses the same shape — `ds` at the root and the
-payload under `src/` — so `DS_ROOT` resolves identically in a checkout and on a
-target.
+The repository root holds the `ds` launcher, `mise.toml`, `docs/`, `src/`,
+`tests/`, and `.config/`. A delivered snapshot retains `ds` at the root and the
+payload under `src/`, so `DS_ROOT` resolves identically on a target.
 
 | Path                       | Responsibility                                                |
 | -------------------------- | ------------------------------------------------------------- |
 | `ds`                       | Portable shell launcher and controller push dispatch          |
+| `mise.toml`                | Link to checkout development tools and tasks                   |
 | `.config/mise/config.toml` | Development tools, pinned image digests, and every task       |
 | `src/catalog.toml`         | Canonical layers and component metadata                       |
 | `src/mise/`                | Payload mise profiles: pinned tools and native packages       |
@@ -91,9 +91,8 @@ target.
 | `src/bootstrap.sh`         | Manifest verification and version installation on a target    |
 | `tests/`                   | Unit, contract, platform, and end-to-end coverage             |
 
-`src/mise/` is a directory rather than root-level `mise*.toml` files so that
-`MISE_GLOBAL_CONFIG_ROOT` can point at the payload profiles without colliding
-with the development configuration under `.config/mise/`.
+`src/mise/` holds payload profiles apart from the checkout's `mise.toml` link.
+`MISE_GLOBAL_CONFIG_ROOT` points at the payload profiles during installation.
 
 ## Working from a checkout
 
@@ -170,11 +169,9 @@ POSIX shell utilities and `uname` for platform detection. See
 ### Development and verification
 
 The checkout needs [mise][mise], Git, a C toolchain, and Docker for the full
-runtime matrix. Link the development configuration at the checkout root so
-mise runs tasks from that directory:
+runtime matrix. The tracked `mise.toml` link selects checkout tasks:
 
 ```sh
-ln -s .config/mise/config.toml mise.toml
 mise install
 mise run runtime:build
 mise run runtime:fetch-mise

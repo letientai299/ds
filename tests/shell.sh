@@ -16,6 +16,8 @@ export DS_NVIM_SOURCE="$work/nvim" DS_MISE="$work/mise"
 export DS_ROOT=/stale/root ZDOTDIR="$work/old-zdotdir"
 unset DS_SHELL_ROOT DS_SHELL_CONFIG_HOME DS_SHELL_GIT_GLOBAL DS_SHELL_STATE GIT_CONFIG_GLOBAL
 mkdir -p "$HOME" "$DS_NVIM_SOURCE" "$XDG_CONFIG_HOME/git" "$work/working dir" "$ZDOTDIR"
+mkdir -p "$XDG_CONFIG_HOME/ds/mise"
+printf '%s\n' '[tools]' 'marksman = "2026-02-08"' >"$XDG_CONFIG_HOME/ds/mise/config.personal.toml"
 mkdir -p "$work/ignore-repo"
 git -C "$work/ignore-repo" init -q
 printf '%s\n' 'exit 91' >"$HOME/.zshrc"
@@ -36,6 +38,9 @@ cat >"$work/input" <<'ZSH'
 [[ $HOME == $DS_TEST_HOME ]] || exit 12
 [[ $DS_DS == $DS_TEST_ROOT/ds ]] || exit 13
 [[ $MISE_DATA_DIR == $DS_TEST_TOOLS ]] || exit 14
+[[ -z ${MISE_GLOBAL_CONFIG_FILE+x} ]] || exit 78
+[[ $MISE_ENV == core,personal ]] || exit 76
+[[ $XDG_CONFIG_HOME/ds/mise/config.personal.toml -ef $DS_SHELL_CONFIG_HOME/ds/mise/config.personal.toml ]] || exit 77
 [[ $(git config user.name) == 'Daily User' ]] || exit 15
 [[ $(git config user.email) == daily@example.invalid ]] || exit 16
 [[ $(git config push.autoSetupRemote) == true ]] || exit 17
@@ -132,7 +137,7 @@ print -r -- 'export DS_TEST_LOCAL=kept' >>"$ZDOTDIR/.zshrc"
 print -s -- ds-persistent-history
 fc -AI
 ds apply remote --skip docker || exit 50
-[[ $MISE_ENV == core,remote ]] || exit 51
+[[ $MISE_ENV == core,remote,personal ]] || exit 51
 [[ -L $XDG_CONFIG_HOME/ds/yazi ]] || exit 71
 [[ $aliases[r] == yazi_cd ]] || exit 75
 exit 0
@@ -155,7 +160,7 @@ chmod +x "$work/bin/yazi"
 export DS_TEST_TARGET="$work"
 PATH="$work/bin:$PATH" "$HOME/.local/bin/ds" shell >"$work/out" 2>"$work/err" <<'ZSH' || {
 [[ $DS_TEST_LOCAL == kept ]] || exit 52
-[[ $MISE_ENV == core,remote ]] || exit 53
+[[ $MISE_ENV == core,remote,personal ]] || exit 53
 [[ $YAZI_CONFIG_HOME == $XDG_CONFIG_HOME/ds/yazi ]] || exit 72
 [[ $aliases[r] == yazi_cd ]] || exit 73
 r
@@ -164,7 +169,7 @@ grep -qx ds-persistent-history "$HISTFILE" || exit 54
 [[ $(git config trial.setting) == kept ]] || exit 55
 ds status --json >"$DS_SHELL_STATE/status" || exit 62
 grep -q '"target":"core,remote"' "$DS_SHELL_STATE/status" || exit 63
-[[ $MISE_ENV == core,remote ]] || exit 65
+[[ $MISE_ENV == core,remote,personal ]] || exit 65
 ds remove remote || exit 56
 ds remove core || exit 66
 [[ -f $ZDOTDIR/.zshrc ]] || exit 57
@@ -182,5 +187,6 @@ cmp "$HOME/.gitconfig" "$work/gitconfig-before"
 [ "$(readlink "$HOME/.local/bin/ds")" = "$root/ds" ]
 [ "$(tail -n 1 "$HOME/.local/bin/serve")" = 'exit 95' ]
 [ "$(cat "$XDG_CONFIG_HOME/nvim/user-config")" = daily ]
-[ ! -e "$XDG_CONFIG_HOME/ds" ]
+[ ! -e "$XDG_CONFIG_HOME/ds/layer" ]
+[ "$(cat "$XDG_CONFIG_HOME/ds/mise/config.personal.toml")" = "$(printf '%s\n' '[tools]' 'marksman = "2026-02-08"')" ]
 printf '%s\n' 'trial shell: ok'

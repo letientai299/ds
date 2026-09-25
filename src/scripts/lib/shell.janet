@@ -34,6 +34,7 @@
   (def layer-path (string config "/ds/layer"))
   (def layer (string/join (selection/active-layers catalog {"XDG_CONFIG_HOME" config} ["core"]) ","))
   (def environment (mise/environment base root layer))
+  (put environment "MISE_GLOBAL_CONFIG_FILE" nil)
   (filesystem/ensure-parent (string config "/ds/layer"))
   (filesystem/ensure-parent (string state "/zsh/history"))
   # Other applications retain their existing configuration.
@@ -42,6 +43,9 @@
       (unless (or (find |(= $ name) ["ds" "nvim"])
                   (and (layers/includes? catalog layer :tmux) (= name "tmux")))
         (link (string original "/" name) (string config "/" name)))))
+  (def personal (string original "/ds/mise/config.personal.toml"))
+  (when (os/stat personal)
+    (link personal (string config "/ds/mise/config.personal.toml")))
   (unless (os/stat layer-path) (write-config layer-path (string layer "\n")))
   (def global (or (get base "DS_SHELL_GIT_GLOBAL") (get base "GIT_CONFIG_GLOBAL") ""))
   (def includes (if (= global "")

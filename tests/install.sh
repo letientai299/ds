@@ -58,7 +58,11 @@ SH
 cat >"$work/bin/git" <<'SH'
 #!/bin/sh
 set -eu
-[ "$1 $2 $3 $4 $5" = 'clone --depth 1 --branch main' ]
+[ "$1 $2 $3 $4" = 'clone --depth 1 --branch' ]
+expected_ref=main
+case "$6" in */ds.git) expected_ref=${DS_SOURCE_REF:-main} ;; esac
+[ "$5" = "$expected_ref" ]
+printf 'ref %s\n' "$5" >>"$DS_TEST_LOG"
 printf 'clone %s\n' "$6" >>"$DS_TEST_LOG"
 [ "${DS_TEST_CLONE_FAIL:-false}" = false ] || exit 7
 case "$6" in
@@ -133,6 +137,12 @@ for target in Darwin:arm64:macos-arm64 Darwin:x86_64:macos-x64 Linux:aarch64:lin
 		fail 'reinstall replaced existing sources or runtime'
 	fi
 done
+
+: >"$DS_TEST_LOG"
+DS_SOURCE_REF=tai/readme sh "$root/scripts/install.sh" \
+	--prefix "$work/branch" --no-apply >/dev/null
+grep -qx 'ref tai/readme' "$DS_TEST_LOG" || fail 'ds branch was ignored'
+grep -qx 'ref main' "$DS_TEST_LOG" || fail 'configuration branch changed'
 
 # CWD determines source, including nested directories.
 mkdir -p "$work/local checkout/.git" "$work/local checkout/nested/deep"

@@ -14,6 +14,7 @@ usage: scripts/install.sh [--no-apply] [--layer LAYER] [--prefix DIR]
 
 Uses the current checkout, including from subdirectories.
 Otherwise clones main under ~/.local/share/ds-source.
+DS_SOURCE_REF selects another ds branch when cloning.
 Installs prerequisites and applies core by default.
 --no-apply prepares runtimes and previews changes.
 --prefix sets the clone directory outside a checkout.
@@ -113,8 +114,10 @@ prerequisites() {
 		fi
 	elif command -v apk >/dev/null 2>&1; then
 		privileged apk add --no-cache build-base ca-certificates curl git xz
+	elif command -v dnf >/dev/null 2>&1; then
+		privileged dnf install -y ca-certificates curl git xz gcc make
 	else
-		die 'source setup requires Ubuntu, Debian, Alpine, or macOS'
+		die 'source setup requires apt-get, apk, dnf, or macOS'
 	fi
 }
 
@@ -135,13 +138,15 @@ trap 'exit 143' HUP INT TERM
 clone() {
 	repository=$1
 	destination=$2
+	ref=main
+	[ "$repository" != ds ] || ref=${DS_SOURCE_REF:-main}
 	if [ -e "$destination" ] || [ -L "$destination" ]; then
 		[ -d "$destination/.git" ] || [ -f "$destination/.git" ] || die "not a checkout: $destination"
 		return
 	fi
 	mkdir -p "$(dirname -- "$destination")"
 	stage=$(mktemp -d "$destination.clone.XXXXXX")
-	git clone --depth 1 --branch main "https://github.com/letientai299/$repository.git" "$stage"
+	git clone --depth 1 --branch "$ref" "https://github.com/letientai299/$repository.git" "$stage"
 	[ ! -e "$destination" ] || die "checkout appeared during clone: $destination"
 	mv "$stage" "$destination"
 	stage=
@@ -221,11 +226,16 @@ if [ "${runtime_version%%-*}" != "$DS_JANET_VERSION" ]; then
 		sh "$root/src/runtime/build.sh" "$platform"
 	else
 		compiler=musl-gcc
-		command -v "$compiler" >/dev/null 2>&1 || compiler=cc
+		if command -v "$compiler" >/dev/null 2>&1; then
+			set -- -static
+		else
+			compiler=cc
+			set --
+		fi
 		temporary=$(mktemp "$DS_JANET.part.XXXXXX")
 		"$compiler" -std=c99 -O2 -DNDEBUG -DJANET_NO_DYNAMIC_MODULES \
 			-I"$janet_source" "$janet_source/janet.c" "$janet_source/shell.c" \
-			-static -pthread -ldl -lm -o "$temporary"
+			"$@" -pthread -ldl -lm -o "$temporary"
 		chmod 0755 "$temporary"
 		mv "$temporary" "$DS_JANET"
 		temporary=

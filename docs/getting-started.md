@@ -8,64 +8,10 @@ this feel like" without a decision.
 
 ## Install
 
-Follow [Install from main][install-main] for macOS, Ubuntu, Debian, or Alpine,
-including a running container. `scripts/install.sh --no-apply` prepares sources
-and runtimes, then previews `core`. Without that flag it applies the layer.
-The installer uses the project containing the current directory, or clones
-`main` outside a checkout. This path needs no published `ds` release.
-
-### Published releases
-
-The following alternative requires a published release with installer and
-platform archive assets. It needs Curl or Wget and tar on the target, but no
-checkout, Git, Janet, or mise:
-
-```sh
-curl -fsSL \
-  https://github.com/letientai299/ds/releases/latest/download/install.sh | sh
-```
-
-Useful flags. All except `--no-apply` also read a `DS_`-prefixed environment
-variable:
-
-| Flag                | Effect                                                    |
-| ------------------- | --------------------------------------------------------- |
-| `--layer remote`    | Apply `remote` instead of `core`                          |
-| `--no-apply`        | Install the version directory without converging anything |
-| `--version v1.2.3`  | Pin a release tag instead of the latest                   |
-| `--prefix DIR`      | Install somewhere other than `~/.local/share/ds`          |
-| `--platform NAME`   | Skip `uname` detection                                    |
-| `--release-url URL` | Use a mirror instead of GitHub releases                   |
-
-Reinstalling the same release is a no-op: version directories are immutable and
-content-addressed, so the installer reuses an existing one.
-
-## Prepare a checkout
-
-A checkout supports source installation, development, and SSH delivery. It runs
-on macOS and Linux on ARM64 and x64, and building the complete runtime matrix
-requires mise, Git, a C toolchain, and Docker.
-
-```sh
-mise install
-mise run runtime:build
-mise run runtime:fetch-mise
-mise run check
-```
-
-The first command installs development tooling from `.config/mise/config.toml`,
-which also defines every task. Runtime tasks build Janet and fetch mise for
-macOS and Linux, ARM64 and x64.
-
-A checkout expects these configuration sources, each a Git checkout with a
-`HEAD` to export:
-
-- `../nvim.conf`, or a path supplied through `DS_NVIM_SOURCE`;
-- `../tmux.conf`, or a path supplied through `DS_TMUX_SOURCE`.
-
-Both are required for any snapshot build, whatever layer you intend to apply, so
-`mise run try`, `mise run release`, and `ds push` all fail without them.
-Delivery bundles contain committed Git exports of both sources.
+Follow [Install on a machine][install-main] for macOS, Ubuntu, Debian, Alpine,
+Fedora, or CentOS Stream. `sh ds-install.sh --no-apply` prepares sources and
+runtimes, then previews `core`. Without that flag it applies the layer. The
+installer clones `main` outside a checkout and needs no published release.
 
 ## Apply core safely
 
@@ -136,6 +82,6 @@ disk.
 
 `--force` refuses to overwrite an existing `.ds-adopted` backup.
 
-[install-main]: ../README.md#install-from-main
+[install-main]: ../README.md#install-on-a-machine
 [layers]: ../README.md#layers
 [try]: try.md

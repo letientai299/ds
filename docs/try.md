@@ -1,135 +1,38 @@
 # Try ds in Docker
 
-`ds shell --docker` opens a provisioned Ubuntu container with your current directory
-mounted read-write at `/work`:
+The [README][readme] shows how to download the [source installer][installer]
+and run it in a disposable [Docker][docker] container without a checkout. Use
+`--shell` to apply `core` and enter Zsh. `exit` removes the container.
+
+Run these commands inside the container to inspect the result:
 
 ```sh
-ds shell --docker
+ds status
+ds status --verbose
+ls -l ~/.config/ds
+cat ~/.zshrc
+command -v rg fzf nvim jq
 ```
 
-The first run builds from `ubuntu:latest` and installs the `core` layer.
-Later runs reuse the local image without rebuilding or downloading packages.
-`exit` removes the container. Edits under `/work` remain on the host; changes
-elsewhere in the container are discarded. The shell runs as root, so files
-created in `/work` may be root-owned on Linux hosts.
+`ds status` reports health and conflicts. The managed `.zshrc` block loads the
+shell configuration. Open Neovim with `vi` to inspect its linked configuration.
+Preview another apply with `ds apply core --dry-run`; use `ds remove core` to
+remove managed links and blocks.
 
-Refresh Ubuntu, packages, and the checkout configuration explicitly:
+`remote` adds Tmux, Docker, and Yazi to core. To try it, replace `--shell` in
+the README's Docker command with `--layer remote --skip docker --shell`.
+A container without an engine cannot pass the Docker readiness check.
 
-```sh
-ds shell --docker --rebuild
-```
+For a trial that captures uncommitted source changes, use the checkout workflows
+in [Architecture][architecture]. Those include `ds shell --docker` and
+`mise run try`.
 
-The image captures this checkout when built; source edits require a rebuild.
-The command needs the checkout's pinned Linux runtimes and sibling configuration
-repositories, just like `mise run try`. Docker must access the current directory
-on the host. For scripted runs, pass a command after `--`:
+A container does not show clipboard integration or a rootless Docker service
+surviving logout. Files created in bind-mounted directories may be owned by
+root on a Linux host. See [Testing][testing] for manual checks.
 
-```sh
-ds shell --docker -- ds status core --check
-```
-
-## Uncached demo
-
-`src/try.sh` builds a snapshot, applies a layer inside a throwaway
-[container][docker], and hands over an interactive login Zsh. Nothing touches
-your own home, and the container disappears on exit.
-
-## Without a checkout
-
-Start an Ubuntu container on the host:
-
-```sh
-docker run --rm -it ubuntu:24.04 bash
-```
-
-Copy `scripts/install.sh` into the container and run `sh install.sh --shell`,
-or use the single Docker command in [Try it first][try-first]. In an
-already running container, skip `docker run`. Source installation needs no
-published release or Docker engine inside the container.
-
-## From a checkout
-
-```sh
-mise run try
-```
-
-This packs the working tree into a snapshot instead of downloading a release, so
-it reflects uncommitted changes. It needs the pinned runtimes; see the working
-notes in the [README][readme]. Force either payload source explicitly:
-
-```sh
-./src/try.sh --source checkout
-./src/try.sh --source release --version v1.0.0
-```
-
-`--version` selects both the installer and its payload. `--platform` selects
-matching container and snapshot architectures, for example `linux/amd64` when
-trying an x64 target from an ARM64 host. Checkout snapshots are removed when
-the container exits, including on failure.
-
-## What to look at
-
-Once the prompt appears, the container is a normal target: the managed `.zshrc`
-marker has loaded [`src/dotfiles/shell.zsh`][shell-zsh], and
-every layer component is on `PATH`.
-
-```sh
-ds status                  # health and problems
-ds status --verbose        # full state and diagnostics
-ls -l ~/.config/ds    # the dedicated files ds owns
-cat ~/.zshrc          # the marker block ds inserted
-```
-
-The prompt, history behaviour, aliases, and directory navigation are the
-daily-driver surface. Open Neovim with `vi` to see the linked configuration, and
-try `fzf`, `rg`, `fd`, and `jq` directly.
-
-Preview commands answer the question that matters before adopting `ds` on a real
-machine — what would it change?
-
-```sh
-ds apply core --dry-run
-ds remove core       # remove everything ds owns, then look around again
-```
-
-## Other layers and images
-
-`remote` adds Tmux, Docker, and Yazi to core. `extra` supplies Bat, Delta, Worktrunk,
-and gokill independently. Docker readiness stays incomplete
-inside a container without a reachable engine, which is expected:
-
-```sh
-./src/try.sh --layer remote
-```
-
-The demo defaults to Ubuntu. Any image with a supported package manager works,
-which is a quick way to see how native package selection differs:
-
-```sh
-./src/try.sh --image alpine:3.21
-./src/try.sh --image rockylinux:9
-```
-
-## Non-interactive runs
-
-`--command` replaces the interactive shell, which is useful for a scripted look
-at the result. Zsh reads `.zshrc` only when interactive, so a non-interactive
-command has to source the fragment itself:
-
-```sh
-./src/try.sh --command \
-  'zsh -fc "source \$HOME/.config/ds/shell.zsh; command -v rg fzf nvim jq"'
-```
-
-## Limits
-
-A container cannot show everything. Clipboard integration, a rootless Docker
-service surviving a real logout, and how the configuration feels over days of
-use are all outside its reach. See [Testing][testing] for the full list of
-manual boundaries.
-
+[architecture]: architecture.md#working-from-a-checkout
 [docker]: https://www.docker.com/
-[try-first]: ../README.md#try-it-first
-[readme]: ../README.md
-[shell-zsh]: ../src/dotfiles/shell.zsh
+[installer]: ../scripts/install.sh
+[readme]: ../README.md#try-in-docker
 [testing]: testing.md

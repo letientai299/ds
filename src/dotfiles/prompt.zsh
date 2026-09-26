@@ -75,14 +75,14 @@ _ds_prompt_git() {
   branch=${branch//\%/%%}
   _ds_prompt_git=" %F{magenta}⑂ $branch%f"
   local stats=''
-  (( ahead )) && stats+=" ↑$ahead"
-  (( behind )) && stats+=" ↓$behind"
-  (( staged )) && stats+=" +$staged"
-  (( changed )) && stats+=" !$changed"
-  (( untracked )) && stats+=" ?$untracked"
-  (( conflicts )) && stats+=" ×$conflicts"
-  (( stash )) && stats+=" ≡$stash"
-  [[ -z $stats ]] || _ds_prompt_git+="%F{yellow}$stats%f"
+  (( ahead )) && stats+="↑$ahead"
+  (( behind )) && stats+="↓$behind"
+  (( staged )) && stats+="+$staged"
+  (( changed )) && stats+="!$changed"
+  (( untracked )) && stats+="?$untracked"
+  (( conflicts )) && stats+="×$conflicts"
+  (( stash )) && stats+="≡$stash"
+  [[ -z $stats ]] || _ds_prompt_git+=" %F{yellow}$stats%f"
   # Commit subjects only change with HEAD.
   if [[ $oid != $_ds_prompt_oid ]]; then
     _ds_prompt_subject=''
@@ -97,7 +97,9 @@ _ds_prompt_git() {
     _ds_prompt_oid=$oid
   fi
   if [[ -n $_ds_prompt_subject ]]; then
-    _ds_prompt_git+=" %f${_ds_prompt_subject//\%/%%}%f"
+    local subject=${_ds_prompt_subject//\%/%%}
+    [[ $_ds_prompt_subject == WIP* ]] && subject="%B%F{red}WIP%f%b${subject[4,-1]}"
+    _ds_prompt_git+=" %f${subject}%f"
   fi
   return 0
 }

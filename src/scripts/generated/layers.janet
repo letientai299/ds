@@ -1,10 +1,10 @@
 (def catalog
   @{:layers
-  {:core [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :zoxide :jq :xh]
-   :remote [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :zoxide :jq :xh :tmux :docker :yazi]
+  {:core [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :tree-sitter :zoxide :jq :xh]
+   :remote [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :tree-sitter :zoxide :jq :xh :tmux :docker :yazi]
    :extra [:bat :delta :worktrunk :gokill :eza :gdu :ouch]
    :ui [:kitty]
-   :all [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :zoxide :jq :xh :bat :delta :worktrunk :gokill :eza :gdu :ouch :tmux :docker :yazi :kitty]}
+   :all [:mise :git :curl :zsh :neovim :fd :fzf :ripgrep :tree-sitter :zoxide :jq :xh :bat :delta :worktrunk :gokill :eza :gdu :ouch :tmux :docker :yazi :kitty]}
   :profiles {:core [:core] :remote [:core :remote] :extra [:extra] :ui [:ui] :all [:core :extra :remote :ui]}
   :optional []
   :components
@@ -25,6 +25,7 @@
    :ouch {:commands ["ouch"] :owner :mise :tool "http-ouch" :version "0.8.3"}
    :ripgrep {:commands ["rg"] :owner :mise :version "latest"}
    :tmux {:commands ["tmux"] :owner :native}
+   :tree-sitter {:commands ["tree-sitter"] :owner :mise :version "latest"}
    :worktrunk {:commands ["wt"] :owner :mise :tool "http-worktrunk" :version "0.79.0"}
    :xh {:commands ["xh"] :owner :mise :version "latest"}
    :yazi {:commands ["yazi" "ya"] :owner :mise :version "latest"}

@@ -11,12 +11,12 @@
 (assert= true (layers/validate generated/catalog) "catalog is valid")
 
 (def core (layers/resolve generated/catalog "core" []))
-(assert= 11 (length core) "core component count")
+(assert= 12 (length core) "core component count")
 (assert= :mise (first core) "core starts with mise")
 (assert= :xh (last core) "core ends with xh")
 
 (def remote (layers/resolve generated/catalog "remote" []))
-(assert= 14 (length remote) "remote component count")
+(assert= 15 (length remote) "remote component count")
 (eachp [index component] core
   (assert= component (get remote index) "remote includes core in order"))
 
@@ -27,10 +27,10 @@
   (each component (layers/resolve generated/catalog name [])
     (unless (find |(= $ component) all-components)
       (error (string "all is missing " component)))))
-(assert= 22 (length all-components) "all deduplicates components")
+(assert= 23 (length all-components) "all deduplicates components")
 
 (def optional (layers/resolve fixture "core" ["example" "example"]))
-(assert= 12 (length optional) "optional components are unique")
+(assert= 13 (length optional) "optional components are unique")
 (assert= :example (last optional) "optional component is appended")
 (assert= true (layers/optional-component? fixture :example) "example is optional")
 

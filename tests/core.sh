@@ -69,7 +69,7 @@ run_case() {
 				set -e
 				source \"$HOME/.config/ds/shell.zsh\"
 				echo shell-sourced
-                command -v mise fd fzf rg nvim zoxide jq xh ds >/dev/null
+                command -v mise fd fzf rg tree-sitter nvim zoxide jq xh ds >/dev/null
 				echo commands-present
                 [ -f \"$HOME/.config/nvim/init.lua\" ]
 				echo nvim-config-present
@@ -95,6 +95,7 @@ run_case() {
                 fd --version >/dev/null
                 fzf --version >/dev/null
                 rg --version >/dev/null
+                tree-sitter --version >/dev/null
                 jq --version >/dev/null
                 xh --version >/dev/null
                 nvim --version >/dev/null

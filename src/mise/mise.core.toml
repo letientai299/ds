@@ -4,6 +4,7 @@ fzf = "latest"
 jq = "latest"
 neovim = { version = "0.12.5", postinstall = 'sh "{{config_root}}/../scripts/neovim-postinstall.sh"', install_env = { DS_NVIM_SOURCE_SHA256 = "a810c95332317bd0017e1ca07e376a8472c79075cbed00fa3737d190a8a0a45a" } }
 ripgrep = "latest"
+tree-sitter = { version = "latest", postinstall = 'if [ -f /etc/alpine-release ]; then ln -sfn /usr/bin/tree-sitter "$MISE_TOOL_INSTALL_PATH/tree-sitter"; fi' }
 xh = "latest"
 zoxide = "latest"
 
@@ -16,6 +17,7 @@ zoxide = "latest"
 "apk:git" = "latest"
 "apk:gettext-tiny-dev" = "latest"
 "apk:linux-headers" = "latest"
+"apk:tree-sitter-cli" = "latest"
 "apk:samurai" = "latest"
 "apk:zsh" = "latest"
 "apt:ca-certificates" = "latest"

@@ -8,6 +8,7 @@ core = [
   "fd",
   "fzf",
   "ripgrep",
+  "tree-sitter",
   "zoxide",
   "jq",
   "xh",
@@ -52,6 +53,10 @@ owner = "mise"
 
 [components.ripgrep]
 commands = ["rg"]
+owner = "mise"
+
+[components.tree-sitter]
+commands = ["tree-sitter"]
 owner = "mise"
 
 [components.worktrunk]

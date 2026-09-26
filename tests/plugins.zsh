@@ -73,9 +73,9 @@ await_file "$HOME/ready"
 [[ $(<"$HOME/queued") == 6 ]] || fail 'reload duplicated queue'
 [[ ! -e $HOME/duplicate ]] || fail 'completion initialized twice'
 
-zpty -w shell 'print -r -- "$_ds_plugins_ready|$_comps[ds]|$+functions[enable-fzf-tab]|$+functions[_zsh_autosuggest_start]|$+functions[_zsh_highlight]|${+_ds_fzf_loaded}|$+functions[zoxide-ready]|$DS_TEST_MISE_READY" >"$HOME/check"'
+zpty -w shell 'print -r -- "$_ds_plugins_ready|$_comps[ds]|$+functions[enable-fzf-tab]|$+functions[_zsh_autosuggest_start]|$+functions[_zsh_highlight]|${+_ds_fzf_loaded}|$+functions[zoxide-ready]|$DS_TEST_MISE_READY|$ZSH_HIGHLIGHT_STYLES[comment]" >"$HOME/check"'
 await_file "$HOME/check"
-[[ $(<"$HOME/check") == '1|_ds_complete|1|1|1|1|1|1' ]] || fail "plugin state: $(<"$HOME/check")"
+[[ $(<"$HOME/check") == '1|_ds_complete|1|1|1|1|1|1|standout' ]] || fail "plugin state: $(<"$HOME/check")"
 zpty -w shell '[[ $_comps[cmake] == _cmake && ${fpath[(Ie)$HOME/.local/share/zsh/site-functions]} -gt 0 && ${#fpath} == ${#${(u)fpath}} ]] && print ready >"$HOME/completions"'
 await_file "$HOME/completions"
 zpty -w shell 'before="$(bindkey "^I")"; reload; [[ $(bindkey "^I") == "$before" && $before == *fzf-tab-complete* && $#_zsh_defer_tasks == 0 ]] && print ready >"$HOME/reload"'
@@ -110,6 +110,9 @@ expect_probe 'echo ds-suggestion-value||*' 'autosuggestion acceptance failed'
 zpty -w -n shell $'\x15ds_missing_command'
 zselect -t 10
 expect_probe '*fg=red*' 'syntax highlight missing'
+zpty -w -n shell $'\x15'
+zpty -w -n shell 'echo value # comment'
+expect_probe 'echo value # comment||*standout*' 'comment highlight missing'
 zpty -w -n shell $'\x15'
 zpty -w shell 'exit'
 print -r -- "plugins: $DS_TEST_MODE ok"

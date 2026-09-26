@@ -81,6 +81,7 @@ _ds_highlighting_init() {
     : ${ZSH_HIGHLIGHT_MAXLENGTH:=10000}
     source "$_ds_plugins_dir/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
   fi
+  ZSH_HIGHLIGHT_STYLES[comment]=standout
   typeset -g _ds_plugins_ready=1
 }
 

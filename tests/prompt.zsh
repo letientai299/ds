@@ -139,9 +139,13 @@ if () { return 42; }; then
 else
   _ds_prompt_precmd
 fi
-[[ $_ds_prompt_char == '%F{red}[42]❯' ]] || fail 'exit code'
+[[ $_ds_prompt_status == ' %F{red}[42]%f' && $_ds_prompt_char == '%F{red}❯' ]] || fail 'exit code'
+rendered=${(%%)PROMPT}
+rendered=${rendered#$'\n'}
+[[ ${rendered%%$'\n'*} == *'$(touch INJECTED)'*$'\e[31m[42]\e[39m' ]] || fail 'exit code position'
 _ds_prompt_started=$(( EPOCHREALTIME - 9 ))
 _ds_prompt_precmd
+[[ -z $_ds_prompt_status ]] || fail 'exit code reset'
 [[ -z $_ds_prompt_duration ]] || fail 'short duration'
 _ds_prompt_started=$(( EPOCHREALTIME - 65 ))
 _ds_prompt_precmd
@@ -200,9 +204,9 @@ run 'sleep 0.1 &'
 run 'sleep 0.2'
 [[ $(<"$work/probe") != *•* ]] || fail 'finished background job'
 run 'setopt pipe_fail; false | true'
-[[ $(<"$work/probe") == *'[1]❯'* ]] || fail 'pipeline failure'
+[[ $(<"$work/probe") == *$'\e[31m[1]'*$'\n'* ]] || fail 'pipeline failure'
 run '(exit 23)'
-[[ $(<"$work/probe") == *$'\e[31m[23]❯'* ]] || fail 'interactive failure color'
+[[ $(<"$work/probe") == *$'\e[31m[23]'*$'\n'*$'\e[31m❯'* ]] || fail 'interactive failure color'
 run ':'
 [[ $(<"$work/probe") == *$'\e[32m❯'* ]] || fail 'interactive success color'
 run 'sleep 10.1'

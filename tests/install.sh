@@ -213,6 +213,20 @@ PATH="$work/prerequisites" DS_TEST_UID=1000 DS_TEST_COMPILER="$work/bin/musl-gcc
 grep -qx 'apply core' "$DS_TEST_LOG" || fail 'shell skipped apply'
 [ "$(tail -1 "$DS_TEST_LOG")" = 'shell -l' ] || fail 'shell started before apply'
 
+# Existing compilers need no privileged packages.
+rm "$work/prerequisites/musl-gcc"
+cp "$work/bin/musl-gcc" "$work/prerequisites/gcc"
+cp "$work/bin/musl-gcc" "$work/prerequisites/cc"
+printf '%s\n' certificate >"$work/certificates.crt"
+sed "s|/etc/ssl/certs/ca-certificates.crt|$work/certificates.crt|" \
+	"$root/scripts/install.sh" >"$work/user-compiler-install.sh"
+: >"$DS_TEST_LOG"
+PATH="$work/prerequisites" DS_TEST_UID=1000 \
+	sh "$work/user-compiler-install.sh" --prefix "$work/user-compiler" >/dev/null
+if grep -q '^sudo$' "$DS_TEST_LOG"; then fail 'existing compiler required sudo'; fi
+grep -qx compile "$DS_TEST_LOG" || fail 'host compiler was skipped'
+grep -qx 'apply core' "$DS_TEST_LOG" || fail 'host compiler skipped apply'
+
 # Exercise updates with real local Git remotes.
 export DS_TEST_REAL_GIT="$real_git"
 source=$work/update-source

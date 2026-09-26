@@ -168,7 +168,7 @@ prerequisites() {
 	fi
 	if command -v apt-get >/dev/null 2>&1; then
 		packages=
-		for entry in git:git curl:curl xz:xz-utils musl-gcc:musl-tools gcc:build-essential; do
+		for entry in git:git curl:curl xz:xz-utils gcc:build-essential; do
 			command -v "${entry%%:*}" >/dev/null 2>&1 || packages="$packages ${entry#*:}"
 		done
 		if [ -n "$packages" ] || [ ! -s /etc/ssl/certs/ca-certificates.crt ]; then

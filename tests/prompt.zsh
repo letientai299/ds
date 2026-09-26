@@ -31,19 +31,19 @@ expect '*⑂ wip%f *%B%F{red}WIP%f%b: finish prompt%f' 'WIP subject'
 git checkout -q main
 expect '*⑂ main%f *initial%f' 'finished subject'
 print changed >> tracked
-expect '* %F{yellow}!1*' unstaged
+expect '* %F{yellow}!1%f*' unstaged
 git add tracked
-expect '* %F{yellow}+1*' staged
+expect '* %F{green}+1%f*' staged
 print more >> tracked
 print unknown > $'odd\nname'
-expect '* %F{yellow}+1!1?1*' mixed
+expect '* %F{green}+1%f %F{yellow}!1%f %F{magenta}?1%f*' mixed
 git stash push -qu
-expect '* %F{yellow}≡1*' stash
+expect '* %F{208}≡1%f*' stash
 git mv tracked renamed
-expect '* %F{yellow}+1*' rename
+expect '* %F{green}+1%f*' rename
 git commit -qm rename
 rm renamed
-expect '* %F{yellow}!1*' deletion
+expect '* %F{yellow}!1%f*' deletion
 git restore renamed
 git checkout -q --detach
 expect '*⑂ @????????%f*' detached
@@ -51,18 +51,18 @@ git checkout -q main
 git branch upstream
 git branch --set-upstream-to=upstream >/dev/null
 git commit -q --allow-empty -m ahead
-expect '* %F{yellow}↑1*' ahead
+expect '* %F{cyan}↑1%f*' ahead
 git checkout -q upstream
 print upstream > renamed
 git commit -qam upstream
 git checkout -q main
-expect '* %F{yellow}↑1↓1*' diverged
+expect '* %F{cyan}↑1%f %F{blue}↓1%f*' diverged
 git config status.aheadBehind false
-expect '* %F{yellow}↑1↓1*' 'ahead config override'
+expect '* %F{cyan}↑1%f %F{blue}↓1%f*' 'ahead config override'
 print local > renamed
 git commit -qam local
 git merge upstream >/dev/null 2>&1 && fail 'merge should conflict'
-expect '* %F{yellow}*×1*' conflict
+expect '*%F{red}×1%f*' conflict
 git merge --abort
 git worktree add -qb linked "$work/linked" >/dev/null 2>&1
 cd "$work/linked"
@@ -71,13 +71,13 @@ cd "$work/repo"
 git -c protocol.file.allow=always submodule add -q "$work/linked" sub
 git commit -qm submodule
 print dirty >> sub/renamed
-expect '* %F{yellow}*!1*' 'modified submodule'
+expect '*%F{yellow}!1%f*' 'modified submodule'
 git -C sub restore renamed
 print unknown > sub/unknown
-expect '* %F{yellow}*!1*' 'untracked submodule'
+expect '*%F{yellow}!1%f*' 'untracked submodule'
 rm sub/unknown
 git -C sub -c user.name=Test -c user.email=test@example.invalid commit -q --allow-empty -m subhead
-expect '* %F{yellow}*!1*' 'changed submodule head'
+expect '*%F{yellow}!1%f*' 'changed submodule head'
 git submodule update -q
 git submodule deinit -q -f sub
 git checkout -q upstream

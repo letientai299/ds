@@ -75,14 +75,14 @@ _ds_prompt_git() {
   branch=${branch//\%/%%}
   _ds_prompt_git=" %F{magenta}⑂ $branch%f"
   local stats=''
-  (( ahead )) && stats+="↑$ahead"
-  (( behind )) && stats+="↓$behind"
-  (( staged )) && stats+="+$staged"
-  (( changed )) && stats+="!$changed"
-  (( untracked )) && stats+="?$untracked"
-  (( conflicts )) && stats+="×$conflicts"
-  (( stash )) && stats+="≡$stash"
-  [[ -z $stats ]] || _ds_prompt_git+=" %F{yellow}$stats%f"
+  (( ahead )) && stats+=" %F{cyan}↑$ahead%f"
+  (( behind )) && stats+=" %F{blue}↓$behind%f"
+  (( staged )) && stats+=" %F{green}+$staged%f"
+  (( changed )) && stats+=" %F{yellow}!$changed%f"
+  (( untracked )) && stats+=" %F{magenta}?${untracked}%f"
+  (( conflicts )) && stats+=" %F{red}×$conflicts%f"
+  (( stash )) && stats+=" %F{208}≡$stash%f"
+  _ds_prompt_git+=$stats
   # Commit subjects only change with HEAD.
   if [[ $oid != $_ds_prompt_oid ]]; then
     _ds_prompt_subject=''

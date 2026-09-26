@@ -14,7 +14,7 @@ function docker() { fail 'Docker ran during startup'; }
 source "$shell"
 function reload() { source "$shell"; }
 reload
-if (( $+commands[eza] )); then
+if (( $+commands[eza] )) && command eza --version >/dev/null 2>&1; then
   [[ $aliases[ls] == eza ]] || fail 'ls alias missing'
 else
   [[ -z ${aliases[ls]:-} ]] || fail 'ls alias needs eza'
@@ -25,6 +25,25 @@ typeset -g _ds_git_version_key=''
 function git() { fail 'Git version queried again'; }
 source "${shell:A:h}/omz/git.plugin.zsh"
 unfunction git
+
+alias_test_path=$PATH
+mkdir -p "$work/eza-bin"
+print -rl -- '#!/bin/sh' 'exit 0' > "$work/eza-bin/eza"
+chmod +x "$work/eza-bin/eza"
+export PATH="$work/eza-bin:$PATH"
+source "${shell:A:h}/aliases.zsh"
+[[ ${aliases[ls]:-} == eza ]] || fail 'working eza was skipped'
+print -rl -- '#!/bin/sh' 'exit 1' > "$work/eza-bin/eza"
+source "${shell:A:h}/aliases.zsh"
+[[ -z ${aliases[ls]:-} ]] || fail 'broken shim kept ls alias'
+eval 'ls -d "$work"' >/dev/null || fail 'system ls failed'
+alias ls='ls -h'
+source "${shell:A:h}/aliases.zsh"
+[[ ${aliases[ls]:-} == 'ls -h' ]] || fail 'custom ls alias changed'
+unalias ls
+export PATH=$alias_test_path
+unset alias_test_path
+reload
 
 [[ -o auto_cd && -o auto_pushd && -o pushd_ignore_dups && -o pushdminus ]] || fail 'directory options missing'
 cd "$work/one/two/three/four/five"

@@ -11,8 +11,10 @@ alias so=source
 alias :q=exit
 alias wrap='tput smam'
 alias nowrap='tput rmam'
-if (( $+commands[eza] )); then
+if (( $+commands[eza] )) && command eza --version >/dev/null 2>&1; then
   alias ls=eza
+elif [[ ${aliases[ls]:-} == eza ]]; then
+  unalias ls
 fi
 
 alias gcf!="git commit --amend --no-edit"

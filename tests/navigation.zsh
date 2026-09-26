@@ -44,10 +44,15 @@ autoload -Uz _ssh_hosts
 zstyle ':completion:*:hosts' known-hosts-files "$HOME/.ssh/known_hosts"
 curcontext=':ssh:'
 words=(ssh '')
-_wanted() { print -rl -- "${hosts[@]}"; }
-print -r -- $'  Host local-alias !excluded *.invalid\n  HostName host.internal\nInclude "conf.d/*.conf"\nInclude absent*\nInclude config' > "$HOME/.ssh/config"
+_wanted() {
+  case $3 in
+    'configured SSH host') print -rl -- "${config_hosts[@]}" ;;
+    'known SSH host') print -rl -- "${known_hosts[@]}" ;;
+  esac
+}
+print -r -- $'  Host local-alias LOCAL-ALIAS !excluded *.invalid\n  HostName host.internal\nInclude "conf.d/*.conf"\nInclude absent*\nInclude config' > "$HOME/.ssh/config"
 print -r -- $'Host included-alias\nInclude config' > "$HOME/.ssh/conf.d/one.conf"
-print -r -- $'known-alias,host.internal ssh-ed25519 key\n[port-alias]:2222 ssh-ed25519 key\n|1|hash|value ssh-ed25519 key\n@cert-authority cert-alias ssh-ed25519 key\n' > "$HOME/.ssh/known_hosts"
+print -r -- $'known-alias,HOST.INTERNAL ssh-ed25519 key\n[port-alias]:2222 ssh-ed25519 key\n|1|hash|value ssh-ed25519 key\n@cert-authority cert-alias ssh-ed25519 key\nKNOWN-ALIAS ssh-ed25519 key\n' > "$HOME/.ssh/known_hosts"
 actual=$(_ssh_hosts)
 expected=$'local-alias\nhost.internal\nincluded-alias\nknown-alias\nport-alias\ncert-alias'
 [[ $actual == $expected ]] || fail "SSH candidates: $actual"

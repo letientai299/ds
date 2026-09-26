@@ -1,11 +1,13 @@
 #autoload
 
-local -a hosts expl queue fields known_files
+local -a hosts config_hosts known_hosts expl queue fields known_files unique_hosts
 local config="$HOME/.ssh/config" file line key rest token pattern entry
-local -A visited
-local index=1 position
+local -A visited seen_hosts
+local index=1 position ret=1
 
-if ! zstyle -a ":completion:${curcontext}:hosts" hosts hosts; then
+if zstyle -a ":completion:${curcontext}:hosts" hosts hosts; then
+  config_hosts=("${hosts[@]}")
+else
   position=${words[(I)-F]}
   (( ! position )) || config=${words[position+1]}
   queue=("$config")
@@ -31,7 +33,7 @@ if ! zstyle -a ":completion:${curcontext}:hosts" hosts hosts; then
             [[ $token != \#* ]] || break
             entry=${(Q)token}
             [[ $entry != [\!\#]* && $entry != *[\*\?]* ]] || continue
-            hosts+=("$entry")
+            config_hosts+=("$entry")
           done
           ;;
       esac
@@ -51,11 +53,31 @@ if ! zstyle -a ":completion:${curcontext}:hosts" hosts hosts; then
         if [[ $entry == \[*\]:<-> ]]; then
           entry=${${entry#\[}%\]:*}
         fi
-        hosts+=("$entry")
+        known_hosts+=("$entry")
       done
     done < "$file"
   done
 fi
-hosts=("${(@u)hosts}")
-_wanted hosts expl 'remote host name' \
-  compadd -M 'm:{a-zA-Z}={A-Za-z} r:|.=* r:|=*' "$@" -a hosts
+unique_hosts=()
+for entry in "${config_hosts[@]}"; do
+  [[ -z ${seen_hosts[${entry:l}]:-} ]] || continue
+  seen_hosts[${entry:l}]=1
+  unique_hosts+=("$entry")
+done
+config_hosts=("${unique_hosts[@]}")
+unique_hosts=()
+for entry in "${known_hosts[@]}"; do
+  [[ -z ${seen_hosts[${entry:l}]:-} ]] || continue
+  seen_hosts[${entry:l}]=1
+  unique_hosts+=("$entry")
+done
+known_hosts=("${unique_hosts[@]}")
+if (( $#config_hosts )); then
+  _wanted hosts expl 'configured SSH host' \
+    compadd -J ssh-config -M 'm:{a-zA-Z}={A-Za-z} r:|.=* r:|=*' "$@" -a config_hosts && ret=0
+fi
+if (( $#known_hosts )); then
+  _wanted hosts expl 'known SSH host' \
+    compadd -J known-hosts -M 'm:{a-zA-Z}={A-Za-z} r:|.=* r:|=*' "$@" -a known_hosts && ret=0
+fi
+return $ret

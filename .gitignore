@@ -3,3 +3,5 @@
 .rumdl_cache/
 dist/
 .ai/
+
+src/dotfiles/yazi/vfs.toml

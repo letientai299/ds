@@ -37,6 +37,8 @@ _ds_tool_init() {
 
 _ds_completion_init() {
   zstyle ':completion:*' matcher-list '' 'm:{a-zA-Z}={A-Za-z}'
+  zstyle ':completion:*:ssh:argument-1:*' tag-order hosts
+  zstyle ':completion:*:ssh:*:hosts' format '%d'
   if (( ! $+functions[compdef] )); then
     local cache="$XDG_CACHE_HOME/ds/zsh"
     local revision="$(<"$_ds_plugins_dir/zsh-completions/REVISION")"

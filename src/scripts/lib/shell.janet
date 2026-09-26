@@ -14,6 +14,10 @@
     (filesystem/ensure-parent target)
     (os/link source target true)))
 
+(defn link-application [source target]
+  (when (or (not (os/lstat target)) (= :link (os/lstat target :mode)))
+    (link source target)))
+
 (defn git-quote [value]
   (string "\"" (string/replace-all "\n" "\\n"
                  (string/replace-all "\"" "\\\""
@@ -42,7 +46,7 @@
     (each name (os/dir original)
       (unless (or (find |(= $ name) ["ds" "nvim"])
                   (and (layers/includes? catalog layer :tmux) (= name "tmux")))
-        (link (string original "/" name) (string config "/" name)))))
+        (link-application (string original "/" name) (string config "/" name)))))
   (def personal (string original "/ds/mise/config.personal.toml"))
   (when (os/stat personal)
     (link personal (string config "/ds/mise/config.personal.toml")))

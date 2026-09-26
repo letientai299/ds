@@ -17,6 +17,9 @@ export DS_ROOT=/stale/root ZDOTDIR="$work/old-zdotdir"
 unset DS_SHELL_ROOT DS_SHELL_CONFIG_HOME DS_SHELL_GIT_GLOBAL DS_SHELL_STATE GIT_CONFIG_GLOBAL
 mkdir -p "$HOME/.ssh" "$DS_NVIM_SOURCE" "$XDG_CONFIG_HOME/git" "$work/working dir" "$ZDOTDIR"
 mkdir -p "$XDG_CONFIG_HOME/ds/mise"
+mkdir -p "$XDG_CONFIG_HOME/cursor" "$XDG_STATE_HOME/ds/shell/config/cursor"
+printf '%s\n' daily >"$XDG_CONFIG_HOME/cursor/settings"
+printf '%s\n' trial >"$XDG_STATE_HOME/ds/shell/config/cursor/settings"
 printf '%s\n' '[tools]' 'marksman = "2026-02-08"' >"$XDG_CONFIG_HOME/ds/mise/config.personal.toml"
 mkdir -p "$work/ignore-repo"
 git -C "$work/ignore-repo" init -q
@@ -52,6 +55,8 @@ git -C "$DS_TEST_IGNORE_REPO" check-ignore -q .ai/probe || exit 68
 git -C "$DS_TEST_IGNORE_REPO" check-ignore -q .swp || exit 69
 git -C "$DS_TEST_IGNORE_REPO" check-ignore -q _sbt && exit 70
 [[ $(<$XDG_CONFIG_HOME/application) == 'application settings' ]] || exit 19
+[[ ! -L $XDG_CONFIG_HOME/cursor && $(<$XDG_CONFIG_HOME/cursor/settings) == trial ]] || exit 79
+[[ $(<$DS_SHELL_CONFIG_HOME/cursor/settings) == daily ]] || exit 80
 [[ ${XDG_CONFIG_HOME:A} != ${DS_SHELL_CONFIG_HOME:A} ]] || exit 20
 [[ ${XDG_CONFIG_HOME}/nvim -ef $DS_NVIM_SOURCE ]] || exit 21
 [[ $HISTFILE == $DS_SHELL_STATE/zsh/history ]] || exit 22
@@ -191,6 +196,8 @@ cmp "$HOME/.gitconfig" "$work/gitconfig-before"
 [ "$(readlink "$HOME/.local/bin/ds")" = "$root/ds" ]
 [ "$(tail -n 1 "$HOME/.local/bin/serve")" = 'exit 95' ]
 [ "$(cat "$XDG_CONFIG_HOME/nvim/user-config")" = daily ]
+[ "$(cat "$XDG_CONFIG_HOME/cursor/settings")" = daily ]
+[ "$(cat "$XDG_STATE_HOME/ds/shell/config/cursor/settings")" = trial ]
 [ ! -e "$XDG_CONFIG_HOME/ds/layer" ]
 [ "$(cat "$XDG_CONFIG_HOME/ds/mise/config.personal.toml")" = "$(printf '%s\n' '[tools]' 'marksman = "2026-02-08"')" ]
 printf '%s\n' 'trial shell: ok'

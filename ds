@@ -18,6 +18,11 @@ ds_root=$script_dir
 # A checkout and a delivered snapshot share one layout: `ds` at the root and
 # every payload under `src/`.
 ds_src=$ds_root/src
+if [ "${1:-}" = update ]; then
+	shift
+	exec sh "$ds_src/scripts/update.sh" "$@"
+fi
+
 os=$(uname -s)
 arch=$(uname -m)
 

@@ -2,6 +2,14 @@
   [{:name "shell" :group :primary :args "" :summary "Open a shell; default command"
     :details ["Use persistent trial configuration without installing packages." "Home and working directory remain unchanged."]
     :example "exec ds"}
+   {:name "update" :group :primary :args ""
+    :summary "Update ds and configuration source checkouts"
+    :details ["Includes installed nvim.conf, tmux.conf, and kitty.conf checkouts."
+              "Honors DS_NVIM_SOURCE, DS_TMUX_SOURCE, and DS_KITTY_SOURCE."
+              "Pull tracked branches with fast-forward only."
+              "Requires clean Git checkouts with upstreams."
+              "Run ds apply to apply updated configuration."]
+    :example "ds update"}
    {:name "apply" :group :primary :args "[LAYER ...|COMPONENT]" :targets :all
     :summary "Apply a layer or optional component"
     :flags ["--dry-run" "--force" "--skip"]

@@ -79,6 +79,7 @@ run = [
   "tests/rootful.sh",
   "sh tests/runtime-build.sh",
   "sh tests/install.sh",
+  "sh tests/update.sh",
   "sh tests/shell-init.sh",
   "sh tests/shell.sh",
   "sh tests/aliases.sh",

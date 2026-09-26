@@ -37,6 +37,23 @@ sh ds-install.sh --no-apply
 sh ds-install.sh
 ```
 
+## Update
+
+```sh
+ds update
+ds apply
+```
+
+`ds update` pulls the tracked branches of `ds` and its installed configuration
+sources: `nvim.conf`, `tmux.conf`, and `kitty.conf`. It honors `DS_NVIM_SOURCE`,
+`DS_TMUX_SOURCE`, and `DS_KITTY_SOURCE`; otherwise it uses sibling checkouts.
+Missing sibling checkouts are skipped. Every checkout must be clean and have an
+upstream. Pulls use fast-forward only, with `ds` updated last. A failed pull stops
+the command; earlier successful pulls remain applied.
+
+Installed tool versions are unchanged. Delivered snapshots require a new
+deployment.
+
 ## Documentation
 
 See [docs][docs].

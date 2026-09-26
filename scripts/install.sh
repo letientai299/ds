@@ -10,12 +10,16 @@ die() {
 usage() {
 	cat <<'USAGE'
 usage: scripts/install.sh [--no-apply] [--layer LAYER] [--prefix DIR]
-                         [--skip docker] [--shell]
+                         [--skip docker] [--shell] [--yes] [--force]
 
 Uses the current checkout, including from subdirectories.
 Otherwise clones main under ~/.local/share/ds-source.
 DS_SOURCE_REF selects another ds branch when cloning.
-Installs prerequisites and applies core by default.
+Installs prerequisites and reapplies selected layers; initially core.
+Existing installations prompt before updating source checkouts.
+--yes accepts updates without prompting.
+Repeat --layer to apply several layers together.
+--force backs up conflicting configuration before applying.
 --no-apply prepares runtimes and previews changes.
 --prefix sets the clone directory outside a checkout.
 --shell opens Zsh after applying.
@@ -23,7 +27,13 @@ USAGE
 }
 
 prefix=${XDG_DATA_HOME:-$HOME/.local/share}/ds-source
-layer=core
+prefix_set=false
+layers=
+update=false
+yes=false
+resumed=${DS_INSTALL_UPDATED_ROOT:-}
+unset DS_INSTALL_UPDATED_ROOT
+force=false
 apply=true
 shell=false
 skip=
@@ -32,11 +42,25 @@ while [ "$#" -gt 0 ]; do
 	--prefix | --layer | --skip)
 		[ "$#" -ge 2 ] && [ -n "$2" ] || die "$1 requires a value"
 		case "$1" in
-		--prefix) prefix=$2 ;;
-		--layer) layer=$2 ;;
+		--prefix)
+			prefix=$2
+			prefix_set=true
+			;;
+		--layer)
+			case "$2" in core | remote | extra | ui | all) ;; *) die "unknown layer: $2" ;; esac
+			layers="${layers:+$layers }$2"
+			;;
 		--skip) skip=$2 ;;
 		esac
 		shift 2
+		;;
+	--yes)
+		yes=true
+		shift
+		;;
+	--force)
+		force=true
+		shift
 		;;
 	--no-apply)
 		apply=false
@@ -53,7 +77,18 @@ while [ "$#" -gt 0 ]; do
 	*) die "unknown argument: $1" ;;
 	esac
 done
-case "$layer" in core | remote | extra | ui | all) ;; *) die "unknown layer: $layer" ;; esac
+if [ -z "$layers" ]; then
+	selection=${XDG_CONFIG_HOME:-$HOME/.config}/ds/layer
+	if [ -f "$selection" ]; then
+		saved=$(cat "$selection")
+		case "$saved" in '' | ,* | *, | *,,* | *[!a-z,]*) die 'invalid saved layers' ;; esac
+		layers=$(printf '%s' "$saved" | tr ',' ' ')
+		for layer in $layers; do
+			case "$layer" in core | remote | extra | ui | all) ;; *) die "unknown saved layer: $layer" ;; esac
+		done
+	fi
+fi
+layers=${layers:-core}
 case "$skip" in '' | docker) ;; *) die "unsupported skip: $skip" ;; esac
 [ "$apply:$shell" != false:true ] || die '--shell requires applying'
 
@@ -66,7 +101,7 @@ Linux:x86_64 | Linux:amd64) platform=linux-x64-musl ;;
 *) die 'unsupported operating system or architecture' ;;
 esac
 
-root=$(pwd -P)
+root=${resumed:-$(pwd -P)}
 while :; do
 	if [ -f "$root/ds" ] && [ -f "$root/.config/mise/config.toml" ] &&
 		[ -f "$root/src/runtime/fetch.sh" ] && [ -f "$root/src/runtime/build.sh" ]; then
@@ -78,6 +113,36 @@ while :; do
 	fi
 	root=$(dirname -- "$root")
 done
+
+if [ -z "$root" ] && [ "$prefix_set" = false ] && [ -L "$HOME/.local/bin/ds" ]; then
+	launcher=$HOME/.local/bin/ds
+	while [ -L "$launcher" ]; do
+		directory=$(CDPATH='' cd -P "$(dirname -- "$launcher")" && pwd)
+		launcher=$(readlink "$launcher")
+		case "$launcher" in /*) ;; *) launcher=$directory/$launcher ;; esac
+	done
+	directory=$(dirname -- "$launcher")
+	if [ -f "$directory/scripts/install.sh" ]; then
+		root=$(CDPATH='' cd "$directory" && pwd -P)
+		prefix=$(dirname -- "$root")
+	fi
+fi
+
+if [ -z "$root" ]; then
+	case "$prefix" in /*) ;; *) prefix=$PWD/$prefix ;; esac
+	if [ -d "$prefix/ds" ]; then
+		root=$(CDPATH='' cd "$prefix/ds" && pwd -P)
+	fi
+fi
+if [ -n "$root" ] && [ "$resumed" != "$root" ]; then
+	if [ "$yes" = false ]; then
+		[ -t 0 ] || die 'existing installation requires confirmation; use --yes'
+		printf 'Update existing installation at %s? [y/N] ' "$root" >&2
+		IFS= read -r answer || exit 1
+		case "$answer" in y | Y | yes | YES) ;; *) exit 0 ;; esac
+	fi
+	update=true
+fi
 
 privileged() {
 	if [ "$(id -u)" -eq 0 ]; then
@@ -160,13 +225,32 @@ fi
 [ -f "$root/.config/mise/config.toml" ] || die "missing project configuration: $root"
 printf '%s\n' "ds setup: checkout $root" >&2
 
-case "$layer" in
-core) sources=nvim ;;
-remote) sources="nvim tmux" ;;
-ui) sources=kitty ;;
-all) sources="nvim tmux kitty" ;;
-extra) sources= ;;
-esac
+if [ "$update" = true ]; then
+	DS_UPDATE_SOURCE_ONLY=true sh "$root/src/scripts/update.sh"
+	set --
+	for layer in $layers; do
+		set -- "$@" --layer "$layer"
+	done
+	[ "$apply" = true ] || set -- "$@" --no-apply
+	[ "$force" = false ] || set -- "$@" --force
+	[ "$shell" = false ] || set -- "$@" --shell
+	[ -z "$skip" ] || set -- "$@" --skip "$skip"
+	DS_INSTALL_UPDATED_ROOT=$root exec sh "$root/scripts/install.sh" --prefix "$prefix" "$@"
+fi
+
+sources=
+for layer in $layers; do
+	case "$layer" in
+	core) required=nvim ;;
+	remote) required="nvim tmux" ;;
+	ui) required=kitty ;;
+	all) required="nvim tmux kitty" ;;
+	extra) required= ;;
+	esac
+	for name in $required; do
+		case " $sources " in *" $name "*) ;; *) sources="${sources:+$sources }$name" ;; esac
+	done
+done
 for name in $sources; do
 	case "$name" in
 	nvim) configured=${DS_NVIM_SOURCE:-} ;;
@@ -242,10 +326,16 @@ if [ "${runtime_version%%-*}" != "$DS_JANET_VERSION" ]; then
 	fi
 fi
 
-set -- apply "$layer"
+set -- apply
+for layer in $layers; do
+	set -- "$@" "$layer"
+done
+[ "$force" = false ] || set -- "$@" --force
 [ -z "$skip" ] || set -- "$@" --skip "$skip"
 if [ "$apply" = false ]; then
-	"$root/ds" diff "$layer"
+	for layer in $layers; do
+		"$root/ds" diff "$layer"
+	done
 	set -- "$@" --dry-run
 fi
 "$root/ds" "$@"

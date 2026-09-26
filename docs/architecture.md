@@ -75,7 +75,7 @@ payload under `src/`, so `DS_ROOT` resolves identically on a target.
 | Path                       | Responsibility                                                |
 | -------------------------- | ------------------------------------------------------------- |
 | `ds`                       | Portable shell launcher and controller push dispatch          |
-| `mise.toml`                | Link to checkout development tools and tasks                   |
+| `mise.toml`                | Link to checkout development tools and tasks                  |
 | `.config/mise/config.toml` | Development tools, pinned image digests, and every task       |
 | `src/catalog.toml`         | Canonical layers and component metadata                       |
 | `src/mise/`                | Payload mise profiles: pinned tools and native packages       |
@@ -98,8 +98,8 @@ payload under `src/`, so `DS_ROOT` resolves identically on a target.
 
 A checkout supplies local edits to trial shells, source installation, Docker
 images, delivery bundles, and SSH pushes. The [source installer][source-installer]
-finds the enclosing checkout from the current directory. It reuses local edits
-without pulling or resetting them:
+finds the enclosing checkout from the current directory. It detects existing checkouts and asks before updating them. Use `--yes` to
+confirm unattended updates. Updates require clean source checkouts:
 
 ```sh
 sh scripts/install.sh --no-apply

@@ -28,7 +28,7 @@ else
             queue+=(${~pattern}(N))
           done
           ;;
-        host|hostname)
+        host)
           for token in ${(z)rest}; do
             [[ $token != \#* ]] || break
             entry=${(Q)token}
@@ -53,6 +53,7 @@ else
         if [[ $entry == \[*\]:<-> ]]; then
           entry=${${entry#\[}%\]:*}
         fi
+        [[ $entry != *.* || ${PREFIX:-} == *.* ]] || continue
         known_hosts+=("$entry")
       done
     done < "$file"

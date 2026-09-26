@@ -54,8 +54,11 @@ print -r -- $'  Host local-alias LOCAL-ALIAS !excluded *.invalid\n  HostName hos
 print -r -- $'Host included-alias\nInclude config' > "$HOME/.ssh/conf.d/one.conf"
 print -r -- $'known-alias,HOST.INTERNAL ssh-ed25519 key\n[port-alias]:2222 ssh-ed25519 key\n|1|hash|value ssh-ed25519 key\n@cert-authority cert-alias ssh-ed25519 key\nKNOWN-ALIAS ssh-ed25519 key\n' > "$HOME/.ssh/known_hosts"
 actual=$(_ssh_hosts)
-expected=$'local-alias\nhost.internal\nincluded-alias\nknown-alias\nport-alias\ncert-alias'
+expected=$'local-alias\nincluded-alias\nknown-alias\nport-alias\ncert-alias'
 [[ $actual == $expected ]] || fail "SSH candidates: $actual"
+PREFIX='host.'
+[[ $(_ssh_hosts) == *'HOST.INTERNAL'* ]] || fail 'explicit FQDN completion missing'
+PREFIX=''
 print -r -- 'Host rotated-alias' > "$HOME/.ssh/conf.d/two.conf"
 [[ $(_ssh_hosts) == *rotated-alias* ]] || fail 'SSH include changes stayed stale'
 print -rn -- 'Host custom-alias' > "$HOME/custom-ssh"

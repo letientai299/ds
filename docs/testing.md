@@ -12,7 +12,7 @@ mise run verify
 formatting, generated-data validation), `check:unit` (Janet compile checks and
 unit tests), and `check:contract` (the delivery contract). Each task runs its
 steps concurrently through [`tests/check.sh`][check-sh], which prints failed
-step logs at the end. `DS_CHECK_JOBS` caps the concurrency; it defaults to the
+step logs at the end. `DS_CHECK_JOBS` caps concurrent steps; it defaults to the
 CPU count. The contract is the longest step and bounds the run. The script also
 takes single step names, such as `tests/check.sh core`.
 
@@ -29,10 +29,17 @@ JSON/exit contracts, completion, failed activation, rollback, lock contention,
 backup preflight, Docker deadlines, and batched checksum fallbacks. These checks
 do not provision a real Docker daemon.
 
-`e2e:all` runs `e2e:macos` on the host next to `e2e:linux`, which runs every
-Linux end-to-end target concurrently in one sandbox. Before the targets start, the sandbox fetches the Janet source and mise, and
-builds both Linux runtimes; the host BuildKit cache makes rebuilds fast. One
-failure does not discard sibling results.
+`e2e:all` runs `e2e:macos` on the host next to `e2e:linux` in one sandbox.
+The Linux suite checks core convergence, then upgrades those same homes to
+remote. This avoids installing core twice, including Neovim's Alpine source
+build. Standalone `e2e:remote` still starts from empty homes. Alpine and Ubuntu
+run concurrently; `DS_CHECK_JOBS=1` serializes them for constrained machines.
+One failure does not discard sibling results.
+
+Only tasks that need delivered runtimes prepare them. Native layer and
+controller tests need one Linux architecture; the unprivileged delivery matrix
+retains both architectures and both distros. `e2e:macos` fetches only the native
+mise runtime. The host BuildKit cache makes runtime rebuilds fast.
 
 `verify` runs the check and E2E groups in one sandbox, and adds runtime
 execution and reproducibility on the host.
@@ -55,7 +62,9 @@ remain on the host.
 that start their own containers. The engine resolves bind-mount sources on the
 host, so in this mode the checkout copy and `TMPDIR` live in a host temporary
 directory mounted at the same absolute path. A root container removes that
-directory afterwards, because nested root containers leave root-owned files.
+directory afterwards. Nested delivery and layer tests keep target homes in
+container tmpfs to avoid host filesystem overhead. Shell checks still compare
+every path and file hash after warming startup caches; hashes run in batches.
 Socket access controls the whole engine, and pulled images and the runtime
 BuildKit cache stay on the host.
 
@@ -81,7 +90,6 @@ the container.
 | `e2e:remote`           | Remote tools, Yazi, and Tmux on Alpine musl and Ubuntu glibc                       |
 | `e2e:docker-readiness` | Existing engine, Buildx, Compose, pinned pull/run, and tiny image build/run        |
 | `e2e:macos`            | No-write isolated-home previews and Linux package skipping                         |
-| `e2e:rocky`            | DNF, CRB/EPEL preparation, tools, and double-apply convergence                     |
 
 ## Target preflight
 

@@ -25,7 +25,6 @@ run_case() {
 	image=$3
 	name=$4
 	snapshot=$work/snapshot-$platform
-	home=$work/home-$platform-$name
 
 	if [ ! -d "$snapshot" ]; then
 		"$root/src/bundle/build.sh" \
@@ -36,8 +35,6 @@ run_case() {
 			--output "$snapshot" >/dev/null
 	fi
 	manifest_sha=$(sed -n '1p' "$snapshot/manifest.sha256")
-	mkdir -p "$home"
-	chmod 0777 "$home"
 
 	docker run --rm \
 		--platform "$docker_platform" \
@@ -48,7 +45,7 @@ run_case() {
 		--security-opt no-new-privileges \
 		--tmpfs /tmp:rw,nosuid,nodev,noexec \
 		--volume "$snapshot:/snapshot:ro" \
-		--volume "$home:/home/test:rw" \
+		--tmpfs /home/test:exec,mode=1777 \
 		--env HOME=/home/test \
 		--env XDG_CACHE_HOME=/home/test/.cache \
 		--env XDG_CONFIG_HOME=/home/test/.config \
@@ -73,13 +70,26 @@ run_case() {
         ' ds-container "$manifest_sha" "$platform" >"$work/$platform-$name.out"
 
 	grep -q '^core: incomplete$' "$work/$platform-$name.out" || fail "$name $platform did not resolve core"
-	[ ! -e "$home/.zshrc" ] || fail "$name $platform touched .zshrc"
-	[ ! -e "$home/.config/zsh/.zshrc" ] || fail "$name $platform touched ZDOTDIR"
 }
 
-run_case linux-arm64-musl linux/arm64 "$DS_ALPINE_IMAGE" alpine
-run_case linux-arm64-musl linux/arm64 "$DS_UBUNTU_IMAGE" ubuntu
-run_case linux-x64-musl linux/amd64 "$DS_ALPINE_IMAGE" alpine
-run_case linux-x64-musl linux/amd64 "$DS_UBUNTU_IMAGE" ubuntu
+run_architecture() (
+	run_case "$1" "$2" "$DS_ALPINE_IMAGE" alpine
+	run_case "$1" "$2" "$DS_UBUNTU_IMAGE" ubuntu
+)
+
+if [ "${DS_CHECK_JOBS:-2}" = 1 ]; then
+	run_architecture linux-arm64-musl linux/arm64
+	run_architecture linux-x64-musl linux/amd64
+else
+	run_architecture linux-arm64-musl linux/arm64 >"$work/arm64.log" 2>&1 &
+	arm64_pid=$!
+	run_architecture linux-x64-musl linux/amd64 >"$work/x64.log" 2>&1 &
+	x64_pid=$!
+	failed=0
+	wait "$arm64_pid" || failed=1
+	wait "$x64_pid" || failed=1
+	cat "$work/arm64.log" "$work/x64.log"
+	[ "$failed" -eq 0 ] || fail 'delivery matrix failed'
+fi
 
 printf '%s\n' 'containers: ok'

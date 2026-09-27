@@ -26,6 +26,7 @@ x86_64) platform=macos-x64 ;;
 	;;
 esac
 
+"$root/src/runtime/fetch-mise.sh" "$platform" >/dev/null
 target_mise=$root/dist/runtime/bin/$platform/mise
 home=$work/home
 

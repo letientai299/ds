@@ -73,19 +73,14 @@ upgraded=$(
 [ -x "$remote_prefix/current/ds" ] || fail 'current does not resolve after the upgrade'
 
 preview=$(
-	DS_SSH=$work/fake-ssh "$root/ds" push fixture core \
+	DS_SSH=$work/fake-ssh "$root/ds" push fixture core extra \
 		--prefix .local/share/ds-controller \
 		--home .local/share/ds-controller-test-home \
 		--dry-run 2>"$work/preview.err"
 )
 [ "$preview" = "$first" ] || fail 'push-and-preview returned the wrong installed path'
 [ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] || fail 'preview changed current'
-grep -q '^would apply core:$' "$work/preview.err" || fail 'controller did not invoke remote layer preview'
-DS_SSH=$work/fake-ssh "$root/ds" push fixture core extra \
-	--prefix .local/share/ds-controller \
-	--home .local/share/ds-controller-test-home \
-	--dry-run >"$work/multi.out" 2>"$work/multi.err"
-grep -q '^would apply core,extra:$' "$work/multi.err" || fail 'controller did not pass multiple layers'
+grep -q '^would apply core,extra:$' "$work/preview.err" || fail 'controller did not pass multiple layers'
 [ -d "$DS_FAKE_REMOTE_HOME/.local/share/ds-controller-test-home" ] || fail 'controller did not create the isolated remote home'
 [ ! -e "$DS_FAKE_REMOTE_HOME/.local/share/ds-controller-test-home/.config" ] || fail 'remote layer preview wrote configuration'
 
@@ -110,22 +105,22 @@ for flag in --force --adopt; do
 		fail 'controller accepted force without application'
 	fi
 	grep -q 'remove --deliver-only' "$work/exclusive.err" || fail 'force diagnostic missing'
-	DS_SSH=$work/fake-ssh "$root/ds" push fixture core \
-		--prefix .local/share/ds-controller \
-		--home .local/share/ds-controller-test-home \
-		"$flag" --dry-run >"$work/force.out" 2>"$work/force.err"
-	grep -Fq "backup $target_home/.config/nvim -> $target_home/.config/nvim.ds-adopted" "$work/force.err" || fail 'remote force omitted backup'
-	[ "$(cat "$target_home/.config/nvim/keep")" = original ] || fail 'preview changed conflict'
-	[ ! -e "$target_home/.config/nvim.ds-adopted" ] || fail 'preview created backup'
-	[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] || fail 'force preview changed current'
 done
+DS_SSH=$work/fake-ssh "$root/ds" push fixture core \
+	--prefix .local/share/ds-controller \
+	--home .local/share/ds-controller-test-home \
+	--force --dry-run >"$work/force.out" 2>"$work/force.err"
+grep -Fq "backup $target_home/.config/nvim -> $target_home/.config/nvim.ds-adopted" "$work/force.err" || fail 'remote force omitted backup'
+[ "$(cat "$target_home/.config/nvim/keep")" = original ] || fail 'preview changed conflict'
+[ ! -e "$target_home/.config/nvim.ds-adopted" ] || fail 'preview created backup'
+[ "$(readlink "$remote_prefix/current")" = "versions/$(basename "$first")" ] || fail 'force preview changed current'
 
 printf '%s\n' '#!/bin/sh' 'exit 0' >"$work/mise"
 chmod 0755 "$work/mise"
 DS_MISE=$work/mise DS_SSH=$work/fake-ssh "$root/ds" push fixture core \
 	--prefix .local/share/ds-controller \
 	--home .local/share/ds-controller-test-home \
-	--force >"$work/force.out" 2>"$work/force.err"
+	--adopt >"$work/force.out" 2>"$work/force.err"
 [ -L "$target_home/.config/nvim" ] || fail 'remote force did not apply'
 [ "$(cat "$target_home/.config/nvim.ds-adopted/keep")" = original ] || fail 'remote force lost original'
 

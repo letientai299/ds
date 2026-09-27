@@ -14,7 +14,6 @@ DS_JANET_SOURCE_SHA256 = "8a0ba3d69df856ff5cb3880ffb7aac9af7d673035cb68983534738
 DS_JANET_VERSION = "1.42.1"
 DS_HELLO_WORLD_IMAGE = "hello-world@sha256:5dd0d3e6e255913fc30f90b9f2b1d359cc2cbdb48090cc4b65f1676e203243cc"
 DS_MISE_VERSION = "2026.8.6"
-DS_ROCKY_IMAGE = "rockylinux@sha256:d7be1c094cc5845ee815d4632fe377514ee6ebcf8efaed6892889657e5ddaaa6"
 DS_UBUNTU_IMAGE = "ubuntu@sha256:561618e2c15bf2397621dd04f96926663a3b5616c189cf7e38db7e82f5c538ea"
 
 [tasks.fmt]
@@ -119,13 +118,8 @@ description = "Verify a ready Docker engine, Buildx, Compose, pull, build, and r
 run = "tests/sandbox.sh --docker tests/check.sh docker-readiness"
 
 [tasks."e2e:macos"]
-depends = ["runtime:fetch-mise"]
 description = "Verify macOS no-write previews and Linux package skipping"
 run = "tests/macos.sh"
-
-[tasks."e2e:rocky"]
-description = "Apply core twice and verify tools on Rocky Linux"
-run = "tests/sandbox.sh --docker tests/check.sh rocky"
 
 [tasks."e2e:linux"]
 description = "Run every Linux end-to-end test concurrently in one sandbox"

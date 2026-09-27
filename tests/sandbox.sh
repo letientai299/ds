@@ -99,6 +99,7 @@ docker run --rm --init \
 	--env HOME=/tmp/home \
 	--env DS_TEST_GO_CACHE=/tmp/go \
 	--env "DS_CHECK_JOBS=${DS_CHECK_JOBS:-}" \
+	--env "DS_CORE_CASES=${DS_CORE_CASES:-native}" \
 	--env GITHUB_TOKEN \
 	--workdir /tmp \
 	"$@" || status=$?

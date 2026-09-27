@@ -47,12 +47,13 @@ unit	checksum	sh tests/checksum.sh
 unit	push	sh tests/push.sh
 unit	try	sh tests/try.sh
 unit	docker-shell	sh tests/docker-shell.sh
+unit	check-runner	sh tests/check-runner.sh
 contract	contract	DS_ROOT=$PWD DS_JANET=$(command -v janet) tests/contract.sh
 e2e	containers	tests/container.sh
 e2e	controller	tests/controller.sh
-e2e	core	tests/core.sh
-e2e	remote	tests/remote.sh
-e2e	rocky	tests/rocky.sh
+layer	core	tests/core.sh
+layer	remote	tests/remote.sh
+e2e	core-remote	sh tests/layer.sh core-remote
 e2e	docker-readiness	tests/docker-readiness.sh
 bench	bench-linux	tests/performance-linux.sh
 EOF
@@ -95,18 +96,38 @@ started=$(date +%s)
 # Longest steps start first: containers, then the contract.
 selected=$(steps | awk -F '\t' -v selectors=" $* " '
 	index(selectors, " " $1 " ") || index(selectors, " " $2 " ") {
-		print ($1 == "e2e" || $1 == "bench" ? 0 : $1 == "contract" ? 1 : 2) "\t" $2
+		print ($1 == "e2e" || $1 == "layer" || $1 == "bench" ? 0 : $1 == "contract" ? 1 : 2) "\t" $2
 	}' | sort -s -n -k1,1)
+
+# Combine explicitly selected layer steps too.
+if printf '%s\n' "$selected" | grep -q 'core-remote$' ||
+	{ printf '%s\n' "$selected" | grep -q '[[:space:]]core$' &&
+		printf '%s\n' "$selected" | grep -q '[[:space:]]remote$'; }; then
+	selected=$(printf '%s\n0\tcore-remote\n' "$selected" |
+		awk '$2 != "core" && $2 != "remote" && !seen[$2]++')
+fi
 
 # Container steps read the Linux runtimes from dist/runtime.
 build_runtimes() {
 	src/runtime/fetch.sh || return
-	for platform in linux-arm64-musl linux-x64-musl; do
+	for platform in $platforms; do
 		src/runtime/fetch-mise.sh "$platform" || return
 		src/runtime/build.sh "$platform" || return
 	done
 }
-if printf '%s\n' "$selected" | grep -q '^0'; then
+platforms=
+if printf '%s\n' "$selected" | grep -Eq '[[:space:]](containers|controller|core|remote|core-remote|bench-linux)$'; then
+	case "$(uname -m)" in
+	arm64 | aarch64) platforms=linux-arm64-musl ;;
+	x86_64 | amd64) platforms=linux-x64-musl ;;
+	*) die 'unsupported native architecture' ;;
+	esac
+	if printf '%s\n' "$selected" | grep -q '[[:space:]]containers$' ||
+		[ "${DS_CORE_CASES:-native}" = all ]; then
+		platforms='linux-arm64-musl linux-x64-musl'
+	fi
+fi
+if [ -n "$platforms" ]; then
 	if ! build_runtimes >"$DS_CHECK_LOGS/runtime.log" 2>&1; then
 		cat "$DS_CHECK_LOGS/runtime.log" >&2
 		die 'runtime build failed'

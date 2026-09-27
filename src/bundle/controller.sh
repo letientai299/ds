@@ -165,7 +165,7 @@ if [ "$deliver_only" = false ]; then
 		target_home=\$HOME
 	fi
 	"$ssh_command" "$host" \
-		"mkdir -p \"$target_home\"; HOME=\"$target_home\" XDG_CACHE_HOME=\"$target_home/.cache\" XDG_CONFIG_HOME=\"$target_home/.config\" XDG_DATA_HOME=\"$target_home/.local/share\" XDG_STATE_HOME=\"$target_home/.local/state\" MISE_CACHE_DIR=\"$target_home/.cache/mise\" MISE_CONFIG_DIR=\"$target_home/.config/ds/mise\" MISE_DATA_DIR=\"$target_home/.local/share/mise\" MISE_STATE_DIR=\"$target_home/.local/state/mise\" \"$installed/ds\" apply $apply_args" >&2
+		"target=\"$target_home\"; mkdir -p \"\$target\"; HOME=\"\$target\" XDG_CACHE_HOME=\"\$target/.cache\" XDG_CONFIG_HOME=\"\$target/.config\" XDG_DATA_HOME=\"\$target/.local/share\" XDG_STATE_HOME=\"\$target/.local/state\" MISE_CACHE_DIR=\"\$target/.cache/mise\" MISE_CONFIG_DIR=\"\$target/.config/ds/mise\" MISE_DATA_DIR=\"\$target/.local/share/mise\" MISE_STATE_DIR=\"\$target/.local/state/mise\" \"$installed/ds\" apply $apply_args" >&2
 fi
 
 printf '%s\n' "$installed"

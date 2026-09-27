@@ -93,6 +93,9 @@ payload under `src/`, so `DS_ROOT` resolves identically on a target.
 
 `src/mise/` holds payload profiles apart from the checkout's `mise.toml` link.
 `MISE_GLOBAL_CONFIG_ROOT` points at the payload profiles during installation.
+Deployed shells load the bundled defaults through `config.ds.toml`. Their global
+`config.toml` is a machine-local file, so `mise use -g` leaves the checkout
+clean. Applying or removing layers preserves that file.
 
 ## Working from a checkout
 

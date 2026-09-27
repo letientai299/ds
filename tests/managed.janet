@@ -67,6 +67,18 @@
 
 (apply root environment "core")
 (apply root environment "core")
+(def global-config (string home "/config/ds/mise/config.toml"))
+(assert= :file (os/lstat global-config :mode) "global config is writable")
+(def bundled-config (string root "/src/mise/mise.toml"))
+(assert= "" (string (slurp global-config)) "global config starts empty")
+(assert= bundled-config (os/readlink (string home "/config/ds/mise/config.ds.toml"))
+         "bundled defaults stay linked")
+(spit global-config (string (slurp global-config) "\n[env]\nDS_TEST_LOCAL = true\n"))
+(apply root environment "core")
+(assert= true (not= nil (string/find "DS_TEST_LOCAL" (slurp global-config)))
+         "apply preserves global additions")
+(assert= nil (string/find "DS_TEST_LOCAL" (slurp bundled-config))
+         "global additions do not change checkout")
 (assert= 0 (length (filter |(not= :present (get $ :state))
                             (managed/inspect root environment "core")))
          "apply converges all managed targets")
@@ -75,11 +87,33 @@
 (assert= "existing mise\n" (string (slurp existing-mise)) "apply preserves existing mise")
 
 (unapply runner root environment "core")
+(assert= true (not= nil (os/stat global-config)) "unapply preserves global config")
 (assert= "# user configuration\n"
          (string (slurp (string home "/.zshrc")))
          "unapply preserves user rc content")
 (assert= nil (os/stat (string home "/config/nvim")) "unapply removes owned Neovim link")
 (assert= "existing mise\n" (string (slurp existing-mise)) "unapply preserves existing mise")
+
+(def migration-home (string home "/migration"))
+(os/mkdir migration-home)
+(os/mkdir (string migration-home "/nvim-source"))
+(def migration-env
+  {"HOME" migration-home
+   "XDG_CONFIG_HOME" (string migration-home "/config")
+   "PATH" (or (os/getenv "PATH") "/usr/bin:/bin")
+   "DS_MISE" (or (os/getenv "DS_MISE") (error "DS_MISE is required"))
+   "DS_NVIM_SOURCE" (string migration-home "/nvim-source")})
+(def migrated-config (string migration-home "/config/ds/mise/config.toml"))
+(filesystem/ensure-parent migrated-config)
+(os/link bundled-config migrated-config true)
+(assert= :missing
+         (get (first (filter |(= migrated-config (get $ :target))
+                             (managed/inspect root migration-env "core"))) :state)
+         "old managed link can migrate")
+(apply root migration-env "core")
+(assert= :file (os/lstat migrated-config :mode) "old managed link becomes a file")
+(assert= (string (slurp bundled-config)) (string (slurp migrated-config))
+         "migration keeps existing contents")
 
 (def old-zshrc (string home "/old-zshrc"))
 (os/rm (string home "/.zshrc"))

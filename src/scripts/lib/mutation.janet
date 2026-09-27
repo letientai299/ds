@@ -18,6 +18,7 @@
        (case (get entry :kind)
          :link (string? (get entry :source))
          :command-link (string? (get entry :source))
+         :config (string? (get entry :source))
          :marker (string? (get entry :line))
          :layer (all |(layers/known-layer? generated/catalog $) (string/split "," (get entry :contents)))
          false)))
@@ -104,7 +105,7 @@
             (and (= :marker (get entry :kind)) (= :file (os/lstat (get entry :target) :mode))
                  (not (empty? (string/replace (managed/marker-block (get entry :line)) ""
                                              (string (slurp (get entry :target))))))))
-          (when (and (os/lstat backup) (not marker-remains?)
+          (when (and (not= :config (get entry :kind)) (os/lstat backup) (not marker-remains?)
                      (or remove? (not (os/lstat (get entry :target)))))
             (array/push plan (action :restore {:entry entry :backup backup})))))
         (if (empty? next-layers)

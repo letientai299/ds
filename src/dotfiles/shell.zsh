@@ -22,7 +22,7 @@ export MISE_SYSTEM_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise-system"
 export MISE_OVERRIDE_CONFIG_FILENAMES=mise.toml
 export MISE_GLOBAL_CONFIG_ROOT="$_ds_root/src/mise"
 export MISE_TRUSTED_CONFIG_PATHS="$_ds_root/src/mise"
-typeset -ga _ds_environments=()
+typeset -ga _ds_environments=(ds)
 _ds_layer=core
 if [[ -r "$XDG_CONFIG_HOME/ds/layer" ]]; then
   _ds_layer="$(<"$XDG_CONFIG_HOME/ds/layer")"

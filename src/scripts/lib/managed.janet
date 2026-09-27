@@ -105,7 +105,8 @@
     @[{:kind :link :target (path bin "ds") :source (string base "/ds")}
       {:kind :command-link :target (path bin "mise") :source (mise/binary base environment)}
       {:kind :layer :target (path config-home "ds/layer") :contents layer}
-      {:kind :link :target (path config-home "ds/mise/config.toml") :source (string base "/src/mise/mise.toml")}])
+      {:kind :config :target (path config-home "ds/mise/config.toml") :source (string base "/src/mise/mise.toml")}
+      {:kind :link :target (path config-home "ds/mise/config.ds.toml") :source (string base "/src/mise/mise.toml")}])
   (each name (sort (keys (get generated/catalog :layers)))
     (unless (= name :all)
       (array/push core {:kind :link :target (path config-home (string "ds/mise/config." name ".toml"))
@@ -158,6 +159,11 @@
                           (executable-file? (get entry :target))) :present
                     (if (os/stat (or (get entry :resolved-source) (get entry :source)))
                       (if (os/lstat (get entry :target)) :conflict :missing) :unavailable))
+    :config (cond
+              (= :file (os/lstat (get entry :target) :mode)) :present
+              (same-link? (get entry :target) (get entry :source)) :missing
+              (os/lstat (get entry :target)) :conflict
+              :else :missing)
     :marker (marker-state (get entry :target) (get entry :line))
     :layer (layer-state (get entry :target) (get entry :contents))))
 
@@ -221,6 +227,14 @@
         (error (string "managed source is unavailable: " (get entry :source))))
       (filesystem/ensure-parent target)
       (os/link (get entry :source) target true))
+
+    (= :config kind)
+    (do
+      (def contents (if (os/stat target) (slurp target) ""))
+      (filesystem/ensure-parent target)
+      (def temporary (string target "." (os/getpid)))
+      (spit temporary contents)
+      (os/rename temporary target))
 
     (= :marker kind)
     (do

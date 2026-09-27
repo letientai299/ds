@@ -72,14 +72,14 @@ ZSH
 	DS_ROOT=/stale/version zsh -dfc '
         source "$1"
         : >"$HOME/refresh.log"
-        [[ "$MISE_ENV" == core,example ]] || exit 1
+        [[ "$MISE_ENV" == ds,core,example ]] || exit 1
         ds remove example --dry-run >/dev/null
         ds remove --help >/dev/null
         [[ ! -s "$HOME/refresh.log" ]] || exit 1
-        [[ "$MISE_ENV" == core,example ]] || exit 1
+        [[ "$MISE_ENV" == ds,core,example ]] || exit 1
         ds remove example >/dev/null
         [[ -s "$HOME/refresh.log" ]] || exit 1
-        [[ "$MISE_ENV" == core ]] || exit 1
+        [[ "$MISE_ENV" == ds,core ]] || exit 1
     ' ds-ux "$root/src/dotfiles/shell.zsh" || fail 'shell selection refresh failed'
 fi
 

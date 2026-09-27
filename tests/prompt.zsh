@@ -1,8 +1,7 @@
 #!/bin/zsh -df
 setopt err_exit pipe_fail extended_glob
 root=${0:A:h:h}
-mkdir -p "$root/.ai/prompt"
-work=$(mktemp -d "$root/.ai/prompt/test.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/ds-prompt.XXXXXX")
 trap 'cd "$root"; rm -rf "$work"' EXIT
 export GIT_CEILING_DIRECTORIES=${work:h}
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
@@ -180,7 +179,7 @@ trap 'zpty -d shell; cd "$root"; rm -rf "$work"' EXIT
 await_prompt() {
   local output
   repeat 2000; do
-    while zpty -r shell output; do print -r -- "$output" >> "$root/.ai/prompt/terminal.log"; done
+    while zpty -r shell output; do print -r -- "$output" >> "$work/terminal.log"; done
     [[ -s $work/probe ]] && return 0
     zselect -t 1 || true
   done
@@ -188,7 +187,7 @@ await_prompt() {
 }
 run() {
   rm -f "$work/probe"
-  print -r -- "RUN: $1" >> "$root/.ai/prompt/terminal.log"
+  print -r -- "RUN: $1" >> "$work/terminal.log"
   zpty -w shell "$1"
   await_prompt
 }

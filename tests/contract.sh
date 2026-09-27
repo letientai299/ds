@@ -12,8 +12,11 @@ fail() {
 	exit 1
 }
 
-work=${TMPDIR:-/tmp}/ds-contract-$$
+work=$(mktemp -d "${TMPDIR:-/tmp}/ds-contract.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 export MISE_DATA_DIR="$work/mise-data"
 mkdir -p "$work/bundle/files/bin" "$work/install"
 

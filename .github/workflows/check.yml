@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   check:
-    # Both host families ship a runtime, and check:static is Darwin-guarded, so
+    # Both host families ship a runtime, and check:c is Darwin-guarded, so
     # the C compile and format checks only ever run on macOS.
     runs-on: ${{ matrix.os }}
     strategy:
@@ -31,7 +31,9 @@ jobs:
 
       # The sibling Neovim and Tmux checkouts that build.sh git-exports are not
       # part of this repository, so tests/contract.sh cannot build a snapshot
-      # here. check:unit is everything that does not need them.
+      # here. The runner is disposable, so the checks skip the test sandbox.
       - uses: jdx/mise-action@v4
 
-      - run: mise run check:unit
+      - run: mise run check:c
+
+      - run: mise exec -- tests/check.sh static unit

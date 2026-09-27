@@ -33,82 +33,33 @@ run = "tests/ssh-preflight.sh"
 description = "Regenerate the resolved Janet catalog from canonical TOML"
 run = "src/scripts/generate.sh --write"
 
-# Split so the inner loop is seconds rather than minutes, and chained through
-# depends rather than aggregated, because mise runs dependencies in parallel and
-# a flat aggregator would pay the contract cost even when the lint fails.
-[tasks."check:static"]
-description = "Lint and format-check shell, C, TOML, and the generated catalog"
+# Every check runs in one throwaway container (tests/sandbox.sh) on a copy of
+# the checkout, with its steps in parallel (tests/check.sh). The C checks need
+# the macOS SDK, so they stay on the host; they only read.
+
+[tasks."check:c"]
+description = "Compile-check and format-check the Mach-O normalizer on macOS"
 run = [
-  "shellcheck -x $DS_SHELL_SOURCES",
-  "shfmt -d $DS_SHELL_SOURCES",
-  "zsh -fc 'for source in src/dotfiles/**/*.zsh src/tools/fzf-* src/dotfiles/completions/* tests/*.zsh; do zsh -n \"$source\" || exit; done'",
   "if [ \"$(uname -s)\" = Darwin ]; then xcrun clang -std=c99 -Wall -Wextra -Werror -fsyntax-only src/runtime/normalize-macho.c; fi",
   "if [ \"$(uname -s)\" = Darwin ]; then xcrun clang-format --dry-run -Werror src/runtime/normalize-macho.c; fi",
-  "taplo fmt --check .config/mise/config.toml src/catalog.toml src/mise/*.toml",
-  "src/scripts/generate.sh --check",
 ]
+
+[tasks."check:static"]
+description = "Lint and format-check shell, TOML, and the generated catalog"
+run = "tests/sandbox.sh tests/check.sh static"
 
 [tasks."check:unit"]
-depends = ["check:static"]
 description = "Run Janet lints and unit tests"
-run = [
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/generated/layers.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/generated/support.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/layers.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/activation.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/help.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/inventory.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/kitty.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/json.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/mutation.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/filesystem.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/docker.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/mise.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/managed.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/platform.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/planner.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/process.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/selection.janet",
-  "JANET_PATH=$PWD/src janet -x strict src/scripts/lib/shell.janet",
-  "DS_MISE=$(command -v mise) DS_ROOT=$PWD JANET_PATH=$PWD/src janet -x strict src/scripts/main.janet status core >/dev/null",
-  "JANET_PATH=$PWD/src janet -x strict tests/harness.janet",
-  "JANET_PATH=$PWD/src janet -x strict tests/layers.janet",
-  "JANET_PATH=$PWD/src janet -x strict tests/mise.janet",
-  "JANET_PATH=$PWD/src janet -x strict tests/docker.janet",
-  "tests/managed.sh",
-  "tests/rootful.sh",
-  "sh tests/runtime-build.sh",
-  "sh tests/install.sh",
-  "sh tests/update.sh",
-  "sh tests/shell-init.sh",
-  "sh tests/shell.sh",
-  "sh tests/aliases.sh",
-  "sh tests/plugins.sh",
-  "zsh -df tests/prompt.zsh",
-  "sh tests/tools.sh",
-  "sh tests/exports.sh",
-  "sh tests/navigation.sh",
-  "sh tests/activation.sh",
-  "sh tests/independent-layers.sh",
-  "sh tests/ux.sh",
-  "sh tests/decisions.sh",
-  "sh tests/checksum.sh",
-  "sh tests/push.sh",
-  "sh tests/try.sh",
-  "sh tests/docker-shell.sh",
-  "JANET_PATH=$PWD/src janet -x strict tests/platform.janet",
-  "selection_home=$(mktemp -d ${TMPDIR:-/tmp}/ds-selection.XXXXXX); trap 'rm -rf \"$selection_home\"' EXIT; DS_TEST_HOME=$selection_home JANET_PATH=$PWD/src janet -x strict tests/selection.janet",
-]
+run = "tests/sandbox.sh tests/check.sh unit"
 
 [tasks."check:contract"]
-depends = ["check:unit"]
 description = "Run the Gitless delivery contract end to end"
-run = "DS_ROOT=$PWD DS_JANET=$(command -v janet) tests/contract.sh"
+run = "tests/sandbox.sh tests/check.sh contract"
 
 [tasks.check]
-depends = ["check:contract"]
+depends = ["check:c"]
 description = "Run static, unit, and contract checks"
-run = "printf '%s\\n' 'check: ok'"
+run = "tests/sandbox.sh tests/check.sh"
 
 [tasks.install]
 description = "Prepare this checkout and apply a layer"
@@ -148,42 +99,41 @@ description = "Build the runtime matrix twice and compare checksums"
 run = "src/runtime/reproducible.sh"
 
 [tasks."e2e:containers"]
-depends = ["runtime:build", "runtime:fetch-mise"]
 description = "Install and run Gitless snapshots in isolated Linux homes"
-run = "tests/container.sh"
+run = "tests/sandbox.sh --docker tests/check.sh containers"
 
 [tasks."e2e:controller"]
-depends = ["runtime:build", "runtime:fetch-mise"]
 description = "Probe and push an idempotent snapshot through the controller"
-run = "tests/controller.sh"
+run = "tests/sandbox.sh --docker tests/check.sh controller"
 
 [tasks."e2e:core"]
-depends = ["runtime:build", "runtime:fetch-mise"]
 description = "Apply core twice in Alpine and Ubuntu"
-run = "tests/core.sh"
+run = "tests/sandbox.sh --docker tests/check.sh core"
 
 [tasks."e2e:remote"]
-depends = ["runtime:build", "runtime:fetch-mise"]
 description = "Apply remote and verify tools and isolated Tmux on Alpine and Ubuntu"
-run = "tests/remote.sh"
+run = "tests/sandbox.sh --docker tests/check.sh remote"
 
 [tasks."e2e:docker-readiness"]
 description = "Verify a ready Docker engine, Buildx, Compose, pull, build, and run"
-run = "tests/docker-readiness.sh"
+run = "tests/sandbox.sh --docker tests/check.sh docker-readiness"
 
 [tasks."e2e:macos"]
 depends = ["runtime:fetch-mise"]
-description = "Verify macOS no-write previews and Homebrew package selection"
+description = "Verify macOS no-write previews and Linux package skipping"
 run = "tests/macos.sh"
 
 [tasks."e2e:rocky"]
-depends = ["runtime:build", "runtime:fetch-mise"]
 description = "Apply core twice and verify tools on Rocky Linux"
-run = "tests/rocky.sh"
+run = "tests/sandbox.sh --docker tests/check.sh rocky"
+
+[tasks."e2e:linux"]
+description = "Run every Linux end-to-end test concurrently in one sandbox"
+run = "tests/sandbox.sh --docker tests/check.sh e2e"
 
 [tasks."e2e:all"]
 description = "Run every end-to-end test concurrently"
-run = "mise run --continue-on-error --jobs 7 e2e:containers ::: e2e:controller ::: e2e:core ::: e2e:remote ::: e2e:docker-readiness ::: e2e:macos ::: e2e:rocky"
+run = "mise run --continue-on-error --jobs 2 e2e:macos ::: e2e:linux"
 
 [tasks.bench]
 depends = ["runtime:build", "runtime:fetch-mise"]
@@ -191,25 +141,13 @@ description = "Measure bundle size and local startup baselines"
 run = "tests/performance.sh"
 
 [tasks."bench:linux"]
-depends = ["runtime:build", "runtime:fetch-mise"]
 description = "Measure cold, no-op, cache, and disk baselines on Ubuntu"
-run = "tests/performance-linux.sh"
+run = "tests/sandbox.sh --docker tests/check.sh bench-linux"
 
 [tasks.verify]
-depends = [
-  "check",
-  "runtime:verify",
-  "runtime:reproducible",
-  "e2e:containers",
-  "e2e:controller",
-  "e2e:core",
-  "e2e:remote",
-  "e2e:docker-readiness",
-  "e2e:macos",
-  "e2e:rocky",
-]
+depends = ["check:c", "runtime:verify", "runtime:reproducible", "e2e:macos"]
 description = "Run the complete reproducible validation matrix"
-run = "printf '%s\\n' 'verify: ok'"
+run = "tests/sandbox.sh --docker tests/check.sh static unit contract e2e"
 
 [tasks."bench:prompt"]
 description = "Measure prompt refresh latency in disposable repositories"

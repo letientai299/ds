@@ -3,6 +3,9 @@ set -eu
 
 root=$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-plugins.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 work=$(CDPATH='' cd -P "$work" && pwd)
 trap 'rm -rf "$work"' EXIT
 trap 'exit 143' HUP INT TERM

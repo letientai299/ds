@@ -14,6 +14,9 @@ root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
 dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-container.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 run_case() {

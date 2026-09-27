@@ -2,7 +2,7 @@
 setopt err_exit pipe_fail
 root=${0:A:h:h}
 mkdir -p "$root/.ai/prompt"
-work=$(mktemp -d "$root/.ai/prompt/bench.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/ds-prompt-bench.XXXXXX")
 trap 'cd "$root"; rm -rf "$work"' EXIT
 source "$root/src/dotfiles/prompt.zsh"
 preexec_functions=()

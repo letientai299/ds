@@ -6,7 +6,10 @@ set -eu
 : "${DS_ALPINE_IMAGE:?run through mise so DS_ALPINE_IMAGE is set}"
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-docker.XXXXXX")
-tag=ds-docker-e2e:local
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
+tag=ds-docker-e2e:${work##*.}
 cleanup() {
 	docker image rm "$tag" >/dev/null 2>&1 || true
 	rm -rf "$work"

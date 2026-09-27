@@ -10,6 +10,9 @@ fail() {
 root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-controller-test.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 export DS_FAKE_REMOTE_HOME="$work/remote-home"

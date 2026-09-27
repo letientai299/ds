@@ -4,6 +4,9 @@ set -eu
 root=$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)
 tools=${1:-$root/src/tools}
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-tools.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 trap 'rm -rf "$work"' EXIT
 trap 'exit 143' HUP INT TERM
 mkdir -p "$work/bin" "$work/source space" "$work/capture"

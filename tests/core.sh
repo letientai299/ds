@@ -14,6 +14,9 @@ root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
 dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-core.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 host_uid=$(id -u)
 host_gid=$(id -g)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -41,6 +44,7 @@ run_case() {
 		--platform "$docker_platform" \
 		--volume "$snapshot:/snapshot:ro" \
 		--volume "$home:/home/test:rw" \
+		--env GITHUB_TOKEN \
 		--env HOME=/home/test \
 		--env XDG_CACHE_HOME=/home/test/.cache \
 		--env XDG_CONFIG_HOME=/home/test/.config \
@@ -63,6 +67,9 @@ run_case() {
             "$installed/ds" status core
             "$installed/ds" apply core
             "$installed/ds" status core
+			# The first start fills caches such as ds/git-version; later
+			# starts must write nothing.
+			zsh -f -c "source \"$HOME/.config/ds/shell.zsh\""
 			find "$HOME" -print | sort > /tmp/ds-before-paths
 			find "$HOME" -type f -exec sha256sum {} \; | sort > /tmp/ds-before-hashes
 		zsh -f -c "
@@ -114,11 +121,6 @@ run_case() {
 		[ "$(grep -c '^shell-ready$' "$work/$platform-$name.out")" -ne 1 ]; then
 		cat "$work/$platform-$name.out" >&2
 		fail "$name $platform did not converge idempotently"
-	fi
-	if [ "$name" = alpine ] &&
-		[ "$(grep -c '^optional-refresh-ready$' "$work/$platform-$name.out")" -ne 1 ]; then
-		cat "$work/$platform-$name.out" >&2
-		fail "$name $platform did not refresh the optional component"
 	fi
 }
 

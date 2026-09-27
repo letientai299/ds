@@ -4,6 +4,9 @@ set -eu
 
 root=$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-update.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 trap 'rm -rf "$work"' EXIT
 trap 'exit 143' HUP INT TERM
 unset DS_NVIM_SOURCE DS_TMUX_SOURCE DS_KITTY_SOURCE

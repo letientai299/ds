@@ -3,6 +3,9 @@
 set -eu
 root=$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-decisions.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 trap 'rm -rf "$work"' EXIT
 trap 'exit 143' HUP INT TERM
 . "$root/tests/optional-fixture.sh"
@@ -11,17 +14,6 @@ root=$work/source
 fail() {
 	printf '%s\n' "decisions: $*" >&2
 	exit 1
-}
-jq_home=$HOME
-jq_config=${XDG_CONFIG_HOME:-$HOME/.config}
-jq_data=${XDG_DATA_HOME:-$HOME/.local/share}
-jq_state=${XDG_STATE_HOME:-$HOME/.local/state}
-jq_cache=${XDG_CACHE_HOME:-$HOME/.cache}
-jq_mise=${MISE_DATA_DIR:-$jq_data/mise}
-check_json() {
-	HOME=$jq_home XDG_CONFIG_HOME=$jq_config XDG_DATA_HOME=$jq_data \
-		XDG_STATE_HOME=$jq_state XDG_CACHE_HOME=$jq_cache MISE_DATA_DIR=$jq_mise \
-		command jq "$@"
 }
 export HOME="$work/home" XDG_CONFIG_HOME="$work/home/config"
 export XDG_DATA_HOME="$work/home/data" XDG_STATE_HOME="$work/home/state"
@@ -91,7 +83,7 @@ if HOME="$work/dangling" XDG_CONFIG_HOME="$work/dangling/config" "$root/ds" appl
 [ ! -s "$DS_TEST_LOG" ] || fail 'packages ran before dangling-link conflict'
 
 "$root/ds" status core --json >"$work/status.json"
-check_json -e '.schema == 1 and (.components | length > 0) and (.files | length > 0)' "$work/status.json" >/dev/null
+jq -e '.schema == 1 and (.components | length > 0) and (.files | length > 0)' "$work/status.json" >/dev/null
 status=0
 "$root/ds" status core --json --check >"$work/check.json" || status=$?
 [ "$status" -eq 1 ] || fail 'unhealthy status exit contract'
@@ -103,13 +95,13 @@ printf '%s\n' example >"$XDG_CONFIG_HOME/ds/components"
 printf '%s\n' '#!/bin/sh' >"$MISE_DATA_DIR/installs/example/1.22.0/example"
 chmod 0755 "$MISE_DATA_DIR/installs/example/1.22.0/example"
 "$root/ds" status example --json >"$work/status.json"
-check_json -e '.components[0].state == "outdated" and .components[0].expected == "1.23.0"' "$work/status.json" >/dev/null
+jq -e '.components[0].state == "outdated" and .components[0].expected == "1.23.0"' "$work/status.json" >/dev/null
 mkdir -p "$MISE_DATA_DIR/installs/example/1.23.0/release/bin"
 "$root/ds" status example --json >"$work/status.json"
-check_json -e '.components[0].state == "unavailable"' "$work/status.json" >/dev/null
+jq -e '.components[0].state == "unavailable"' "$work/status.json" >/dev/null
 cp "$MISE_DATA_DIR/installs/example/1.22.0/example" "$MISE_DATA_DIR/installs/example/1.23.0/release/bin/example"
 "$root/ds" status example --json --check >"$work/status.json"
-check_json -e '.summary == "complete" and .components[0].state == "installed"' "$work/status.json" >/dev/null
+jq -e '.summary == "complete" and .components[0].state == "installed"' "$work/status.json" >/dev/null
 
 "$root/ds" help apply >"$work/help"
 grep -q '^usage: ds apply' "$work/help" || fail 'command-specific help missing'
@@ -125,10 +117,10 @@ case "$1" in info) exec sleep 10 ;; esac
 SH
 chmod 0755 "$work/bin/docker"
 PATH="$work/bin:$PATH" "$root/ds" status remote --json >"$work/status.json"
-check_json -e '.components[] | select(.component == "docker") | .state == "unavailable" and .probe == "timeout"' "$work/status.json" >/dev/null
+jq -e '.components[] | select(.component == "docker") | .state == "unavailable" and .probe == "timeout"' "$work/status.json" >/dev/null
 printf '%s\n' '#!/bin/sh' 'exit 1' >"$work/bin/docker"
 PATH="$work/bin:$PATH" "$root/ds" status remote --json >"$work/status.json"
-check_json -e '.components[] | select(.component == "docker") | .probe == "unreachable"' "$work/status.json" >/dev/null
+jq -e '.components[] | select(.component == "docker") | .probe == "unreachable"' "$work/status.json" >/dev/null
 
 DS_TEST_HOME="$work" JANET_PATH="$root/src" "$DS_JANET" "$root/tests/decisions.janet"
 printf '%s\n' 'decisions: ok'

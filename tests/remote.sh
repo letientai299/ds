@@ -14,6 +14,9 @@ root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
 dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-remote.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 case "$(uname -m)" in
@@ -48,6 +51,7 @@ run_case() {
 		--platform "$docker_platform" \
 		--volume "$snapshot:/snapshot:ro" \
 		--volume "$home:/home/test:rw" \
+		--env GITHUB_TOKEN \
 		--env HOME=/home/test \
 		--env XDG_CACHE_HOME=/home/test/.cache \
 		--env XDG_CONFIG_HOME=/home/test/.config \

@@ -5,6 +5,9 @@ set -eu
 root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-managed.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 DS_TEST_HOME=$work/home DS_ROOT=$root DS_MISE=$(command -v mise) JANET_PATH=$root/src janet "$root/tests/managed.janet"

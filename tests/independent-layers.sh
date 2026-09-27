@@ -2,6 +2,9 @@
 set -eu
 root=$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-layers.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 trap 'rm -rf "$work"' EXIT
 fail() {
 	printf '%s\n' "layers: $*" >&2

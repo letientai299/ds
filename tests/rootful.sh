@@ -5,6 +5,9 @@ set -eu
 root=$(dirname -- "$0")/..
 root=$(CDPATH='' cd "$root" && pwd)
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-rootful.XXXXXX")
+# shellcheck source=tests/isolate.sh
+. "$(dirname -- "$0")/isolate.sh"
+isolate_home "$work/isolated-home"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 fail() {

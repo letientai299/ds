@@ -1,5 +1,6 @@
 cd "$DS_TEST_WORK/one"
 source "$DS_TEST_SRC/dotfiles/shell.zsh"
+[[ ${path[(Ie)$MISE_DATA_DIR/shims]} -gt 0 ]] || exit 8
 _ds_mise_init
 [[ ${path[1]} == $DS_SHELL_PATH ]] || exit 7
 if [[ $DS_MISE_ACTIVATE == 0 ]]; then

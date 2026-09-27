@@ -68,11 +68,43 @@ if [ "$mode" != remote ]; then
 	check_core
 	printf 'core: ok in %ss\n' "$(($(date +%s) - started))"
 fi
-if [ "$mode" = remote ] || [ "$mode" = core-remote ]; then
+if [ "$mode" != core ]; then
 	started=$(date +%s)
 	"$installed/ds" apply remote
 	check_shell remote
 	[ "$mode" != remote ] || check_core
 	check_remote
 	printf 'remote: ok in %ss\n' "$(($(date +%s) - started))"
+fi
+find "$installed" -type f -exec sha256sum {} + | sort >/tmp/ds-payload-before
+zsh -ef -c '
+	source "$HOME/.config/ds/shell.zsh"
+	cd "$HOME"
+	[[ -f $MISE_CONFIG_DIR/config.toml && ! -L $MISE_CONFIG_DIR/config.toml ]]
+	mise use -g shfmt@latest
+	command -v shfmt
+	shfmt --version
+	grep -q shfmt "$MISE_CONFIG_DIR/config.toml"
+'
+"$installed/ds" apply
+zsh -ef -c 'source "$HOME/.config/ds/shell.zsh"; shfmt --version'
+find "$installed" -type f -exec sha256sum {} + | sort >/tmp/ds-payload-after
+cmp /tmp/ds-payload-before /tmp/ds-payload-after
+printf '%s\n' 'global tools: ok'
+
+if [ "$mode" = core-remote-extra ]; then
+	started=$(date +%s)
+	"$installed/ds" apply extra
+	check_shell extra
+	check_core
+	check_remote
+	zsh -ef -c '
+		source "$HOME/.config/ds/shell.zsh"
+		command -v gokill
+		for tool in bat eza gdu delta wt ouch; do
+			command -v "$tool"
+			"$tool" --version >/dev/null
+		done
+	'
+	printf 'extra: ok in %ss\n' "$(($(date +%s) - started))"
 fi

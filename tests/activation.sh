@@ -18,6 +18,7 @@ for enabled in 0 1; do
 	env -i HOME="$work/home" PATH="$PATH" TERM=dumb \
 		DS_SHELL_ROOT="$root" DS_TEST_SRC="${1:-$root/src}" DS_TEST_WORK="$work" \
 		DS_SHELL_PATH="$work/priority-bin" \
+		MISE_DATA_DIR="$work/custom-mise" \
 		DS_MISE_ACTIVATE="$enabled" zsh -dfi "$root/tests/activation.zsh"
 done
 printf '%s\n' 'activation: ok'

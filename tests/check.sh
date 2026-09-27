@@ -53,6 +53,7 @@ e2e	containers	tests/container.sh
 e2e	controller	tests/controller.sh
 layer	core	tests/core.sh
 layer	remote	tests/remote.sh
+layer	core-remote-extra	sh tests/layer.sh core-remote-extra
 e2e	core-remote	sh tests/layer.sh core-remote
 e2e	docker-readiness	tests/docker-readiness.sh
 bench	bench-linux	tests/performance-linux.sh
@@ -116,7 +117,7 @@ build_runtimes() {
 	done
 }
 platforms=
-if printf '%s\n' "$selected" | grep -Eq '[[:space:]](containers|controller|core|remote|core-remote|bench-linux)$'; then
+if printf '%s\n' "$selected" | grep -Eq '[[:space:]](containers|controller|core|remote|core-remote|core-remote-extra|bench-linux)$'; then
 	case "$(uname -m)" in
 	arm64 | aarch64) platforms=linux-arm64-musl ;;
 	x86_64 | amd64) platforms=linux-x64-musl ;;

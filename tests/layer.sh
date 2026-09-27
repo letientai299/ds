@@ -3,7 +3,7 @@
 set -eu
 
 mode=${1:?layer test mode is required}
-case "$mode" in core | remote | core-remote) ;; *) exit 2 ;; esac
+case "$mode" in core | remote | core-remote | core-remote-extra) ;; *) exit 2 ;; esac
 root=$(CDPATH='' cd "$(dirname -- "$0")/.." && pwd)
 dist=${DS_RUNTIME_DIST:-$root/dist/runtime}
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-layer.XXXXXX")
@@ -56,7 +56,7 @@ run_case() (
 		"$image" sh /checks.sh "$mode" "$manifest_sha" \
 		>"$work/$platform-$name.log" 2>&1; then
 		printf '%s %s: ok in %ss\n' "$name" "$mode" "$(($(date +%s) - started))"
-		grep -E '^(core|remote): ok in ' "$work/$platform-$name.log"
+		grep -E '^(core|remote|extra|global tools): ok' "$work/$platform-$name.log"
 	else
 		cat "$work/$platform-$name.log" >&2
 		printf '%s %s: failed\n' "$name" "$mode" >&2

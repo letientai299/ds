@@ -15,7 +15,7 @@ isolate_home() {
 	export MISE_SYSTEM_CONFIG_DIR="$1/.mise-system"
 	# Trust stays: mise walks up from the checkout to trusted parents.
 	unset MISE_ENV MISE_GLOBAL_CONFIG_FILE MISE_GLOBAL_CONFIG_ROOT \
-		MISE_OVERRIDE_CONFIG_FILENAMES ZDOTDIR DS_MISE_ACTIVATE
+		MISE_OVERRIDE_CONFIG_FILENAMES MISE_CEILING_PATHS ZDOTDIR DS_MISE_ACTIVATE
 	export GIT_CONFIG_GLOBAL=/dev/null
 	export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.invalid
 	export GIT_COMMITTER_NAME=Test GIT_COMMITTER_EMAIL=test@example.invalid

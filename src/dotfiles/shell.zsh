@@ -16,6 +16,7 @@ if [[ -z "${DS_SHELL_STATE:-}" && "${_ds_root:h:t}" == versions ]]; then
 fi
 export MISE_CACHE_DIR="${MISE_CACHE_DIR:-$XDG_CACHE_HOME/mise}"
 export MISE_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise"
+unset MISE_GLOBAL_CONFIG_FILE
 export MISE_DATA_DIR="${MISE_DATA_DIR:-$XDG_DATA_HOME/mise}"
 export MISE_STATE_DIR="${MISE_STATE_DIR:-$XDG_STATE_HOME/mise}"
 export MISE_SYSTEM_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise-system"

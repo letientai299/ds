@@ -23,4 +23,18 @@ grep -q 'npm:git-open' "$work/config-list"
 grep -q 'config.core.toml' "$work/config-list"
 [ ! -L "$work/home/migration/config/ds/mise/config.toml" ]
 grep -q 'DS_TEST_SETTING = "local"' "$work/home/migration/config/ds/mise/config.toml"
-! grep -q DS_TEST_SETTING "$root/src/mise/mise.toml"
+if grep -q DS_TEST_SETTING "$root/src/mise/mise.toml"; then
+	exit 1
+fi
+
+(
+	cd "$work"
+	export HOME="$work/home/migration" XDG_CONFIG_HOME="$work/home/migration/config"
+	export DS_SHELL_ROOT="$root" MISE_GLOBAL_CONFIG_FILE="$root/src/mise/mise.toml"
+	zsh -fc 'source "$DS_SHELL_ROOT/src/dotfiles/shell.zsh"
+[[ -z ${MISE_GLOBAL_CONFIG_FILE+x} ]] || exit 1
+mise config ls --json' >"$work/shell-config-list"
+)
+grep -q 'config.ds.toml' "$work/shell-config-list"
+grep -q 'config.core.toml' "$work/shell-config-list"
+grep -q 'neovim' "$work/shell-config-list"

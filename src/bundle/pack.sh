@@ -67,9 +67,14 @@ mkdir -p "$stage/$bundle_name"
 cp -R "$snapshot/." "$stage/$bundle_name/"
 find "$stage/$bundle_name" -exec touch -t 198001010000 {} +
 find "$stage/$bundle_name" ! -type d -print | sed "s#^$stage/##" | LC_ALL=C sort >"$stage/files.txt"
+if tar --version 2>/dev/null | grep -q 'GNU tar'; then
+	set -- --owner root:0 --group root:0
+else
+	set -- --uid 0 --gid 0 --uname root --gname root
+fi
 tar -cf "$temporary_tar" \
 	--format ustar \
-	--uid 0 --gid 0 --uname root --gname root \
+	"$@" \
 	-C "$stage" -T "$stage/files.txt"
 gzip -n -c "$temporary_tar" >"$temporary_output"
 mv "$temporary_output" "$output"

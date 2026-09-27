@@ -113,6 +113,16 @@ expect_probe '*fg=red*' 'syntax highlight missing'
 zpty -w -n shell $'\x15'
 zpty -w -n shell 'echo value # comment'
 expect_probe 'echo value # comment||*standout*' 'comment highlight missing'
-zpty -w -n shell $'\x15'
+for keys expected in \
+  $'\e[1;5D' 'echo dir/file-name.Xtxt' \
+  $'\e[1;5D\e[1;5D' 'echo dir/Xfile-name.txt' \
+  $'\x01\e[1;5C\e[1;5C' 'echo dirX/file-name.txt' \
+  $'\x01\e[1;5C\e[1;5C\e[1;5C' 'echo dir/file-nameX.txt' \
+  $'\x01\e[1;5D' 'Xecho dir/file-name.txt' \
+  $'\e[1;5C' 'echo dir/file-name.txtX'; do
+  zpty -w -n shell $'\x05\x15echo dir/file-name.txt'"${keys}X"
+  expect_probe "$expected||*" 'ctrl-arrow navigation failed'
+done
+zpty -w -n shell $'\x05\x15'
 zpty -w shell 'exit'
 print -r -- "plugins: $DS_TEST_MODE ok"

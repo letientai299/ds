@@ -15,6 +15,19 @@ _ds_kill_word() {
 zle -N _ds_kill_word
 bindkey '^w' _ds_kill_word
 
+_ds_backward_word() {
+  local WORDCHARS='_-'
+  zle backward-word
+}
+_ds_forward_word() {
+  local WORDCHARS='_-'
+  zle forward-word
+}
+zle -N _ds_backward_word
+zle -N _ds_forward_word
+bindkey '^[[1;5D' _ds_backward_word
+bindkey '^[[1;5C' _ds_forward_word
+
 export EDITOR="${EDITOR:-nvim}"
 autoload -Uz edit-command-line
 zle -N edit-command-line

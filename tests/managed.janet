@@ -1,6 +1,7 @@
 (import scripts/lib/filesystem)
 (import scripts/lib/managed)
 (import scripts/lib/mutation)
+(import scripts/lib/tool-config)
 (import scripts/generated/layers :as generated)
 
 (defn apply [root environment layer]
@@ -67,12 +68,13 @@
 
 (apply root environment "core")
 (apply root environment "core")
-(def global-config (string home "/config/ds/mise/config.toml"))
+(def global-config (string home "/config/mise/config.toml"))
 (assert= :file (os/lstat global-config :mode) "global config is writable")
 (def bundled-config (string root "/src/mise/mise.toml"))
-(assert= "" (string (slurp global-config)) "global config starts empty")
-(assert= bundled-config (os/readlink (string home "/config/ds/mise/config.ds.toml"))
-         "bundled defaults stay linked")
+(assert= true (has-key? (tool-config/read-tools (get environment "DS_MISE") environment global-config) "fd")
+         "global config receives selected tools")
+(assert= nil (os/lstat (string home "/config/ds/mise/config.ds.toml"))
+         "bundled defaults do not override globals")
 (spit global-config (string (slurp global-config) "\n[env]\nDS_TEST_LOCAL = true\n"))
 (apply root environment "core")
 (assert= true (not= nil (string/find "DS_TEST_LOCAL" (slurp global-config)))
@@ -86,8 +88,10 @@
          "apply preserves user rc content")
 (assert= "existing mise\n" (string (slurp existing-mise)) "apply preserves existing mise")
 
+(def global-before-remove (string (slurp global-config)))
 (unapply runner root environment "core")
 (assert= true (not= nil (os/stat global-config)) "unapply preserves global config")
+(assert= global-before-remove (string (slurp global-config)) "unapply preserves every tool declaration")
 (assert= "# user configuration\n"
          (string (slurp (string home "/.zshrc")))
          "unapply preserves user rc content")
@@ -106,14 +110,11 @@
 (def migrated-config (string migration-home "/config/ds/mise/config.toml"))
 (filesystem/ensure-parent migrated-config)
 (os/link bundled-config migrated-config true)
-(assert= :missing
-         (get (first (filter |(= migrated-config (get $ :target))
-                             (managed/inspect root migration-env "core"))) :state)
-         "old managed link can migrate")
 (apply root migration-env "core")
-(assert= :file (os/lstat migrated-config :mode) "old managed link becomes a file")
-(assert= (string (slurp bundled-config)) (string (slurp migrated-config))
-         "migration keeps existing contents")
+(def migrated-global (string migration-home "/config/mise/config.toml"))
+(assert= :file (os/lstat migrated-global :mode) "migration creates normal global config")
+(assert= true (has-key? (tool-config/read-tools (get migration-env "DS_MISE") migration-env migrated-global) "npm:git-open")
+         "migration keeps existing tools")
 
 (def old-zshrc (string home "/old-zshrc"))
 (os/rm (string home "/.zshrc"))
@@ -231,7 +232,9 @@
                   "/src/tools/serve" "/src/tools/fzf-files" "/src/tools/fzf-dirs"]
     (def file (string target relative))
     (filesystem/ensure-parent file)
-    (spit file (string version "\n")))
+    (spit file (if (string/has-prefix? "/src/mise/" relative)
+                     (slurp (string root relative))
+                     (string version "\n"))))
   (os/chmod (string target "/ds") 493)
   target)
 

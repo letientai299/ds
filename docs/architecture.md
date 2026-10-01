@@ -10,7 +10,7 @@ generated output.
 Components have three ownership modes:
 
 - `native`: installed through the host package manager and probed by command;
-- `mise`: installed at a pinned version through the selected mise profile;
+- `mise`: installed using its declaration in the user's global config;
 - `runtime`: delivered as part of the snapshot itself.
 
 Layer order is deterministic. Validation rejects a layer — including the
@@ -27,7 +27,7 @@ The shell entrypoint selects one of four delivered platforms:
 - Linux ARM64 musl;
 - Linux x64 musl.
 
-Janet drives planning and convergence. mise supplies pinned tools and native
+Janet drives planning and convergence. mise supplies tools and native
 package bootstrap declarations. Delivered Linux Janet runtimes are static; the
 same musl runtime executes on Alpine and common glibc distributions. Source
 installation uses the host C compiler when `musl-gcc` is unavailable.
@@ -78,7 +78,7 @@ payload under `src/`, so `DS_ROOT` resolves identically on a target.
 | `mise.toml`                | Link to checkout development tools and tasks                  |
 | `.config/mise/config.toml` | Development tools, pinned image digests, and every task       |
 | `src/catalog.toml`         | Canonical layers and component metadata                       |
-| `src/mise/`                | Payload mise profiles: pinned tools and native packages       |
+| `src/mise/`                | Payload tool defaults and native packages                     |
 | `src/scripts/`             | Janet planner, convergence engine, and generated catalog      |
 | `src/runtime/`             | Reproducible Janet builds and pinned mise downloads           |
 | `src/bundle/`              | Snapshot construction, packing, SSH push, controller, release |
@@ -93,9 +93,17 @@ payload under `src/`, so `DS_ROOT` resolves identically on a target.
 
 `src/mise/` holds payload profiles apart from the checkout's `mise.toml` link.
 `MISE_GLOBAL_CONFIG_ROOT` points at the payload profiles during installation.
-Deployed shells load the bundled defaults through `config.ds.toml`. Their global
-`config.toml` is a machine-local file, so `mise use -g` leaves the checkout
-clean. Applying or removing layers preserves that file.
+Applying a layer adds its missing tools to the user's global mise config,
+creating the file when needed. Existing declarations win, including declarations
+in active global profiles and `conf.d`. New entries retain the versions and
+options from the payload; `latest` remains `latest`. Tool hooks retain their
+source directory when copied.
+
+`ds update` reapplies selected layers and adds newly introduced tools. It does
+not rewrite existing versions. Removing a layer leaves global tools configured
+and installed. Deployed shells use the global config without loading bundled
+tool profiles as overrides. Custom mise config paths remain supported, and
+trial shells keep a separate writable config.
 
 ## Working from a checkout
 

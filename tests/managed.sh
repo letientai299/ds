@@ -13,16 +13,16 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 DS_TEST_HOME=$work/home DS_ROOT=$root DS_MISE=$(command -v mise) JANET_PATH=$root/src janet "$root/tests/managed.janet"
 (
 	cd "$work"
-	HOME="$work/home/migration" MISE_CONFIG_DIR="$work/home/migration/config/ds/mise" MISE_ENV=ds,core \
+	HOME="$work/home/migration" MISE_CONFIG_DIR="$work/home/migration/config/mise" \
 		mise config ls --json >"$work/config-list"
-	HOME="$work/home/migration" MISE_CONFIG_DIR="$work/home/migration/config/ds/mise" MISE_ENV=ds,core \
+	HOME="$work/home/migration" MISE_CONFIG_DIR="$work/home/migration/config/mise" \
 		mise set -g DS_TEST_SETTING=local
 )
-grep -q 'config.ds.toml' "$work/config-list"
+grep -q 'config.toml' "$work/config-list"
 grep -q 'npm:git-open' "$work/config-list"
-grep -q 'config.core.toml' "$work/config-list"
-[ ! -L "$work/home/migration/config/ds/mise/config.toml" ]
-grep -q 'DS_TEST_SETTING = "local"' "$work/home/migration/config/ds/mise/config.toml"
+grep -q 'neovim' "$work/config-list"
+[ ! -L "$work/home/migration/config/mise/config.toml" ]
+grep -q 'DS_TEST_SETTING = "local"' "$work/home/migration/config/mise/config.toml"
 if grep -q DS_TEST_SETTING "$root/src/mise/mise.toml"; then
 	exit 1
 fi
@@ -35,8 +35,7 @@ fi
 [[ -z ${MISE_GLOBAL_CONFIG_FILE+x} ]] || exit 1
 mise config ls --json' >"$work/shell-config-list"
 )
-grep -q 'config.ds.toml' "$work/shell-config-list"
-grep -q 'config.core.toml' "$work/shell-config-list"
+grep -q 'config.toml' "$work/shell-config-list"
 grep -q 'neovim' "$work/shell-config-list"
 
 mkdir -p "$work/home/migration/.config/mise"
@@ -65,13 +64,13 @@ mise set -g DS_TEST_SHELL_SETTING=local
 ZSH
 	)
 	grep -q '"name": "probe"' "$work/project-config-list"
-	grep -q config.ds.toml "$work/project-config-list"
-	grep -q config.core.toml "$work/project-config-list"
+	grep -q config.toml "$work/project-config-list"
+	grep -q neovim "$work/project-config-list"
 	if grep -Fq "$work/home/migration/.config/mise/config.toml" "$work/project-config-list"; then
 		exit 1
 	fi
 done
-grep -q 'DS_TEST_SHELL_SETTING = "local"' "$work/home/migration/config/ds/mise/config.toml"
+grep -q 'DS_TEST_SHELL_SETTING = "local"' "$work/home/migration/config/mise/config.toml"
 if grep -q DS_TEST_SHELL_SETTING "$root/src/mise/mise.toml"; then
 	exit 1
 fi

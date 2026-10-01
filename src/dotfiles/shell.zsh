@@ -13,8 +13,10 @@ if [[ -z "${DS_SHELL_STATE:-}" && "${_ds_root:h:t}" == versions ]]; then
   _ds_root="${_ds_root:h:h}/current"
 fi
 export MISE_CACHE_DIR="${MISE_CACHE_DIR:-$XDG_CACHE_HOME/mise}"
-export MISE_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise"
-unset MISE_GLOBAL_CONFIG_FILE
+export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$XDG_CONFIG_HOME/mise}"
+if [[ ${MISE_GLOBAL_CONFIG_FILE:-} == */src/mise/mise.toml ]]; then
+  unset MISE_GLOBAL_CONFIG_FILE
+fi
 export MISE_DATA_DIR="${MISE_DATA_DIR:-$XDG_DATA_HOME/mise}"
 export PATH="$HOME/.local/bin:$MISE_DATA_DIR/shims:$PATH"
 [[ -z "${DS_SHELL_PATH:-}" ]] || export PATH="$DS_SHELL_PATH:$PATH"
@@ -24,31 +26,20 @@ unset MISE_OVERRIDE_CONFIG_FILENAMES
 if [[ ":${MISE_CEILING_PATHS:-}:" != *":$HOME:"* ]]; then
   export MISE_CEILING_PATHS="$HOME${MISE_CEILING_PATHS:+:$MISE_CEILING_PATHS}"
 fi
-export MISE_GLOBAL_CONFIG_ROOT="$_ds_root/src/mise"
-export MISE_TRUSTED_CONFIG_PATHS="$_ds_root/src/mise"
-typeset -ga _ds_environments=(ds)
+if [[ ${MISE_GLOBAL_CONFIG_ROOT:-} == */src/mise ]]; then
+  unset MISE_GLOBAL_CONFIG_ROOT
+fi
+export MISE_TRUSTED_CONFIG_PATHS="${MISE_TRUSTED_CONFIG_PATHS:-$_ds_root/src/mise}"
 _ds_layer=core
 if [[ -r "$XDG_CONFIG_HOME/ds/layer" ]]; then
   _ds_layer="$(<"$XDG_CONFIG_HOME/ds/layer")"
 fi
-source "${${(%):-%x}:A:h}/profiles.zsh"
-for _ds_selected in ${(s:,:)_ds_layer}; do
-  _ds_environments+=(${(s:,:)_ds_profiles[$_ds_selected]})
-done
-unset _ds_profiles
-if [[ -r "$XDG_CONFIG_HOME/ds/components" ]]; then
-  while IFS= read -r _ds_component; do
-    if [[ -n "$_ds_component" && -f "$_ds_root/src/mise/mise.$_ds_component.toml" ]]; then
-      _ds_environments+=("$_ds_component")
-    fi
-  done <"$XDG_CONFIG_HOME/ds/components"
-fi
-typeset -gaU _ds_environments
+typeset -g _ds_layers=$_ds_layer
+export MISE_ENV="${MISE_ENV:-}"
 if [[ -n "${DS_SHELL_STATE:-}" && -r "$MISE_CONFIG_DIR/config.personal.toml" ]]; then
-  _ds_environments+=(personal)
+  export MISE_ENV=personal
 fi
-export MISE_ENV="${(j:,:)_ds_environments}"
-if [[ ,${MISE_ENV:-}, == *,remote,* ]]; then
+if [[ ,$_ds_layer, == *,remote,* || ,$_ds_layer, == *,all,* ]]; then
   export YAZI_CONFIG_HOME="$XDG_CONFIG_HOME/ds/yazi"
 fi
 if [[ -S "${XDG_RUNTIME_DIR:-/run/user/$UID}/docker.sock" ]]; then

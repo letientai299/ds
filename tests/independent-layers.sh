@@ -19,6 +19,8 @@ unset DS_SHELL_STATE DS_SHELL_ROOT DS_SHELL_PATH ZDOTDIR
 mkdir -p "$HOME" "$DS_NVIM_SOURCE" "$DS_TMUX_SOURCE" "$DS_KITTY_SOURCE/bin"
 cat >"$DS_MISE" <<'MISE'
 #!/bin/sh
+case "$1" in config) exit 0 ;; esac
+[ "$3" = bootstrap ] || exit 0
 printf '%s\n' "$MISE_ENV" >>"$DS_TEST_LOG"
 MISE
 printf '%s\n' '#!/bin/sh' 'exit 0' >"$DS_TMUX_SOURCE/tm"

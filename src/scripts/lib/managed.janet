@@ -105,12 +105,7 @@
     @[{:kind :link :target (path bin "ds") :source (string base "/ds")}
       {:kind :command-link :target (path bin "mise") :source (mise/binary base environment)}
       {:kind :layer :target (path config-home "ds/layer") :contents layer}
-      {:kind :config :target (path config-home "ds/mise/config.toml") :source (string base "/src/mise/mise.toml")}
-      {:kind :link :target (path config-home "ds/mise/config.ds.toml") :source (string base "/src/mise/mise.toml")}])
-  (each name (sort (keys (get generated/catalog :layers)))
-    (unless (= name :all)
-      (array/push core {:kind :link :target (path config-home (string "ds/mise/config." name ".toml"))
-                        :source (string base "/src/mise/mise." name ".toml")})))
+      {:kind :config :target (mise/global-file environment) :source (string base "/src/mise/mise.toml")}])
   (when (layers/includes? generated/catalog layer :zsh)
     (array/concat core
       @[{:kind :link :target (path config-home "ds/shell.zsh") :source (string base "/src/dotfiles/shell.zsh")}
@@ -160,8 +155,7 @@
                     (if (os/stat (or (get entry :resolved-source) (get entry :source)))
                       (if (os/lstat (get entry :target)) :conflict :missing) :unavailable))
     :config (cond
-              (= :file (os/lstat (get entry :target) :mode)) :present
-              (same-link? (get entry :target) (get entry :source)) :missing
+              (= :file (os/stat (get entry :target) :mode)) :present
               (os/lstat (get entry :target)) :conflict
               :else :missing)
     :marker (marker-state (get entry :target) (get entry :line))

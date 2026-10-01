@@ -30,7 +30,7 @@ HOME=$DS_FAKE_REMOTE_HOME \
 	XDG_CONFIG_HOME=$DS_FAKE_REMOTE_HOME/.config \
 	XDG_DATA_HOME=$DS_FAKE_REMOTE_HOME/.local/share \
 	XDG_STATE_HOME=$DS_FAKE_REMOTE_HOME/.local/state \
-	MISE_CONFIG_DIR=$DS_FAKE_REMOTE_HOME/.config/ds/mise \
+	MISE_CONFIG_DIR=$DS_FAKE_REMOTE_HOME/.config/mise \
 	MISE_DATA_DIR=$DS_FAKE_REMOTE_HOME/.local/share/mise \
 	MISE_STATE_DIR=$DS_FAKE_REMOTE_HOME/.local/state/mise \
 	"$first/ds" status core >"$work/status.out"

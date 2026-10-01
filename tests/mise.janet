@@ -10,7 +10,7 @@
    "DS_ARCH" "x86_64"
    "PATH" "/usr/bin"})
 (def configured (mise/environment base "/snapshot" "core"))
-(assert= "/isolated/home/.config/ds/mise" (get configured "MISE_CONFIG_DIR") "isolated config")
+(assert= "/isolated/home/.config/mise" (get configured "MISE_CONFIG_DIR") "isolated config")
 (assert= "/isolated/home/.local/share/mise" (get configured "MISE_DATA_DIR") "isolated data")
 (assert= "/snapshot/src/mise" (get configured "MISE_GLOBAL_CONFIG_ROOT") "global config root")
 (assert= "/snapshot/src/mise" (get configured "MISE_TRUSTED_CONFIG_PATHS") "trusted root")
@@ -27,7 +27,7 @@
 (assert= 0 (mise/apply-profile fake-runner "/snapshot" "remote" base true) "dry-run result")
 (def apply-call (first calls))
 (assert= ["/snapshot/src/runtime/bin/linux-x64-musl/mise"
-          "-C" "/snapshot/src/mise" "bootstrap" "--yes" "--dry-run"]
+          "-C" "/snapshot/src/mise" "bootstrap" "--yes" "--only" "packages" "--dry-run"]
          (tuple ;(get apply-call 0))
          "bootstrap argv")
 (assert= "core,remote" (get (get apply-call 1) "MISE_ENV") "remote environment")

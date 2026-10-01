@@ -52,7 +52,7 @@ docker run --rm \
 	--env XDG_DATA_HOME=/home/test/.local/share \
 	--env XDG_STATE_HOME=/home/test/.local/state \
 	--env MISE_CACHE_DIR=/home/test/.cache/mise \
-	--env MISE_CONFIG_DIR=/home/test/.config/ds/mise \
+	--env MISE_CONFIG_DIR=/home/test/.config/mise \
 	--env MISE_DATA_DIR=/home/test/.local/share/mise \
 	--env MISE_STATE_DIR=/home/test/.local/state/mise \
 	--env DEBIAN_FRONTEND=noninteractive \

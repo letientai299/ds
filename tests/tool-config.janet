@@ -1,0 +1,137 @@
+(import scripts/lib/filesystem)
+(import scripts/lib/mise)
+(import scripts/lib/tool-config :as config)
+(import scripts/lib/inventory)
+
+(defn assert= [expected actual message]
+  (unless (= expected actual) (error (string message ": " actual))))
+
+(def home (os/getenv "HOME"))
+(def root (string home "/source"))
+(def binary (os/getenv "DS_MISE"))
+(def environment
+  (merge (os/environ) {"MISE_GLOBAL_CONFIG_FILE" nil "MISE_ENV" ""}))
+(def target (mise/global-file environment))
+(def base (string root "/src/mise/mise.toml"))
+(def core (string root "/src/mise/mise.core.toml"))
+(filesystem/ensure-parent base)
+(spit base "[tools]\nnode = 'latest'\n")
+(spit core `[tools]
+fd = 'latest'
+node = '22'
+python = ['3.12', '3.13']
+"http:example.test" = { version = '1.2', platforms = { linux-x64 = { url = 'https://example.invalid/tool', checksum = 'sha256:example' } } }
+neovim = { version = '0.12.5', postinstall = 'sh "{{config_root}}/../scripts/neovim-postinstall.sh"', install_env = { EXAMPLE = 'kept' } }
+custom = { version = 'latest', postinstall = '''echo first
+[tools]
+echo last''' }
+`)
+(def calls @[])
+(defn runner [argv env]
+  (array/push calls [argv env])
+  0)
+(defn apply-tools [] (mise/apply-profile runner root "core" environment false))
+(defn value [key] (string/trim (config/read-config binary environment target key)))
+
+(assert= 0 (mise/apply-profile runner root "core" environment true) "preview succeeds")
+(assert= nil (os/lstat target) "preview leaves global absent")
+(apply-tools)
+(assert= "latest" (value "tools.fd") "floating declaration copied")
+(assert= "22" (value "tools.node") "selected profile overrides base default")
+(assert= "[\"3.12\", \"3.13\"]" (value "tools.python") "multiple versions copied")
+(assert= "0.12.5" (value "tools.neovim.version") "exact declaration copied")
+(assert= "kept" (value "tools.neovim.install_env.EXAMPLE") "install options copied")
+(assert= (string "sh \"" root "/src/mise/../scripts/neovim-postinstall.sh\"")
+         (value "tools.neovim.postinstall") "hook retains its source directory")
+(assert= true (has-key? (config/read-tools binary environment target) "http:example.test")
+         "quoted backend key copied")
+(assert= "echo first\n[tools]\necho last" (value "tools.custom.postinstall") "multiline hook preserved")
+(def before (string (slurp target)))
+(apply-tools)
+(assert= before (string (slurp target)) "repeat apply leaves config unchanged")
+
+(spit target (string "# user's [comment] with 'quotes\n"
+                     "[tools] # selected versions\nfd = '9.9' # retain\n"
+                     "python = ['3.10', '3.11']\n"
+                     "[tools.node]\nversion = '20'\npostinstall = 'echo user'\n"
+                     "[env]\nUSER_SETTING = 'keep'\n"))
+(os/chmod target 384)
+(apply-tools)
+(assert= "9.9" (value "tools.fd") "existing string preserved")
+(assert= "20" (value "tools.node.version") "existing table preserved")
+(assert= "echo user" (value "tools.node.postinstall") "existing hook preserved")
+(assert= "[\"3.10\", \"3.11\"]" (value "tools.python") "existing versions preserved")
+(assert= "keep" (value "env.USER_SETTING") "unrelated config preserved")
+(assert= true (string/has-prefix? "# user's [comment] with 'quotes\n" (slurp target)) "comments preserved")
+(assert= "rw-------" (os/stat target :permissions) "permissions preserved")
+
+(def installed (string home "/installed/fd/9.9"))
+(filesystem/ensure-parent (string installed "/bin/fd"))
+(spit (string installed "/bin/fd") "#!/bin/sh\necho user-fd\n")
+(os/chmod (string installed "/bin/fd") 493)
+(def runtime (mise/global-environment environment root))
+(assert= 0 (os/execute [binary "-C" "/" "link" "fd@9.9" installed] :pe runtime) "link fixture")
+(def catalog {:components {:fd {:owner :mise :version "latest" :commands ["fd"]}}})
+(def state (get (inventory/collect catalog root environment) :fd))
+(assert= :installed (get state :state) "inventory honors user version")
+(assert= "9.9" (get state :expected) "inventory reports configured version")
+
+(spit core (string (slurp core) "\n[tools.jq]\nversion = 'latest'\n"))
+(apply-tools)
+(assert= "latest" (value "tools.jq.version") "update adds new tool")
+(assert= "9.9" (value "tools.fd") "update preserves user version")
+(spit core "[tools]\njq = '99'\n")
+(apply-tools)
+(assert= "latest" (value "tools.jq.version") "update skips existing tool")
+(assert= "9.9" (value "tools.fd") "removed catalog tool remains")
+
+(def fragment (string home "/.config/mise/conf.d/user.toml"))
+(filesystem/ensure-parent fragment)
+(spit fragment "[tools]\nuv = '0.8.0'\n")
+(spit core "[tools]\nuv = 'latest'\n")
+(apply-tools)
+(assert= false (has-key? (config/read-tools binary environment target) "uv") "global fragment takes precedence")
+
+(spit core "[tools]\nneovim = 'latest'\n")
+(def alias-config (string home "/aliases.toml"))
+(spit alias-config "[tools]\n'aqua:neovim/neovim' = '0.11.0'\n")
+(config/seed binary environment alias-config [core])
+(assert= false (has-key? (config/read-tools binary environment alias-config) "neovim") "backend alias counts as existing")
+
+(def custom (string home "/custom/global.toml"))
+(put environment "MISE_GLOBAL_CONFIG_FILE" custom)
+(apply-tools)
+(assert= :file (os/stat custom :mode) "explicit global path honored")
+(put environment "MISE_GLOBAL_CONFIG_FILE" nil)
+(put environment "MISE_CONFIG_DIR" (string home "/custom-mise"))
+(apply-tools)
+(assert= :file (os/stat (string home "/custom-mise/config.toml") :mode) "custom config directory honored")
+(put environment "MISE_CONFIG_DIR" nil)
+
+(def legacy (string home "/.config/ds/mise"))
+(filesystem/ensure-parent (string legacy "/config.toml"))
+(os/link base (string legacy "/config.toml") true)
+(os/link core (string legacy "/config.core.toml") true)
+(def personal (string root "/src/mise/mise.personal.toml"))
+(spit personal "[tools]\nbat = '0.24.0'\n")
+(os/link personal (string legacy "/config.personal.toml") true)
+(put environment "MISE_CONFIG_DIR" legacy)
+(put environment "MISE_ENV" "ds,core")
+(def payload-before (string (slurp base)))
+(apply-tools)
+(assert= :file (os/lstat (string legacy "/config.toml") :mode) "legacy global becomes writable")
+(assert= nil (os/lstat (string legacy "/config.core.toml")) "owned profile override retired")
+(assert= personal (os/readlink (string legacy "/config.personal.toml")) "user profile link retained")
+(assert= payload-before (string (slurp base)) "payload remains unchanged")
+(put environment "MISE_CONFIG_DIR" nil)
+(put environment "MISE_ENV" "")
+
+(def original (slurp target))
+(spit target "[tools\n")
+(assert= true (try (do (apply-tools) false) ([_err] true)) "invalid config rejected")
+(assert= "[tools\n" (string (slurp target)) "invalid config unchanged")
+(spit target original)
+(def install-call (last (filter |(= "install" (last (first $))) calls)))
+(assert= [binary "-C" "/" "install"] (tuple ;(first install-call)) "install uses global configuration")
+(assert= nil (get (last install-call) "MISE_GLOBAL_CONFIG_ROOT") "install does not override hook roots")
+(print "global tools: ok")

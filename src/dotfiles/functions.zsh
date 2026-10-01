@@ -26,7 +26,7 @@ local_todo() {
 }
 
 _ds_worktrunk_init() {
-  [[ ,${MISE_ENV:-}, == *,extra,* ]] || return 1
+  [[ ,${_ds_layers:-}, == *,extra,* || ,${_ds_layers:-}, == *,all,* ]] || return 1
   (( ${+_ds_worktrunk_loaded} )) && return 0
   local -a binaries=("$MISE_DATA_DIR"/installs/http-worktrunk/latest/{,bin/,*/}wt(N))
   (( $#binaries )) || return 1
@@ -47,7 +47,7 @@ if (( ! $+functions[wt] )); then
   }
 fi
 
-if [[ ,${MISE_ENV:-}, == *,remote,* ]]; then
+if [[ ,${_ds_layers:-}, == *,remote,* || ,${_ds_layers:-}, == *,all,* ]]; then
   yazi_cd() {
     local tmp cwd result
     tmp=$(mktemp -t yazi-cwd.XXXXXX) || return

@@ -19,12 +19,17 @@
 (defn config-root [root]
   (string root "/src/mise"))
 
+(defn global-directory [environment]
+  (def config-home (or (get environment "XDG_CONFIG_HOME")
+                       (string (get environment "HOME") "/.config")))
+  (def configured (get environment "MISE_CONFIG_DIR"))
+  (if (or (not configured) (= configured (string config-home "/ds/mise")))
+    (string config-home "/mise")
+    configured))
+
 (defn global-file [environment]
   (or (get environment "MISE_GLOBAL_CONFIG_FILE")
-      (string (or (get environment "MISE_CONFIG_DIR")
-                  (string (or (get environment "XDG_CONFIG_HOME")
-                              (string (get environment "HOME") "/.config")) "/mise"))
-              "/config.toml")))
+      (string (global-directory environment) "/config.toml")))
 
 (defn environment [base root layer]
   (def result (copy-environment base))
@@ -34,7 +39,7 @@
   (def state-home (env-path result "XDG_STATE_HOME" (string home "/.local/state")))
   (def cache-home (env-path result "XDG_CACHE_HOME" (string home "/.cache")))
   (put result "MISE_CACHE_DIR" (env-path result "MISE_CACHE_DIR" (string cache-home "/mise")))
-  (put result "MISE_CONFIG_DIR" (env-path result "MISE_CONFIG_DIR" (string config-home "/mise")))
+  (put result "MISE_CONFIG_DIR" (global-directory base))
   (put result "MISE_DATA_DIR" (env-path result "MISE_DATA_DIR" (string data-home "/mise")))
   (put result "MISE_STATE_DIR" (env-path result "MISE_STATE_DIR" (string state-home "/mise")))
   (put result "MISE_SYSTEM_CONFIG_DIR" (string config-home "/ds/mise-system"))
@@ -130,5 +135,6 @@
     (spit pending contents)
     (os/rename pending target))
   (tool-config/seed mise configured target sources (global-fragments configured))
+  (retire-profiles legacy)
   (retire-profiles (get configured "MISE_CONFIG_DIR"))
   (process/execute runner @[mise "-C" "/" "install"] configured))

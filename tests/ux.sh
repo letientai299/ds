@@ -73,6 +73,13 @@ if command -v zsh >/dev/null 2>&1; then
 print refreshed >>"$HOME/refresh.log"
 ZSH
 	DS_ROOT=/stale/version zsh -dfc '
+        export MISE_CONFIG_DIR="$XDG_CONFIG_HOME/ds/mise"
+        source "$1"
+        [[ $MISE_CONFIG_DIR == "$XDG_CONFIG_HOME/mise" ]] || exit 1
+        export MISE_CONFIG_DIR="$HOME/custom-mise"
+        source "$1"
+        [[ $MISE_CONFIG_DIR == "$HOME/custom-mise" ]] || exit 1
+        unset MISE_CONFIG_DIR
         source "$1"
         : >"$HOME/refresh.log"
         [[ "${MISE_ENV:-}" == "" ]] || exit 1

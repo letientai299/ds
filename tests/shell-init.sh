@@ -32,4 +32,22 @@ ln -s versions/second "$2/current"
 [ "$(ds status core)" = second ]
 SH
 
+cat >"$work/update" <<'SH'
+#!/bin/sh
+case "$1" in
+update) exit "${DS_TEST_UPDATE_STATUS:-0}" ;;
+shell-init) printf '%s\n' 'export DS_TEST_REFRESHED=yes' ;;
+esac
+SH
+chmod +x "$work/update"
+DS_DS="$work/update" sh -s -- "$root/src/dotfiles/command.sh" <<'SH'
+set -eu
+. "$1"
+ds update
+[ "$DS_TEST_REFRESHED" = yes ]
+unset DS_TEST_REFRESHED
+DS_TEST_UPDATE_STATUS=1 ds update && exit 1
+[ -z "${DS_TEST_REFRESHED:-}" ]
+SH
+
 printf '%s\n' 'shell init: ok'

@@ -13,6 +13,9 @@ if [[ -z "${DS_SHELL_STATE:-}" && "${_ds_root:h:t}" == versions ]]; then
   _ds_root="${_ds_root:h:h}/current"
 fi
 export MISE_CACHE_DIR="${MISE_CACHE_DIR:-$XDG_CACHE_HOME/mise}"
+if [[ ${MISE_CONFIG_DIR:-} == "$XDG_CONFIG_HOME/ds/mise" ]]; then
+  unset MISE_CONFIG_DIR
+fi
 export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$XDG_CONFIG_HOME/mise}"
 if [[ ${MISE_GLOBAL_CONFIG_FILE:-} == */src/mise/mise.toml ]]; then
   unset MISE_GLOBAL_CONFIG_FILE

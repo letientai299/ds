@@ -238,6 +238,7 @@ mkdir -p "$source/scripts" "$source/src/scripts"
 cp -R "$work/fixture/." "$source/"
 cp "$root/scripts/install.sh" "$source/scripts/install.sh"
 cp "$root/src/scripts/update.sh" "$source/src/scripts/update.sh"
+cp "$root/src/scripts/repos.sh" "$source/src/scripts/repos.sh"
 printf '%s\n' dist/ >"$source/.gitignore"
 git init -q -b main "$source"
 git -C "$source" add .

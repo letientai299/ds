@@ -14,6 +14,7 @@
 (import scripts/lib/platform)
 (import scripts/lib/selection)
 (import scripts/lib/shell)
+(import scripts/lib/upgrade)
 
 (layers/validate generated/catalog)
 
@@ -439,6 +440,10 @@
     "--help" (do (reject-extra args 2) (usage print))
     "-h" (do (reject-extra args 2) (usage print))
     "status" (report-status args)
+    "upgrade" (do (reject-extra args 2)
+                  (os/exit (upgrade/run root base-environment
+                                       |(command-present? base-environment $)
+                                       foreground-runner print)))
     "stage" (os/exit (foreground-runner
                        ["sh" (string root "/src/bootstrap.sh") ;(slice args 2)] base-environment))
     "activate" (switch-version command args)

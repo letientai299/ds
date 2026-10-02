@@ -58,10 +58,13 @@ reject diff core extra
 reject doctor core extra
 reject shell extra
 reject shell-init extra
+reject upgrade tools
+reject upgrade --dry-run
+reject upgrade --yes
 reject docker-rootful --approve-rootful --grant-docker-group extra
 [ -L "$HOME/.local/bin/ds" ] || fail 'invalid arguments removed launcher'
 [ "$(cat "$XDG_CONFIG_HOME/ds/components")" = example ] || fail 'invalid arguments removed selection'
-for command in update apply remove add status diff doctor push; do
+for command in update upgrade apply remove add status diff doctor push; do
 	"$root/ds" "$command" --help >"$work/help"
 	grep -q '^usage:' "$work/help" || fail "missing help: $command"
 done
@@ -123,7 +126,7 @@ mkdir "$work/bin/docker"
 PATH="$work/bin:/usr/bin:/bin" "$root/ds" doctor remote >"$work/directory-docker"
 
 "$root/ds" -h >"$work/help"
-for command in shell update apply status remove push; do
+for command in shell update upgrade apply status remove push; do
 	grep -q "^  $command " "$work/help" || fail "primary command absent: $command"
 done
 for command in stage activate rollback shell-init completion docker-rootful add diff doctor docker; do
@@ -140,6 +143,7 @@ for command in apply push; do
 done
 for shell in bash zsh; do
 	"$root/ds" completion "$shell" >"$work/completion"
+	grep -q "upgrade) choices='--help'" "$work/completion" || fail 'upgrade completion missing'
 	grep -q -- '--force' "$work/completion" || fail 'force missing from completion'
 	if grep -q -- '--adopt' "$work/completion"; then fail 'completion advertises old flag'; fi
 done
@@ -235,7 +239,7 @@ cmp "$work/force-plan" "$work/alias-plan" || fail 'aliases changed force plan'
 bash -c '
     source "$1"
     COMP_WORDS=(ds ""); COMP_CWORD=1; _ds_complete
-    [[ "${COMPREPLY[*]}" == "shell update apply status remove push help --help" ]] || exit 1
+    [[ "${COMPREPLY[*]}" == "shell update upgrade apply status remove push help --help" ]] || exit 1
     COMP_WORDS=(ds roll); _ds_complete
     [[ "${COMPREPLY[*]}" == rollback ]] || exit 2
     COMP_WORDS=(ds apply exam); COMP_CWORD=2; _ds_complete

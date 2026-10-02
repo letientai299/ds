@@ -48,8 +48,9 @@ exit "${DS_TEST_SETUP_STATUS:-0}"
 SH
 cp "$root/ds" "$work/source/ds"
 cp "$root/src/scripts/update.sh" "$work/source/src/scripts/update.sh"
+cp "$root/src/scripts/repos.sh" "$work/source/src/scripts/repos.sh"
 printf '%s\n' initial >"$work/source/content"
-git -C "$work/source" add ds scripts/install.sh src/scripts/update.sh content
+git -C "$work/source" add ds scripts/install.sh src/scripts/update.sh src/scripts/repos.sh content
 commit "$work/source" initial
 git -C "$work/source" remote add origin "$work/remote.git"
 git -C "$work/source" push -qu origin main
@@ -142,6 +143,33 @@ for name in nvim tmux kitty; do
 	cmp "$work/source/content" "$work/custom $name/content" || fail "update missed installed $name"
 done
 before=$(git -C "$work/checkout" rev-parse HEAD)
+
+mkdir -p "$work/snapshot/src/scripts"
+cp "$root/src/scripts/repos.sh" "$root/src/scripts/pull-configs.sh" "$work/snapshot/src/scripts/"
+setups=$(wc -l <"$DS_TEST_SETUP_LOG")
+printf '%s\n' config-upgrade >>"$work/source/content"
+git -C "$work/source" add content
+commit "$work/source" config-upgrade
+git -C "$work/source" push -q
+printf '%s\n' dirty >"$work/custom kitty/local"
+if sh "$work/snapshot/src/scripts/pull-configs.sh" >"$work/output" 2>&1; then
+	fail 'dirty config upgrade succeeded'
+fi
+grep -q 'uncommitted changes' "$work/output" || fail 'config upgrade lacked preflight'
+[ "$(tail -1 "$work/custom nvim/content")" = linked ] || fail 'config preflight pulled a repo'
+rm "$work/custom kitty/local"
+sh "$work/snapshot/src/scripts/pull-configs.sh" >"$work/output" 2>&1
+for name in nvim tmux kitty; do
+	cmp "$work/source/content" "$work/custom $name/content" || fail "upgrade missed installed $name"
+done
+[ "$(git -C "$work/checkout" rev-parse HEAD)" = "$before" ] || fail 'config upgrade pulled ds'
+[ "$(wc -l <"$DS_TEST_SETUP_LOG")" = "$setups" ] || fail 'config upgrade ran setup'
+[ "$(grep -c '^ds upgrade: pulling ' "$work/output")" -eq 3 ] || fail 'config pulls missing'
+DS_NVIM_SOURCE="$work/custom kitty" DS_TMUX_SOURCE="$work/custom kitty" \
+	sh "$work/snapshot/src/scripts/pull-configs.sh" >"$work/output" 2>&1
+[ "$(grep -c '^ds upgrade: pulling ' "$work/output")" -eq 1 ] || fail 'config duplicates pulled twice'
+XDG_CONFIG_HOME="$work/empty-config" sh "$work/snapshot/src/scripts/pull-configs.sh" >"$work/output" 2>&1
+if grep -q ': pulling ' "$work/output"; then fail 'absent configs pulled'; fi
 
 git -C "$work/checkout" checkout -q --detach
 reject

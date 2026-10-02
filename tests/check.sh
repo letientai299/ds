@@ -23,6 +23,7 @@ unit	status	DS_MISE=$(command -v mise) DS_ROOT=$PWD JANET_PATH=$PWD/src janet -x
 unit	harness	JANET_PATH=$PWD/src janet -x strict tests/harness.janet
 unit	layers	JANET_PATH=$PWD/src janet -x strict tests/layers.janet
 unit	mise	JANET_PATH=$PWD/src janet -x strict tests/mise.janet
+unit	upgrade	JANET_PATH=$PWD/src janet -x strict tests/upgrade.janet
 unit	tool-config	sh tests/tool-config.sh
 unit	docker	JANET_PATH=$PWD/src janet -x strict tests/docker.janet
 unit	platform	JANET_PATH=$PWD/src janet -x strict tests/platform.janet

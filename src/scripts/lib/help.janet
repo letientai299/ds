@@ -10,6 +10,15 @@
               "Requires clean Git checkouts with upstreams."
               "Refresh runtimes and reapply selected layers automatically."]
     :example "ds update"}
+   {:name "upgrade" :group :primary :args ""
+    :summary "Upgrade system packages, global tools, and Neovim plugins"
+    :details ["Pulls configuration repos before upgrading software."
+              "Requires clean tracked branches; uses fast-forward pulls."
+              "Automatically confirms package upgrades."
+              "Sudo requires cached or passwordless authorization."
+              "Always bumps global mise tool versions."
+              "Bundled runtimes and Zsh plugins update through ds update."]
+    :example "ds upgrade"}
    {:name "apply" :group :primary :args "[LAYER ...|COMPONENT]" :targets :all
     :summary "Apply a layer or optional component"
     :flags ["--dry-run" "--force" "--skip"]

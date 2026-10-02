@@ -10,16 +10,32 @@ because they run before `ds` exists on the machine: `src/install.sh` and
 
 The primary commands follow the daily workflow:
 
-| Command              | Purpose                                            |
-| -------------------- | -------------------------------------------------- |
-| `ds` or `ds shell`   | Open the persistent trial shell                    |
-| `ds shell --docker`  | Open cached Ubuntu; checkout only                  |
-| `ds apply [TARGET ...]` | Apply layers or enable an optional component |
-| `ds status [TARGET]` | Summarize health and list problems                 |
-| `ds remove TARGET`   | Remove managed configuration or optional selection |
-| `ds push HOST LAYER ...` | Deliver and apply over SSH; checkout only     |
+| Command                  | Purpose                                                        |
+| ------------------------ | -------------------------------------------------------------- |
+| `ds` or `ds shell`       | Open the persistent trial shell                                |
+| `ds shell --docker`      | Open cached Ubuntu; checkout only                              |
+| `ds upgrade`             | Upgrade system packages, global mise tools, and Neovim plugins |
+| `ds apply [TARGET ...]`  | Apply layers or enable an optional component                   |
+| `ds status [TARGET]`     | Summarize health and list problems                             |
+| `ds remove TARGET`       | Remove managed configuration or optional selection             |
+| `ds push HOST LAYER ...` | Deliver and apply over SSH; checkout only                      |
 
 `ds help` lists components by layer from the generated catalog.
+
+`ds upgrade` first pulls the Neovim, Tmux, and Kitty configuration repos, using
+the same source discovery and clean, fast-forward checks as `ds update`.
+It uses each repo's current branch and upstream. Failed pulls stop the upgrade
+before package changes. Installed Gitless configuration snapshots are skipped.
+
+It automatically confirms package upgrades and bumps global mise tool
+versions. It ignores project-local mise configuration and keeps previous tool
+versions. It also updates mise backend plugins and Neovim plugins when lazy.nvim
+is available. Independent stages continue after failures; any failure returns
+a nonzero status. Bundled runtimes and Zsh plugins receive updates through
+`ds update`. Commands receive no interactive input. Native upgrades require
+cached or passwordless sudo authorization; missing authorization fails without
+prompting. Debian package upgrades keep existing configuration when defaults
+cannot resolve a configuration change. The command accepts no options beyond help.
 
 `TARGET` accepts a catalog layer or optional component. Omitted targets use the
 selected layer union, initially `core`. Invalid selections fail explicitly.

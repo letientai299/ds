@@ -27,6 +27,10 @@ check_shell() {
 }
 
 check_core() {
+	for plugin in lazy.nvim catppuccin mini.clue oil.nvim tree-sitter-manager.nvim; do
+		test -d "$XDG_DATA_HOME/nvim/lazy/$plugin"
+		test ! -e "$XDG_DATA_HOME/nvim/lazy/$plugin.cloning"
+	done
 	zsh -ef -c '
 		source "$HOME/.config/ds/shell.zsh"
 		for tool in mise fd fzf rg tree-sitter nvim zoxide jq xh; do

@@ -2,6 +2,7 @@
 (import scripts/lib/filesystem)
 (import scripts/lib/managed)
 (import scripts/lib/mise)
+(import scripts/lib/neovim)
 (import scripts/lib/selection)
 (import scripts/lib/layers)
 (import scripts/lib/kitty)
@@ -10,7 +11,7 @@
 (def required
   {:packages [:profile :components] :takeover [:entry :mode] :write [:entry]
    :remove [:entry] :restore [:entry :backup] :select [:components :target]
-   :activate [:root] :docker [] :directory [:target] :blocked [:target :reason]})
+   :activate [:root] :neovim [:profile] :docker [] :directory [:target] :blocked [:target :reason]})
 
 (defn valid-entry? [entry]
   (and (or (table? entry) (struct? entry))
@@ -130,7 +131,10 @@
                                  (get environment "XDG_STATE_HOME")
                                  (string (get environment "HOME") "/.local/state")) "/zsh/history")})))
           (when (get request :docker) (array/push plan (action :docker {})))
-          (when activate? (array/push plan (action :activate {:root root})))))))
+          (when activate? (array/push plan (action :activate {:root root})))
+          (when (and (layers/includes? catalog layer :neovim)
+                     (os/stat (string (managed/source-root root environment "nvim") "/lua/lib/bootstrap.lua")))
+            (array/push plan (action :neovim {:profile layer})))))))
   plan)
 
 (defn describe-action [item]
@@ -153,6 +157,7 @@
     :directory (string "ensure parent " (get item :target))
     :activate (string "activate " (get item :root) " (save current as previous)")
     :docker "converge Docker readiness"
+    :neovim "bootstrap Neovim essential plugins"
     :blocked (string "blocked " (get item :target) ": " (get item :reason))))
 
 (defn execute [plan runner root environment docker-runner]
@@ -177,4 +182,5 @@
       :directory (filesystem/ensure-parent (get item :target))
       :docker (docker-runner)
       :activate (activation/activate (get item :root))
+      :neovim (neovim/bootstrap runner root (get item :profile) environment)
       (error "invalid executable action"))))

@@ -16,11 +16,20 @@
   (string "+lua local ok, err = pcall(function() "
           "local loaded, lazy = pcall(require, 'lazy'); "
           "if not loaded then print('ds upgrade: Neovim plugins skipped'); return end; "
+          "local config = require('lazy.core.config'); "
+          "config.options.headless = {process=false, log=false, task=false, colors=false}; "
           "lazy.update({wait=true, show=false}); "
-          "for _, plugin in pairs(require('lazy.core.config').plugins) do "
+          "local failed = false; "
+          "local names = vim.tbl_keys(config.plugins); table.sort(names); "
+          "for _, name in ipairs(names) do local plugin = config.plugins[name]; "
+          "local updated = plugin._.updated; "
+          "if updated and updated.from ~= updated.to then "
+          "print('[' .. name .. '] updated ' .. updated.from:sub(1, 7) .. ' -> ' .. updated.to:sub(1, 7)) end; "
           "for _, task in ipairs(plugin._.tasks or {}) do "
-          "if task:has_errors() then error('Neovim plugin upgrade failed') end "
-          "end end end); if not ok then print(err); vim.cmd('cquit 1') end"))
+          "if task:has_errors() then failed = true; "
+          "print('[' .. name .. '] ' .. task.name .. ': ' .. task:output(vim.log.levels.ERROR)) end "
+          "end end; if failed then error('Neovim plugin upgrade failed') end "
+          "end); if not ok then print(err); vim.cmd('cquit 1') end"))
 
 (defn run-command [argv runner environment]
   (with [input (file/open "/dev/null" :r)]

@@ -33,17 +33,17 @@
 
 (assert= 0 (invoke base ["apt-get" "brew" "nvim"]) "all stages succeed")
 (assert= [["sh" "/snapshot/src/scripts/pull-configs.sh"]
+          ["nvim" "--headless" upgrade/neovim-command "+qa"]
           ["sudo" "-n" "env" "DEBIAN_FRONTEND=noninteractive" "NEEDRESTART_MODE=a" "apt-get" "update"] ["sudo" "-n" "env" "DEBIAN_FRONTEND=noninteractive" "NEEDRESTART_MODE=a" "apt-get" "upgrade" "-y"
            "-o" "Dpkg::Options::=--force-confdef" "-o" "Dpkg::Options::=--force-confold"]
           ["brew" "update"] ["brew" "upgrade" "--no-ask"]
           ["/isolated/mise" "-C" "/" "plugins" "update" "--yes"]
-          ["/isolated/mise" "-C" "/" "upgrade" "--bump" "--no-prune" "--yes"]
-          ["nvim" "--headless" upgrade/neovim-command "+qa"]]
+          ["/isolated/mise" "-C" "/" "upgrade" "--bump" "--no-prune" "--yes"]]
          (tuple ;(map |(get $ 0) calls)) "upgrade order")
-(assert= "1" (get-in calls [3 1 "NONINTERACTIVE"]) "Homebrew installer confirmations")
-(assert= "1" (get-in calls [3 1 "HOMEBREW_NO_ASK"]) "Homebrew upgrade confirmations")
-(assert= "noninteractive" (get-in calls [1 1 "DEBIAN_FRONTEND"]) "Debian confirmations")
-(assert= "a" (get-in calls [1 1 "NEEDRESTART_MODE"]) "service restart confirmations")
+(assert= "1" (get-in calls [4 1 "NONINTERACTIVE"]) "Homebrew installer confirmations")
+(assert= "1" (get-in calls [4 1 "HOMEBREW_NO_ASK"]) "Homebrew upgrade confirmations")
+(assert= "noninteractive" (get-in calls [2 1 "DEBIAN_FRONTEND"]) "Debian confirmations")
+(assert= "a" (get-in calls [2 1 "NEEDRESTART_MODE"]) "service restart confirmations")
 (assert= "0" (get-in calls [0 1 "GIT_TERMINAL_PROMPT"]) "Git terminal prompts")
 (assert= nil (get base "DEBIAN_FRONTEND") "caller environment preserved")
 (assert= "1" (get-in calls [6 1 "MISE_YES"]) "mise confirmations")
@@ -71,15 +71,47 @@
 (assert= ["brew" "update"] (get-in calls [2 0]) "independent manager continues")
 (set failure ["/isolated/mise" "-C" "/" "upgrade" "--bump" "--no-prune" "--yes"])
 (assert= 1 (invoke base ["nvim"]) "tool failure returned")
-(assert= "nvim" (get-in calls [3 0 0]) "Neovim continues")
+(assert= "nvim" (get-in calls [1 0 0]) "Neovim continues")
 (assert= 1 (upgrade/run-stage "missing" [["missing"]]
                              (fn [_argv _environment] (error "missing executable")) base emit)
          "spawn failure returned")
 (set failure ["sh" "/snapshot/src/scripts/pull-configs.sh"])
 (assert= 1 (invoke base ["apt-get" "brew" "nvim"]) "pull failure returned")
-(assert= 1 (length calls) "pull failure prevents software upgrades")
+(assert= 7 (length calls) "pull failure preserves independent upgrades")
+(assert= nil (find |(= "nvim" (get-in $ [0 0])) calls) "pull failure skips Neovim")
 (assert= 0 (upgrade/run-stage "closed input"
                              [["/bin/sh" "-c" "if read -r answer; then exit 1; fi"]]
                              (fn [argv environment] (os/execute argv :pe environment)) {} emit)
          "child process cannot request terminal input")
+
+(each failed-command [nil "sh" "apt-get" "brew" "/isolated/mise" "nvim"]
+  (def active @{})
+  (def completed @[])
+  (var source-ready? false)
+  (var running 0)
+  (var peak 0)
+  (defn concurrent-runner [argv environment]
+    (def manager (if (= "sudo" (first argv)) "apt-get" (first argv)))
+    (when (= manager "nvim")
+      (assert= true source-ready? "configuration completes before Neovim"))
+    (assert= nil (get active manager) "manager commands cannot overlap")
+    (when (find |(= "upgrade" $) argv)
+      (assert= true (not= nil (find |(= $ manager) completed)) "update precedes upgrade"))
+    (put active manager true)
+    (++ running)
+    (set peak (max peak running))
+    (def status (os/execute ["/bin/sh" "-c" "sleep 0.1"] :pe environment))
+    (-- running)
+    (put active manager nil)
+    (array/push completed manager)
+    (when (= manager "sh") (set source-ready? true))
+    (if (= manager failed-command) 1 status))
+  (assert= (if failed-command 1 0)
+           (upgrade/run "/snapshot" base (probe ["apt-get" "brew" "nvim"])
+                        concurrent-runner emit)
+           "concurrent failures returned")
+  (assert= 4 peak "Git overlaps independent managers")
+  (assert= 0 running "all subprocesses joined")
+  (assert= (if (find |(= $ failed-command) ["sh" "apt-get" "brew"]) 7 8)
+           (length completed) "all independent commands complete"))
 (print "upgrade: ok")

@@ -58,30 +58,31 @@
   (put environment "NEEDRESTART_MODE" "a")
   (put environment "GIT_TERMINAL_PROMPT" "0")
   (var failed? false)
-  (def source-status
-    (run-stage "configuration repos" [["sh" (string root "/src/scripts/pull-configs.sh")]]
-               runner environment emit))
-  (unless (= source-status 0) (break source-status))
   (defn stage [name commands settings]
     (def status (run-stage name commands runner settings emit))
     (when (find |(= status $) [130 143]) (os/exit status))
-    (unless (= status 0) (set failed? true)))
+    (unless (= status 0) (set failed? true))
+    status)
   (def packages (or (native-commands environment present?) []))
   (def privileged
     (if (= "0" (get environment "DS_UID")) packages
       (map |(tuple "sudo" "-n" "env" "DEBIAN_FRONTEND=noninteractive" "NEEDRESTART_MODE=a" ;$)
            packages)))
-  (stage "system packages" privileged environment)
   (def brew-environment (mise/copy-environment environment))
   (put brew-environment "NONINTERACTIVE" "1")
   (put brew-environment "HOMEBREW_NO_ASK" "1")
-  (stage "Homebrew" (if (present? "brew") [["brew" "update"] ["brew" "upgrade" "--no-ask"]] [])
-         brew-environment)
   (def configured (mise/global-environment environment root))
   (def binary (mise/binary root configured))
-  (stage "mise plugins" [[binary "-C" "/" "plugins" "update" "--yes"]] configured)
-  (stage "mise tools" [[binary "-C" "/" "upgrade" "--bump" "--no-prune" "--yes"]] configured)
-  (stage "Neovim plugins"
-         (if (present? "nvim")
-           [["nvim" "--headless" neovim-command "+qa"]] []) environment)
+  (ev/gather
+    (when (= 0 (stage "configuration repos" [["sh" (string root "/src/scripts/pull-configs.sh")]]
+                     environment))
+      (stage "Neovim plugins"
+             (if (present? "nvim")
+               [["nvim" "--headless" neovim-command "+qa"]] []) environment))
+    (stage "system packages" privileged environment)
+    (stage "Homebrew" (if (present? "brew") [["brew" "update"] ["brew" "upgrade" "--no-ask"]] [])
+           brew-environment)
+    (do
+      (stage "mise plugins" [[binary "-C" "/" "plugins" "update" "--yes"]] configured)
+      (stage "mise tools" [[binary "-C" "/" "upgrade" "--bump" "--no-prune" "--yes"]] configured)))
   (if failed? 1 0))

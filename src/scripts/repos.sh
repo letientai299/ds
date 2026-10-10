@@ -1,5 +1,11 @@
 #!/bin/sh
 
+pull_checkout() {
+	printf '%s\n' "$1: pulling $2"
+	git -C "$2" -c merge.autostash=false -c rebase.autostash=false \
+		pull --ff-only --no-rebase
+}
+
 pull_repositories() {
 	root=$1
 	repo_command=$2
@@ -62,9 +68,26 @@ pull_repositories() {
 		git -C "$checkout" rev-parse --verify '@{upstream}' >/dev/null 2>&1 || die "branch has no upstream: $checkout"
 	done
 
+	if [ -n "$extra" ]; then
+		for checkout in "$@"; do
+			pull_checkout "$repo_command" "$checkout" || return "$?"
+		done
+		return 0
+	fi
+
+	pids=
 	for checkout in "$@"; do
-		printf '%s\n' "$repo_command: pulling $checkout"
-		git -C "$checkout" -c merge.autostash=false -c rebase.autostash=false \
-			pull --ff-only --no-rebase || return "$?"
+		pull_checkout "$repo_command" "$checkout" &
+		pids="$pids $!"
 	done
+	result=0
+	for pid in $pids; do
+		if wait "$pid"; then
+			continue
+		else
+			status=$?
+			[ "$result" -ne 0 ] || result=$status
+		fi
+	done
+	return "$result"
 }

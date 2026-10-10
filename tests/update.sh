@@ -171,6 +171,51 @@ DS_NVIM_SOURCE="$work/custom kitty" DS_TMUX_SOURCE="$work/custom kitty" \
 XDG_CONFIG_HOME="$work/empty-config" sh "$work/snapshot/src/scripts/pull-configs.sh" >"$work/output" 2>&1
 if grep -q ': pulling ' "$work/output"; then fail 'absent configs pulled'; fi
 
+mkdir -p "$work/git-bin"
+export DS_TEST_GIT
+DS_TEST_GIT=$(command -v git)
+cat >"$work/git-bin/git" <<'SH'
+#!/bin/sh
+set -eu
+case "$*" in
+*'pull --ff-only --no-rebase')
+	name=${2##*/}
+	: >"$DS_TEST_PULLS/$name.started"
+	attempt=0
+	while [ ! -f "$DS_TEST_PULLS/custom nvim.started" ] ||
+		[ ! -f "$DS_TEST_PULLS/custom tmux.started" ] ||
+		[ ! -f "$DS_TEST_PULLS/custom kitty.started" ]; do
+		attempt=$((attempt + 1))
+		[ "$attempt" -lt 100 ] || exit 99
+		sleep 0.05
+	done
+	status=0
+	if [ "$name" = "${DS_TEST_PULL_FAIL:-}" ]; then
+		status=42
+	else
+		"$DS_TEST_GIT" "$@" || status=$?
+	fi
+	: >"$DS_TEST_PULLS/$name.finished"
+	exit "$status"
+	;;
+*) exec "$DS_TEST_GIT" "$@" ;;
+esac
+SH
+chmod +x "$work/git-bin/git"
+for failure in '' 'custom kitty'; do
+	DS_TEST_PULLS=$(mktemp -d "$work/pulls.XXXXXX")
+	export DS_TEST_PULLS
+	status=0
+	PATH="$work/git-bin:$PATH" DS_TEST_PULL_FAIL=$failure \
+		sh "$work/snapshot/src/scripts/pull-configs.sh" >"$work/output" 2>&1 || status=$?
+	expected=0
+	[ -z "$failure" ] || expected=42
+	[ "$status" -eq "$expected" ] || fail 'concurrent pull status changed'
+	for name in nvim tmux kitty; do
+		[ -f "$DS_TEST_PULLS/custom $name.finished" ] || fail 'pull returned before completion'
+	done
+done
+
 git -C "$work/checkout" checkout -q --detach
 reject
 grep -q 'detached HEAD' "$work/output" || fail 'detached diagnostic missing'

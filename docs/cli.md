@@ -87,7 +87,7 @@ source <(ds completion zsh) # after compinit
 # Bash: source <(ds completion bash)
 ```
 
-The installed shell also provides [serve and gokill][tools].
+The installed shell also provides [serve][tools].
 
 ## Status for automation
 

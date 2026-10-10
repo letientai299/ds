@@ -17,6 +17,7 @@ if [[ ${MISE_CONFIG_DIR:-} == "$XDG_CONFIG_HOME/ds/mise" ]]; then
   unset MISE_CONFIG_DIR
 fi
 export MISE_CONFIG_DIR="${MISE_CONFIG_DIR:-$XDG_CONFIG_HOME/mise}"
+export MISE_MINIMUM_RELEASE_AGE=0s
 if [[ ${MISE_GLOBAL_CONFIG_FILE:-} == */src/mise/mise.toml ]]; then
   unset MISE_GLOBAL_CONFIG_FILE
 fi

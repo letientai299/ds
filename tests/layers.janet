@@ -20,14 +20,14 @@
 (eachp [index component] core
   (assert= component (get remote index) "remote includes core in order"))
 
-(assert= [:bat :delta :worktrunk :gokill :eza :gdu :ouch] (tuple/slice (layers/resolve generated/catalog "extra" [])) "extra is independent")
+(assert= [:bat :delta :worktrunk :eza :gdu :ouch] (tuple/slice (layers/resolve generated/catalog "extra" [])) "extra is independent")
 (assert= [:kitty] (tuple/slice (layers/resolve generated/catalog "ui" [])) "ui is independent")
 (def all-components (layers/resolve generated/catalog "all" []))
 (each name ["core" "remote" "extra" "ui"]
   (each component (layers/resolve generated/catalog name [])
     (unless (find |(= $ component) all-components)
       (error (string "all is missing " component)))))
-(assert= 23 (length all-components) "all deduplicates components")
+(assert= 22 (length all-components) "all deduplicates components")
 
 (def optional (layers/resolve fixture "core" ["example" "example"]))
 (assert= 13 (length optional) "optional components are unique")

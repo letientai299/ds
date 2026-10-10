@@ -47,18 +47,21 @@
 (assert= "0" (get-in calls [0 1 "GIT_TERMINAL_PROMPT"]) "Git terminal prompts")
 (assert= nil (get base "DEBIAN_FRONTEND") "caller environment preserved")
 (assert= "1" (get-in calls [6 1 "MISE_YES"]) "mise confirmations")
+(assert= "0s" (get-in calls [6 1 "MISE_MINIMUM_RELEASE_AGE"]) "latest releases enabled")
 (assert= "/isolated/home/.config/mise/config.toml"
          (get-in calls [6 1 "MISE_GLOBAL_CONFIG_FILE"]) "global tools")
 (assert= nil (get-in calls [6 1 "MISE_GLOBAL_CONFIG_ROOT"]) "no payload overrides")
 
 (def custom (merge base {"MISE_GLOBAL_CONFIG_FILE" "/custom/tools.toml"
                         "MISE_CONFIG_DIR" "/custom/config" "MISE_ENV" "personal"
+                        "MISE_MINIMUM_RELEASE_AGE" "24h"
                         "XDG_CONFIG_HOME" "/trial/config"}))
 (assert= 0 (invoke custom []) "missing optional managers")
 (assert= 3 (length calls) "mise runs without native managers")
 (assert= "/custom/tools.toml" (get-in calls [2 1 "MISE_GLOBAL_CONFIG_FILE"]) "custom global")
 (assert= "/custom/config" (get-in calls [2 1 "MISE_CONFIG_DIR"]) "custom config directory")
 (assert= "personal" (get-in calls [2 1 "MISE_ENV"]) "active global profile")
+(assert= "0s" (get-in calls [2 1 "MISE_MINIMUM_RELEASE_AGE"]) "release delay overridden")
 (assert= 0 (invoke (merge base {"DS_UID" "0"}) ["apk"]) "root upgrade")
 (assert= ["apk" "update"] (get-in calls [1 0]) "root skips sudo")
 

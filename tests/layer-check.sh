@@ -104,7 +104,6 @@ if [ "$mode" = core-remote-extra ]; then
 	check_remote
 	zsh -ef -c '
 		source "$HOME/.config/ds/shell.zsh"
-		command -v gokill
 		for tool in bat eza gdu delta wt ouch; do
 			command -v "$tool"
 			"$tool" --version >/dev/null

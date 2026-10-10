@@ -6,9 +6,11 @@ function fail() {
   exit 1
 }
 
+export MISE_MINIMUM_RELEASE_AGE=24h
 source "$DS_TEST_SRC/dotfiles/shell.zsh"
 function reload() { source "$DS_TEST_SRC/dotfiles/shell.zsh"; }
 reload
+[[ $MISE_MINIMUM_RELEASE_AGE == 0s ]] || fail 'release delay enabled'
 [[ $EDITOR == nvim ]] || fail 'editor changed'
 [[ $FZF_DEFAULT_COMMAND == fzf-files && $FZF_CTRL_T_COMMAND == fzf-files ]] || fail 'FZF command changed'
 [[ $FZF_DEFAULT_OPTS == '--height 80% --reverse' ]] || fail 'FZF layout changed'

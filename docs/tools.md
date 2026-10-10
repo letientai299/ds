@@ -1,7 +1,7 @@
 # Shell tools
 
 `ds apply core` installs `serve`, `fzf-files`, and `fzf-dirs` in `~/.local/bin`
-and manages zoxide through mise. `extra` supplies eza, gokill, and Worktrunk.
+and manages zoxide through mise. `extra` supplies eza and Worktrunk.
 Trial shells expose the same commands. Existing files at managed paths follow
 the normal adoption and conflict rules.
 
@@ -89,28 +89,6 @@ Native filesystem watchers are used when available. Otherwise, content polling
 detects edits, additions, renames, and deletions. Polling reads the served files
 each second, so use a build-output directory rather than a large checkout.
 
-## Select processes to stop
-
-```sh
-gokill
-gokill node
-gokill 3000
-```
-
-[gokill][gokill] provides process discovery, fuzzy selection, and signaling.
-Queries match process names, PIDs, users, and ports. `/` edits
-the filter; Enter leaves filtering, then Enter sends TERM to the selected
-process. Ctrl+R refreshes, `i` shows details, `T` opens the dependency tree, `P`
-shows listening processes, and Ctrl+C quits.
-
-The picker lists all users and signals one selected PID. Tree browsing does
-not imply recursive killing. Multi-selection and custom signals are unsupported.
-For a different signal, use the PID shown in the picker with `kill`.
-
-Mise manages gokill as the `http:gokill` tool. Its version and platform
-checksums are pinned in the [extra profile][profile]; `ds apply extra`
-installs it. Neither command adds work to shell startup.
-
 ## Disk usage and archives
 
 `ds apply extra` installs [gdu][gdu] for disk usage analysis and [ouch][ouch]
@@ -129,8 +107,6 @@ formats. RAR supports extraction and listing only.
 [gdu]: https://github.com/dundee/gdu
 [ouch]: https://github.com/ouch-org/ouch
 [caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server
-[gokill]: https://github.com/w31r4/gokill
-[profile]: ../src/mise/mise.extra.toml
 [fzf-includes]: ../src/dotfiles/fzf-includes.zsh
 [rgrc]: ../src/dotfiles/rgrc
 [exports]: ../src/dotfiles/exports.zsh

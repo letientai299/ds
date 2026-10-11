@@ -39,6 +39,7 @@ unit	shell	sh tests/shell.sh
 unit	aliases	sh tests/aliases.sh
 unit	plugins	sh tests/plugins.sh
 unit	prompt	zsh -df tests/prompt.zsh
+unit	prompt-mr	zsh -df tests/prompt-mr.zsh
 unit	tools	sh tests/tools.sh
 unit	exports	sh tests/exports.sh
 unit	navigation	sh tests/navigation.sh

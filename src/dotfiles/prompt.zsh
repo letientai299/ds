@@ -4,13 +4,17 @@ autoload -Uz add-zsh-hook
 # Expand data once; never evaluate repository text.
 setopt prompt_subst prompt_percent no_prompt_bang
 typeset -g _ds_prompt_git='' _ds_prompt_context='' _ds_prompt_duration='' _ds_prompt_status=''
+typeset -g _ds_prompt_path='%F{cyan}%(5~|…/%4~|%~)%f'
+typeset -g _ds_prompt_root='' _ds_prompt_pwd='' _ds_prompt_branch='' _ds_prompt_root_branch='' _ds_prompt_physical=''
+typeset -g _ds_prompt_mr='' _ds_prompt_mr_key=''
+typeset -gA _ds_prompt_mr_values _ds_prompt_mr_expiry _ds_prompt_mr_pending _ds_prompt_mr_fds
 typeset -gi _ds_prompt_status_width=0
 typeset -g _ds_prompt_char='%F{green}❯'
 typeset -g _ds_prompt_oid='' _ds_prompt_subject=''
 typeset -g _ds_prompt_command=git _ds_prompt_apple_git='' _ds_prompt_apple_key=''
 typeset -gF _ds_prompt_started=0
 # Reserve one column against automatic wrapping.
-PROMPT=$'\n''%$(( COLUMNS > _ds_prompt_status_width + 1 ? COLUMNS - _ds_prompt_status_width - 1 : 1 ))>…>${_ds_prompt_context}%F{cyan}%(5~|…/%4~|%~)%f${_ds_prompt_git}%>>${_ds_prompt_status}
+PROMPT=$'\n''%$(( COLUMNS > _ds_prompt_status_width + 1 ? COLUMNS - _ds_prompt_status_width - 1 : 1 ))>…>${_ds_prompt_mr}${_ds_prompt_context}${_ds_prompt_path}${_ds_prompt_git}%>>${_ds_prompt_status}
 %F{yellow}%(1j.%(2j.%j.)• .)%f${_ds_prompt_duration}%F{yellow}%D{%H:%M:%S}%f ${_ds_prompt_char}%f '
 RPROMPT=''
 
@@ -41,6 +45,7 @@ _ds_prompt_git() {
   local report line branch oid xy sub ahead=0 behind=0 stash=0
   local -i staged=0 changed=0 untracked=0 conflicts=0
   _ds_prompt_git=''
+  _ds_prompt_branch=''
   _ds_prompt_resolve_git
   # Keep fresh counts without index-lock contention.
   report=$(GIT_OPTIONAL_LOCKS=0 command "$_ds_prompt_command" status \
@@ -69,6 +74,7 @@ _ds_prompt_git() {
       '? '*) (( ++untracked )) ;;
     esac
   done
+  [[ $branch == '(detached)' ]] || _ds_prompt_branch=$branch
   [[ $branch != '(detached)' ]] || branch="@${oid[1,8]}"
   # Neutralize terminal controls and prompt escapes.
   branch=${branch//[[:cntrl:]]/ }
@@ -101,6 +107,136 @@ _ds_prompt_git() {
     [[ $_ds_prompt_subject == WIP* ]] && subject="%B%F{red}WIP%f%b${subject[4,-1]}"
     _ds_prompt_git+=" %f${subject}%f"
   fi
+  return 0
+}
+
+_ds_prompt_path() {
+  emulate -L zsh
+  _ds_prompt_path='%F{cyan}%(5~|…/%4~|%~)%f'
+  if [[ -z $_ds_prompt_git ]]; then
+    _ds_prompt_root=''
+    _ds_prompt_pwd=''
+    return 0
+  fi
+  local physical=$_ds_prompt_physical
+  [[ $PWD == $_ds_prompt_pwd ]] || physical=${PWD:A}
+  if [[ $PWD != $_ds_prompt_pwd || $_ds_prompt_branch != $_ds_prompt_root_branch || -z $_ds_prompt_root || ( -e $PWD/.git && $physical != $_ds_prompt_root ) ]]; then
+    local directory=$physical gitdir config='' common
+    while [[ $directory != / && ! -e $directory/.git ]]; do
+      directory=${directory:h}
+    done
+    gitdir=$directory/.git
+    if [[ -f $gitdir ]]; then
+      read -r common < "$gitdir"
+      gitdir=${common#gitdir: }
+      [[ $gitdir == /* ]] || gitdir="$directory/$gitdir"
+    fi
+    [[ ! -r $gitdir/config.worktree ]] || config=$(<"$gitdir/config.worktree")
+    if [[ -r $gitdir/commondir ]]; then
+      read -r common < "$gitdir/commondir"
+      [[ $common == /* ]] || common="$gitdir/$common"
+      gitdir=$common
+    fi
+    [[ ! -r $gitdir/config ]] || config+=$(<"$gitdir/config")
+    # Custom worktrees require Git's own resolution.
+    if [[ -n ${GIT_DIR:-}${GIT_WORK_TREE:-} || ! -d $gitdir || ${(L)config} =~ $'(^|\n)[ \t]*worktree[ \t]*=' || ${(L)config} == *'[include'* ]]; then
+      _ds_prompt_root=$(command "$_ds_prompt_command" rev-parse --show-toplevel 2>/dev/null) || return 0
+    else
+      _ds_prompt_root=$directory
+    fi
+    _ds_prompt_pwd=$PWD
+    _ds_prompt_root_branch=$_ds_prompt_branch
+    _ds_prompt_physical=$physical
+  fi
+  local name=${_ds_prompt_root:t} suffix
+  [[ $physical == $_ds_prompt_root || $physical == "$_ds_prompt_root"/* ]] || return 0
+  suffix=${physical#"$_ds_prompt_root"}
+  name=${name//[[:cntrl:]]/ }
+  suffix=${suffix//[[:cntrl:]]/ }
+  _ds_prompt_path="%B%F{blue}${name//\%/%%}%b%F{cyan}${suffix//\%/%%}%f"
+}
+
+_ds_prompt_mr_render() {
+  emulate -L zsh
+  local value=${_ds_prompt_mr_values[$_ds_prompt_mr_key]}
+  local iid=${value%% *} url=${value#* }
+  _ds_prompt_mr=''
+  [[ $iid == <1-> && $url == http(s|)://* && $url != *[[:cntrl:][:space:]]* ]] || return 0
+  url=${url//\%/%%}
+  _ds_prompt_mr=$'%F{green}%{\e]8;;'"$url"$'\e\\%}!'"$iid"$'%{\e]8;;\e\\%}%f '
+}
+
+_ds_prompt_mr_fetch() {
+  emulate -L zsh
+  local file=$1 branch=$2 result iid url cached
+  local -i expiry=$(( EPOCHSECONDS + 60 ))
+  if [[ -r $file ]] && read -r cached result < "$file" && [[ $cached == <-> ]] && (( cached > EPOCHSECONDS )); then
+    print -r -- "$cached $result"
+    return 0
+  fi
+  if result=$(command glab mr list --source-branch "$branch" --all --per-page 1 \
+      --output json --jq 'if length == 0 then "0" else .[0] | "\(.iid) \(.web_url)" end' 2>/dev/null </dev/null); then
+    read -r iid url <<< "$result"
+    if [[ $iid == 0 ]]; then
+      expiry=$(( EPOCHSECONDS + 300 ))
+    elif [[ $iid == <1-> && $url == http(s|)://* && $url != *[[:cntrl:][:space:]]* ]]; then
+      expiry=$(( EPOCHSECONDS + 86400 ))
+    else
+      result=''
+    fi
+  else
+    result=''
+  fi
+  local record="$expiry $result"
+  # Atomic writes keep simultaneous shells independent.
+  (
+    umask 077
+    command mkdir -p -- "${file:h}" &&
+      print -r -- "$record" > "$file.$$.tmp" &&
+      command mv -f -- "$file.$$.tmp" "$file"
+  ) 2>/dev/null
+  print -r -- "$record"
+}
+
+_ds_prompt_mr_ready() {
+  emulate -L zsh
+  local fd=$1 key=${_ds_prompt_mr_fds[$1]} expiry result
+  if read -r -u "$fd" expiry result && [[ $expiry == <-> ]]; then
+    _ds_prompt_mr_expiry[$key]=$expiry
+    _ds_prompt_mr_values[$key]=$result
+  else
+    _ds_prompt_mr_expiry[$key]=$(( EPOCHSECONDS + 60 ))
+    _ds_prompt_mr_values[$key]=''
+  fi
+  zle -F "$fd"
+  exec {fd}<&-
+  unset "_ds_prompt_mr_fds[$1]" "_ds_prompt_mr_pending[$key]"
+  if [[ $key == $_ds_prompt_mr_key ]]; then
+    _ds_prompt_mr_render
+    zle && zle reset-prompt
+  fi
+  return 0
+}
+
+_ds_prompt_mr() {
+  emulate -L zsh
+  _ds_prompt_mr=''
+  _ds_prompt_mr_key=''
+  [[ -n $_ds_prompt_git && -n $_ds_prompt_root && -n $_ds_prompt_branch ]] || return 0
+  (( $+commands[glab] )) || return 0
+  local branch=${_ds_prompt_branch//\%/%25} fd
+  _ds_prompt_mr_key="${XDG_CACHE_HOME:-$HOME/.cache}/ds/prompt-mr${_ds_prompt_root}/branches/$branch/entry"
+  local key=$_ds_prompt_mr_key
+  if (( ${_ds_prompt_mr_expiry[$key]:-0} > EPOCHSECONDS )); then
+    _ds_prompt_mr_render
+    return 0
+  fi
+  # Only interactive shells have descriptor callbacks.
+  [[ -o interactive && -z ${_ds_prompt_mr_pending[$key]} ]] || return 0
+  exec {fd}< <(_ds_prompt_mr_fetch "$key" "$_ds_prompt_branch")
+  _ds_prompt_mr_fds[$fd]=$key
+  _ds_prompt_mr_pending[$key]=$fd
+  zle -F "$fd" _ds_prompt_mr_ready
   return 0
 }
 
@@ -181,6 +317,8 @@ _ds_prompt_precmd() {
   fi
   _ds_prompt_context
   _ds_prompt_git
+  _ds_prompt_path
+  _ds_prompt_mr
   return 0
 }
 

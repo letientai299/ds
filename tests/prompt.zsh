@@ -8,6 +8,11 @@ export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
 export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.invalid
 export GIT_COMMITTER_NAME=$GIT_AUTHOR_NAME GIT_COMMITTER_EMAIL=$GIT_AUTHOR_EMAIL
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+export XDG_CACHE_HOME="$work/cache"
+mkdir "$work/tools"
+print -r -- $'#!/bin/sh\nexit 1' > "$work/tools/glab"
+chmod +x "$work/tools/glab"
+export PATH="$work/tools:$PATH"
 source "$root/src/dotfiles/prompt.zsh"
 COLUMNS=160
 fail() { print -ru2 -- "prompt: $*"; exit 1; }
@@ -17,9 +22,41 @@ expect() {
 }
 cd "$work"
 expect '' 'outside repository'
+_ds_prompt_path
+[[ $_ds_prompt_path == '%F{cyan}%(5~|…/%4~|%~)%f' ]] || fail 'outside path'
 git init -qb main repo
 cd repo
 expect '*⑂ main%f' unborn
+_ds_prompt_path
+[[ $_ds_prompt_path == '%B%F{blue}repo%b%F{cyan}%f' ]] || fail 'root path'
+mkdir -p nested/deep
+cd nested/deep
+_ds_prompt_precmd
+[[ $_ds_prompt_path == '%B%F{blue}repo%b%F{cyan}/nested/deep%f' ]] || fail 'nested path'
+git init -qb inner
+_ds_prompt_precmd
+[[ $_ds_prompt_path == '%B%F{blue}deep%b%F{cyan}%f' ]] || fail 'nested repository'
+cd ../..
+ln -s "$work/repo/nested" "$work/alias"
+cd "$work/alias"
+_ds_prompt_precmd
+[[ $_ds_prompt_path == '%B%F{blue}repo%b%F{cyan}/nested%f' ]] || fail 'symlink path'
+cd "$work/repo"
+rm -rf nested
+mkdir "$work/custom"
+() {
+  local -x GIT_DIR="$work/repo/.git" GIT_WORK_TREE="$work/custom"
+  cd "$work/custom"
+  _ds_prompt_precmd
+  [[ $_ds_prompt_root == "${work:A}/custom" ]] || fail 'custom worktree path'
+}
+cd "$work/repo"
+_ds_prompt_pwd=''
+git config core.worktree "$work/custom"
+_ds_prompt_precmd
+[[ $_ds_prompt_root == "${work:A}/custom" ]] || fail 'configured worktree path'
+git config --unset core.worktree
+_ds_prompt_pwd=''
 print initial > tracked
 git add tracked
 git commit -qm initial
@@ -66,6 +103,8 @@ git merge --abort
 git worktree add -qb linked "$work/linked" >/dev/null 2>&1
 cd "$work/linked"
 expect '*⑂ linked%f*local%f' worktree
+_ds_prompt_path
+[[ $_ds_prompt_path == '%B%F{blue}linked%b%F{cyan}%f' ]] || fail 'worktree path'
 cd "$work/repo"
 git -c protocol.file.allow=always submodule add -q "$work/linked" sub
 git commit -qm submodule

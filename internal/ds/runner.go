@@ -47,7 +47,14 @@ func (ExecRunner) Run(ctx context.Context, c Cmd) error {
 		ctx, cancel = context.WithTimeout(ctx, c.Timeout)
 		defer cancel()
 	}
-	cmd := exec.CommandContext(ctx, c.Args[0], c.Args[1:]...)
+	name := c.Args[0]
+	// os/exec searches the ds process PATH, not the command's.
+	if c.Env != nil {
+		if p := lookPath(name, c.Env.get("PATH")); p != "" {
+			name = p
+		}
+	}
+	cmd := exec.CommandContext(ctx, name, c.Args[1:]...)
 	cmd.Env = c.Env
 	cmd.Dir = c.Dir
 	cmd.Stdin = c.Stdin

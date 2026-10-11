@@ -1,0 +1,17 @@
+name: configuration sources
+description: Check out nvim.conf, tmux.conf, and kitty.conf under _sources
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v7
+      with:
+        repository: letientai299/nvim.conf
+        path: _sources/nvim.conf
+    - uses: actions/checkout@v7
+      with:
+        repository: letientai299/tmux.conf
+        path: _sources/tmux.conf
+    - uses: actions/checkout@v7
+      with:
+        repository: letientai299/kitty.conf
+        path: _sources/kitty.conf

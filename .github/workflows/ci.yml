@@ -1,0 +1,170 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Refreshes embedded configuration snapshots without a ds commit.
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CGO_ENABLED: "0"
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq zsh
+      - uses: jdx/mise-action@v4
+      - run: mise run lint
+      - run: go test ./...
+      - run: mise run test:zsh
+
+  dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/sources
+      - uses: jdx/mise-action@v4
+      - name: Validate checkout mode against the fetched sources
+        run: |
+          home=$RUNNER_TEMP/checkout-home
+          mkdir -p "$home/.config/ds"
+          printf '[sources]\nnvim = "%s"\ntmux = "%s"\nkitty = "%s"\n' \
+            "$PWD/_sources/nvim.conf" "$PWD/_sources/tmux.conf" "$PWD/_sources/kitty.conf" \
+            >"$home/.config/ds/config.toml"
+          ./ds --home "$home" add -l core -l extra -l ui --dry-run
+          ./ds --home "$home" version
+      - run: >-
+          go run ./cmd/ds-build dist --out dist
+          --source nvim=_sources/nvim.conf
+          --source tmux=_sources/tmux.conf
+          --source kitty=_sources/kitty.conf
+      - run: go run ./cmd/ds-build check-static dist/ds-*-linux-*
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist
+          if-no-files-found: error
+
+  linux:
+    needs: dist
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+      - name: Execute on Alpine without glibc
+        run: |
+          chmod +x dist/ds-*
+          docker run --rm -v "$PWD/dist:/dist:ro" alpine:3.20 sh -euc '
+            ds=$(ls /dist/ds-*-linux-${{ matrix.arch }})
+            "$ds" version
+            "$ds" --home /tmp/h status -l core'
+      - name: Provision core and extra on Ubuntu as root
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          docker run --rm -e GITHUB_TOKEN -v "$PWD/dist:/dist:ro" ubuntu:24.04 sh -euc '
+            ds=$(ls /dist/ds-*-linux-${{ matrix.arch }})
+            "$ds" add -l core -l extra
+            "$HOME/.local/bin/ds" status --check
+            "$HOME/.local/bin/ds" add -l core -l extra --dry-run | grep -q "nothing to do"'
+
+  macos:
+    needs: dist
+    runs-on: macos-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+      - run: chmod +x dist/ds-*
+      - name: Execute both macOS architectures
+        run: |
+          softwareupdate --install-rosetta --agree-to-license >/dev/null
+          arm=$(ls dist/ds-*-darwin-arm64)
+          amd=$(ls dist/ds-*-darwin-amd64)
+          "$arm" version
+          arch -x86_64 "$amd" version
+      - name: Provision every layer in a temporary home
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          home=$RUNNER_TEMP/home
+          ds=$(ls dist/ds-*-darwin-arm64)
+          "$ds" --home "$home" add -l core -l extra -l ui
+          "$home/.local/bin/ds" --home "$home" status --check
+
+  publish:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [test, dist, linux, macos]
+    runs-on: ubuntu-latest
+    # One publisher at a time; a pending newer run replaces an older one.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+      - id: pages
+        uses: actions/configure-pages@v6
+      - name: Skip when a newer run already published
+        id: order
+        run: |
+          published=$(curl -fsSL "${{ steps.pages.outputs.base_url }}/manifest.json" | jq -r '.workflow.run_id // 0' || echo 0)
+          if [ "$published" -gt "$GITHUB_RUN_ID" ]; then
+            echo "run $published already published"
+            echo "publish=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >>"$GITHUB_OUTPUT"
+          fi
+      - if: steps.order.outputs.publish == 'true'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+      - if: steps.order.outputs.publish == 'true'
+        id: deploy
+        uses: actions/deploy-pages@v5
+      - name: Verify the anonymous download
+        if: steps.order.outputs.publish == 'true'
+        run: |
+          base=${{ steps.pages.outputs.base_url }}
+          build=$(jq -r .build dist/manifest.json)
+          for _ in 1 2 3 4 5 6; do
+            [ "$(curl -fsSL "$base/manifest.json" | jq -r .build)" = "$build" ] && break
+            sleep 10
+          done
+          DS_DOWNLOAD_URL=$base sh dist/bootstrap.sh --home "$RUNNER_TEMP/h" -l core --dry-run

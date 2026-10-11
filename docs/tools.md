@@ -1,9 +1,9 @@
 # Shell tools
 
-`ds apply core` installs `serve`, `fzf-files`, and `fzf-dirs` in `~/.local/bin`
-and manages zoxide through mise. `extra` supplies eza and Worktrunk.
-Trial shells expose the same commands. Existing files at managed paths follow
-the normal adoption and conflict rules.
+The `zsh` component links `serve`, `fzf-files`, and `fzf-dirs` into `~/.local/bin`; zoxide
+comes through mise. `extra` supplies eza and Worktrunk. Trial shells expose the
+same commands. Existing files at managed paths follow the normal ownership and
+conflict rules.
 
 ## File selection and search
 
@@ -27,34 +27,32 @@ picker stays under the current directory. Ignored directory searches use the
 same bounded include settings as file selection.
 
 [Worktrunk][worktrunk] is available as `wt` in `extra`. Its upstream shell
-integration loads after completion initializes, or on the first invocation,
-so `wt switch` can change the current shell's directory. ds owns this integration;
+integration loads after completion initializes, or on the first invocation, so
+`wt switch` can change the current shell's directory. ds owns this integration;
 there is no need to run `wt config shell install`. Use native Git commands
 alongside Worktrunk; the old Git automation scripts are not included.
 
-The `remote` layer installs [Yazi][yazi]. Run `r` to open it and keep its final
+The `core` layer installs [Yazi][yazi]. Run `r` to open it and keep its final
 directory in the shell after quitting. Its managed configuration lives under
 `$XDG_CONFIG_HOME/ds/yazi`, leaving a personal `~/.config/yazi` independent.
 
 ## Completion and shell conveniences
 
-[zsh-completions][completions] joins the existing deferred completion setup.
-Tab completion tries exact case first, then matches case insensitively. It also
+[zsh-completions][completions] joins the existing deferred completion setup. Tab
+completion tries exact case first, then matches case insensitively. It also
 works with the cursor inside a word. History expansions return to the command
-line for review before execution.
-`~/.local/share/zsh/site-functions` and the corresponding XDG data path accept
-personal completion definitions. SSH completion combines config aliases with
-known hosts, follows user config includes, and re-reads them when completing.
-It skips include cycles and bounds config traversal. It does not scan SSH files
-at startup or on each prompt.
+line for review before execution. `~/.local/share/zsh/site-functions` and the
+corresponding XDG data path accept personal completion definitions. SSH
+completion combines config aliases with known hosts, follows user config
+includes, and re-reads them when completing. It skips include cycles and bounds
+config traversal. It does not scan SSH files at startup or on each prompt.
 
 `local_todo` opens `.dump/todo.md` in `$EDITOR`, shared by a repository's
-worktrees. `so` sources a file, `:q` exits, and `wrap` / `nowrap` control terminal
-line wrapping. Interactive comments are enabled, the bell is disabled, and
-Ctrl-D does not exit the shell. `exit` and `:q` still exit normally.
+worktrees. `so` sources a file, `:q` exits, and `wrap` / `nowrap` control
+terminal line wrapping. Interactive comments are enabled, the bell is disabled,
+and Ctrl-D does not exit the shell. `exit` and `:q` still exit normally.
 
-`gon` retains its existing `git open` alias. The separate `git-open` dependency
-must already be available if this alias is used.
+`gon` runs `git open`; the `git` component installs `git-open` through mise.
 
 ## Automatic project environments
 
@@ -68,8 +66,8 @@ export DS_MISE_ACTIVATE=1
 Activation runs before the first command and installs directory/prompt hooks.
 This makes project variables available in the shell itself. It is deliberately
 not deferred, since that could leave early commands with the wrong environment.
-Repeated sourcing does not install duplicate hooks. Without this option, ds
-uses shims; `mise exec` and `mise run` still load project environments explicitly.
+Repeated sourcing does not install duplicate hooks. Without this option, ds uses
+shims; `mise exec` and `mise run` still load project environments explicitly.
 
 ## Serve a directory
 
@@ -91,7 +89,7 @@ each second, so use a build-output directory rather than a large checkout.
 
 ## Disk usage and archives
 
-`ds apply extra` installs [gdu][gdu] for disk usage analysis and [ouch][ouch]
+`ds add -l extra` installs [gdu][gdu] for disk usage analysis and [ouch][ouch]
 for creating, listing, and extracting archives.
 
 ```sh
@@ -104,12 +102,12 @@ ouch decompress logs.tar.zst --dir restored
 Ouch supports ZIP, TAR, 7z, gzip, bzip2, xz, zstd, and other compression
 formats. RAR supports extraction and listing only.
 
+[caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server
 [gdu]: https://github.com/dundee/gdu
 [ouch]: https://github.com/ouch-org/ouch
-[caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server
-[fzf-includes]: ../src/dotfiles/fzf-includes.zsh
-[rgrc]: ../src/dotfiles/rgrc
-[exports]: ../src/dotfiles/exports.zsh
+[fzf-includes]: ../assets/dotfiles/fzf-includes.zsh
+[rgrc]: ../assets/dotfiles/rgrc
+[exports]: ../assets/dotfiles/exports.zsh
 [worktrunk]: https://worktrunk.dev/
 [zoxide]: https://github.com/ajeetdsouza/zoxide
 [completions]: https://github.com/zsh-users/zsh-completions
@@ -117,21 +115,21 @@ formats. RAR supports extraction and listing only.
 
 ## Kitty
 
-`ds apply ui` installs Kitty through mise and provides `kt`, which launches the
-[custom Kitty repository][kitty-config] with its own configuration and helpers.
-The `ui` layer is independent; apply `core` too for the fzf and Neovim features
-used by that configuration, or apply `all` for every layer.
+`ds add -l ui` installs Kitty through mise and provides `kt`, which launches Kitty
+with the configuration and helpers from [`kitty.conf`][kitty-conf]. The `ui`
+layer is independent; add `core` too for the fzf and Neovim features used by
+that configuration.
 
-Kitty supports macOS and Linux with glibc 2.35 or newer. `ui` and `all` reject
-Alpine and older glibc hosts before installation. A display is required to open
-a window. Ubuntu ARM64 CLI startup is verified; Rocky 9's older glibc cannot
-run the pinned upstream package.
+Kitty supports macOS and Linux with glibc 2.35 or newer. Plans that select it on
+Alpine or older glibc hosts block before installation. A display is required to
+open a window. Ubuntu ARM64 CLI startup is verified; Rocky 9's older glibc
+cannot run the pinned upstream package.
 
-A source checkout uses the sibling `kitty.conf` checkout or `DS_KITTY_SOURCE`.
-Build its launcher with that repository's build task before `ds apply ui`;
-`mise run install -- --layer ui` also builds it. Delivered snapshots contain
-compiled helpers and configuration, so destination hosts do not need Go.
-The `kt` launcher preserves the repository's per-instance configuration; ds does
-not register desktop shortcuts or change existing Kitty windows.
+A checkout uses the sibling `kitty.conf` or `sources.kitty` in
+`<config>/ds/config.toml`, and builds the helper with that repository's Go
+toolchain when it is missing or older than its sources. Main builds embed the
+compiled helper, so destination hosts do not need Go. The `kt` launcher
+preserves the repository's per-instance configuration; ds does not register
+desktop shortcuts or change existing Kitty windows.
 
-[kitty-config]: https://github.com/letientai299/kitty.conf
+[kitty-conf]: https://github.com/letientai299/kitty.conf

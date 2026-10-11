@@ -1,71 +1,55 @@
 # ds
 
-`ds` manages my dotfiles, organize tools by layers, supports mac/ubuntu desktop,
-remote machines and typical glibc containers, thus, enable me to reuse my
-configuration in various environments.
+`ds` configures my development environment on macOS and Ubuntu, locally or over
+SSH. It converges selected layers and components of tooling and configuration in
+a home directory. [mise][mise] installs tools; the host package manager supplies
+native prerequisites; Zsh and Lua configuration stay as they are.
 
 > [!WARNING] This is for my personal use only. No support or promises.
 
-## Install
-
-### Try in a new container
+## Install the latest main build
 
 ```sh
-curl -fsSLo /tmp/ds-install.sh \
-  https://raw.githubusercontent.com/letientai299/ds/main/scripts/install.sh
-docker run --rm -it \
-  -v /tmp/ds-install.sh:/install.sh:ro \
-  -v "$PWD":/work \
-  -w /work \
-  ubuntu:24.04 sh /install.sh --shell
+sh -c "$(curl -fsSL https://letientai.io/ds/bootstrap.sh)" -- -l core -l extra
 ```
 
-### Install in an existing container
+The bootstrap downloads the binary for this host, verifies its SHA-256, and runs
+`ds add` with the given selectors, or `-l core` without any. It needs `curl` or
+`wget` and a SHA-256 tool; no Go, Git, or checkout.
+
+## Run from a checkout
 
 ```sh
-curl -fsSLo /tmp/ds-install.sh \
-  https://raw.githubusercontent.com/letientai299/ds/main/scripts/install.sh
-sh /tmp/ds-install.sh --shell
+git clone https://github.com/letientai299/ds
+cd ds && mise install
+./ds add -l core -l extra -l ui --dry-run
+./ds add -l core -l extra -l ui
 ```
 
-### Install on a host
+The `./ds` launcher builds the CLI with the checkout's Go toolchain and reads
+live assets, including uncommitted edits. Sibling `nvim.conf`, `tmux.conf`, and
+`kitty.conf` checkouts supply editor, Tmux, and Kitty configuration.
+
+## Everyday commands
 
 ```sh
-curl -fsSLo ds-install.sh \
-  https://raw.githubusercontent.com/letientai299/ds/main/scripts/install.sh
-sh ds-install.sh --no-apply
-sh ds-install.sh
+ds                          # status of the saved selection
+ds add tmux yazi            # add components
+ds add -l extra             # add a layer
+ds status --check           # exit 1 unless complete
+ds upgrade                  # ds, tools, plugins, and system packages
+ds deploy my-host -l core   # install on an SSH host
+ds shell                    # trial shell with isolated configuration
 ```
 
-The installer detects existing installations and asks before updating them.
-Use `--yes` for unattended updates, and repeat `--layer` to select layers.
-`--force` backs up configuration conflicts; source edits are preserved.
-
-## Update
-
-```sh
-ds update
-```
-
-`ds update` pulls the tracked branches of `ds` and its installed configuration
-sources: `nvim.conf`, `tmux.conf`, and `kitty.conf`. It honors `DS_NVIM_SOURCE`,
-`DS_TMUX_SOURCE`, and `DS_KITTY_SOURCE`; otherwise it discovers sibling
-checkouts and installed configuration links.
-Every existing checkout must be clean and have an upstream. Pulls use fast-forward only, with `ds` updated last. A failed pull stops
-the command; earlier successful pulls remain applied.
-
-After pulling, `ds update` refreshes runtimes and reapplies the selected layers,
-including required tools and configuration. Custom configuration sources stay
-selected. Delivered snapshots require a new deployment.
-
-## Documentation
-
-See [docs][docs].
+See the [documentation][docs].
 
 ## License
 
-[MIT][license]. Runtime notices are in [Third-party notices][third-party].
+[MIT][license]. Notices for vendored shell code are in [third-party
+notices][third-party].
 
-[docs]: docs/
+[docs]: docs/README.md
 [license]: LICENSE
-[third-party]: src/THIRD-PARTY.md
+[mise]: https://mise.jdx.dev/
+[third-party]: assets/THIRD-PARTY.md

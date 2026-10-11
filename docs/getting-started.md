@@ -1,108 +1,65 @@
-# Getting started
+# Getting started and recovery
 
-## Look before installing
+## macOS from a checkout
 
-[Try ds in Docker][try] applies a layer inside a throwaway container and
-opens a shell in it. Nothing is written to your home, so it answers "what does
-this feel like" without a decision.
-
-## Install
-
-The [host snippet][readme-host] downloads the [source installer][installer]
-and applies `core`. `sh ds-install.sh --no-apply` prepares sources and
-runtimes, then previews `core`. Without that flag it applies the layer. The
-installer clones `main` outside a checkout and needs no published release.
-The launcher is at `~/.local/bin/ds`. `sh ds-install.sh --shell` opens Zsh
-after applying.
-
-The installer supports macOS, Ubuntu, Debian, Alpine, Fedora, and CentOS
-Stream on ARM64 and x64. Linux package installation needs root or `sudo`. On
-macOS, install Command Line Tools and [Homebrew][brew] first. Sources clone
-under `${XDG_DATA_HOME:-~/.local/share}/ds-source`; keep them because managed
-files link to them. An existing checkout there is reused without pulling or
-resetting. `sh ds-install.sh --help` lists `--layer`, `--prefix`, and
-`--skip docker`.
-
-## Layers
-
-`core` is the daily setup. `remote` extends it. `extra` and `ui` are
-independent, and `all` selects every layer. Run `ds help` for component lists
-or `ds status LAYER --verbose` for resolved files. SSH delivery and checkout
-workflows are in [Architecture][architecture].
-
-## Apply core safely
-
-`ds status` and `ds apply` use the selected layer union, initially `core`.
-Choose an explicit layer to inspect or apply another preset:
+Install [Homebrew][brew] and [mise][mise], then clone ds next to `nvim.conf`,
+`tmux.conf`, and `kitty.conf`:
 
 ```sh
-./ds status core
-./ds apply core --dry-run
+cd ~/dev/mine/ds && mise install
+./ds add -l core -l extra -l ui --dry-run
+./ds add -l core -l extra -l ui
 ```
 
-State has three useful summaries:
+ds links `~/.local/bin/ds` to the launcher, so later commands run as `ds`. Open
+a new shell after the first addition.
 
-- `complete`: every component and managed file is present;
-- `incomplete`: one or more entries are missing or unavailable;
-- `conflict`: a managed target exists with different ownership or content.
-
-Apply refuses conflicts:
+## Ubuntu or another host
 
 ```sh
-./ds apply core
+sh -c "$(curl -fsSL https://letientai.io/ds/bootstrap.sh)" -- -l core -l extra
 ```
 
-If a conflict should be preserved and replaced, use `--force`:
+Run it interactively when packages are missing so sudo can prompt; automation
+needs root or passwordless sudo. Hosts provisioned elsewhere can pass
+`--no-packages` once Git, curl, Zsh, and Tmux exist.
+
+## Remote hosts and job homes
 
 ```sh
-./ds apply core --force --dry-run
-./ds apply core --force
+ds deploy my-host -l core -l extra
+ds deploy my-host --home /scratch/local/me/job/home -l core -l extra
+ds --home /scratch/local/me/job/home add -l core -l extra
 ```
 
-Each conflicting target is backed up to `<target>.ds-adopted` before it is
-replaced. `--force` never follows a linked Zsh rc into another repository.
-Managed blocks in shell and Git startup files are updated in place.
-
-## Use the remote layer
-
-`remote` is an extended local preset. It includes every `core` component
-and adds the tools listed under [Layers][layers]. SSH delivery uses
-`ds push HOST LAYER`:
-
-```sh
-./ds apply remote --dry-run
-./ds apply remote
-./ds status remote --verbose
-```
-
-On macOS, Docker must already be available through Docker Desktop, OrbStack, or
-another compatible engine. On Linux, apply reuses a ready engine or selects the
-rootless path when the required user-namespace and systemd capabilities exist.
-
-Skip Docker only on a deliberately restricted host:
-
-```sh
-./ds apply remote --skip docker
-```
-
-The layer remains incomplete until Docker is ready.
+A selected home keeps its own builds, selection, and configuration. Container
+runtimes, credentials, and host provisioning stay with the tools that own them.
+Host-specific shell additions belong in `<config>/ds/local.zsh`.
 
 ## Recovery
 
-```sh
-./ds remove core
-```
+- `ds status --verbose` lists every component and managed path.
+- A conflict blocks the plan. Inspect the path, then rerun with `--force` to
+  move it to `<state>/ds/backups/<time>/` and continue.
+- A failed run prints the failed action and its operation record under
+  `<state>/ds/operations/`. Fix the cause and rerun the same command.
+- Remove a managed block by deleting the lines between its markers; ds adds it
+  again on the next `add`.
+- mise pins in `<config>/mise/config.toml` override ds defaults; edit that file
+  rather than `conf.d/10-ds.toml`, which ds owns.
 
-Removal deletes only exact links and marker blocks owned by `ds`. It restores
-available `.ds-adopted` backups when the original target is absent. Installed
-system packages, mise tools, and versioned snapshots are additive and remain on
-disk.
+## Moving from the Janet version
 
-`--force` refuses to overwrite an existing `.ds-adopted` backup.
+Older installs used the same rc markers and linked into the old checkout or the
+installer's `<data>/ds-source` clone. ds recognizes those blocks and links as
+owned and replaces them. Other content at managed paths is a conflict. Old
+`ds/layer`, `ds/components`, and `ds/mise` files are ignored; the first `add`
+records the new selection. Environments that still export
+`MISE_CONFIG_DIR=<config>/ds/mise` or a `MISE_ENV` with `core` or `remote` hide
+the new tools; `ds status` notes the old directory. Unset both, then remove
+`ds-source` and `ds/mise` once nothing else reads them. ds no longer
+provisions Docker; existing runtimes stay untouched, and the shell keeps Docker
+aliases and `serve`.
 
-[architecture]: architecture.md
 [brew]: https://brew.sh/
-[installer]: ../scripts/install.sh
-[layers]: #layers
-[readme-host]: ../README.md#install-on-a-host
-[try]: try.md
+[mise]: https://mise.jdx.dev/getting-started.html

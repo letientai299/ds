@@ -1,7 +1,9 @@
 .ai.dump/
-.config/mise/config.local.toml
 .rumdl_cache/
 dist/
 .ai/
+mise.local.toml
 
-src/dotfiles/yazi/vfs.toml
+/internal/assets/embedded/
+assets/dotfiles/yazi/vfs.toml
+_sources/

@@ -1,15 +1,14 @@
 # Zsh prompt
 
-The built-in prompt uses Zsh and Git. No prompt plugin is required.
-Open a new shell after installing an updated checkout.
+The built-in prompt uses Zsh and Git. No prompt plugin is required. Open a new
+shell after installing an updated checkout.
 
-The first line shows the SSH alias in brackets when connected remotely,
-`⚙️` for an effective root shell, and `🔒` when the current Linux filesystem is
-mounted read-only. The managed [SSH config][ssh-config] sends
-`LC_SSH_ALIAS=%n`, using the alias given to `ssh`; if the server does not accept
-it, the short hostname is shown. It also shows the directory, `⑂` branch, Git
-counts, and latest commit subject.
-Long lines truncate to fit the terminal. Detached HEAD shows `@` and an
+The first line shows the SSH alias in brackets when connected remotely, `⚙️` for
+an effective root shell, and `🔒` when the current Linux filesystem is mounted
+read-only. The managed [SSH config][ssh-config] sends `LC_SSH_ALIAS=%n`, using
+the alias given to `ssh`; if the server does not accept it, the short hostname
+is shown. It also shows the directory, `⑂` branch, Git counts, and latest commit
+subject. Long lines truncate to fit the terminal. Detached HEAD shows `@` and an
 abbreviated commit ID; repositories without commits omit the commit subject.
 
 | Symbol | Count                                      |
@@ -24,27 +23,27 @@ abbreviated commit ID; repositories without commits omit the commit subject.
 
 Git status refreshes before each prompt without fetching or locking the index.
 The commit subject stays cached until HEAD changes. Large repositories and slow
-filesystems can increase refresh time because status runs synchronously.
-On macOS, the prompt resolves Apple's Git launcher to its selected executable
-and reuses that path. Changes to PATH or developer-tool selection are respected.
+filesystems can increase refresh time because status runs synchronously. On
+macOS, the prompt resolves Apple's Git launcher to its selected executable and
+reuses that path. Changes to PATH or developer-tool selection are respected.
 
-The second line shows `•` for one background or stopped job and `2•` for two.
-A pipeline counts as one job. Command duration appears only above ten seconds;
+The second line shows `•` for one background or stopped job and `2•` for two. A
+pipeline counts as one job. Command duration appears only above ten seconds;
 idle time at the prompt is excluded. The clock uses local time. Failed commands
 show a red `[exit_code]❯`; successful commands show a green `❯`.
 
 Run `zsh -df tests/prompt.zsh` for disposable Git fixtures and interactive job
-checks. Run `mise run bench:prompt` for refresh latency percentiles across small,
-large, dirty, and non-repository directories. `DS_BENCH_SAMPLES` sets repetitions.
-The benchmark includes the old static prompt as a baseline.
-Pass checkout paths to `mise run bench:prompt -- /path/to/checkout` to measure
+checks. Run `mise run bench:prompt` for refresh latency percentiles across
+small, large, dirty, and non-repository directories. `DS_BENCH_SAMPLES` sets
+repetitions. The benchmark includes the old static prompt as a baseline. Pass
+checkout paths to `mise run bench:prompt -- /path/to/checkout` to measure
 existing repositories with their normal Git configuration. New-head samples
 clear the subject cache; they do not change HEAD or flush filesystem caches.
 
 Implementation: [prompt source][source]. Protocols: [Git status][git-status] and
 [Zsh prompt expansion][zsh-prompt].
 
-[source]: ../src/dotfiles/prompt.zsh
-[ssh-config]: ../src/dotfiles/ssh_config
+[source]: ../assets/dotfiles/prompt.zsh
+[ssh-config]: ../assets/dotfiles/ssh_config
 [git-status]: https://git-scm.com/docs/git-status
 [zsh-prompt]: https://zsh.sourceforge.io/Doc/Release/Prompt-Expansion.html

@@ -1,0 +1,6 @@
+version: "2"
+linters:
+  exclusions:
+    # Ignores unchecked Close, Remove, and print errors.
+    presets:
+      - std-error-handling

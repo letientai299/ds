@@ -4,7 +4,7 @@ root=${0:A:h:h}
 mkdir -p "$root/.ai/prompt"
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-prompt-bench.XXXXXX")
 trap 'cd "$root"; rm -rf "$work"' EXIT
-source "$root/src/dotfiles/prompt.zsh"
+source "$root/assets/dotfiles/prompt.zsh"
 preexec_functions=()
 COLUMNS=160
 samples=${DS_BENCH_SAMPLES:-100}

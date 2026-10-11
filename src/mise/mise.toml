@@ -1,6 +1,0 @@
-[tools]
-"npm:git-open" = "latest"
-
-[settings]
-quiet = true
-# Tools and packages belong to explicit layer profiles.

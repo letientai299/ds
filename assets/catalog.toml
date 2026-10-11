@@ -1,0 +1,213 @@
+# Layers are independent collections of components. Components declare
+# their tools, native packages, dependencies, and owned configuration.
+#
+# Link and block targets use target placeholders: {bin}, {ds}, {zshrc},
+# {gitconfig}, {ssh}, {nvim}, and {tmux}. A trial shell leaves {ssh} unset,
+# which skips that entry. Link sources name a repository and a path inside it.
+# Tool specs may use {assets} for the ds asset directory.
+
+[layers]
+core = [
+  "mise",
+  "git",
+  "curl",
+  "zsh",
+  "neovim",
+  "fd",
+  "fzf",
+  "ripgrep",
+  "tree-sitter",
+  "zoxide",
+  "jq",
+  "xh",
+  "tmux",
+  "yazi",
+]
+extra = ["bat", "delta", "worktrunk", "eza", "gdu", "ouch"]
+ui = ["kitty"]
+
+[components.mise]
+commands = ["mise"]
+
+[components.git]
+commands = ["git"]
+requires = ["mise"]
+packages = { apt = ["git"], brew = ["git"] }
+tool = { name = "npm:git-open", version = "latest" }
+links = [
+  { target = "{ds}/gitconfig", source = "ds:dotfiles/gitconfig" },
+  { target = "{ds}/gitignore", source = "ds:dotfiles/gitignore" },
+]
+blocks = [
+  { target = "{gitconfig}", text = "[include]\n\tpath = {ds}/gitconfig\n[core]\n\texcludesFile = {ds}/gitignore" },
+]
+
+[components.curl]
+commands = ["curl"]
+packages = { apt = ["curl", "ca-certificates"], brew = ["curl"] }
+
+[components.zsh]
+commands = ["zsh"]
+packages = { apt = ["zsh"], brew = ["zsh"] }
+links = [
+  { target = "{ds}/shell.zsh", source = "ds:dotfiles/shell.zsh" },
+  { target = "{ds}/ssh_config", source = "ds:dotfiles/ssh_config" },
+  { target = "{bin}/fzf-files", source = "ds:tools/fzf-files" },
+  { target = "{bin}/fzf-dirs", source = "ds:tools/fzf-dirs" },
+  { target = "{bin}/serve", source = "ds:tools/serve" },
+]
+blocks = [
+  { target = "{zshrc}", text = "source \"{ds}/shell.zsh\"" },
+  { target = "{ssh}", text = "Include \"{ds}/ssh_config\"" },
+]
+
+[components.neovim]
+commands = ["nvim"]
+requires = ["mise", "git"]
+tool = { name = "neovim", version = "0.12.5" }
+links = [{ target = "{nvim}", source = "nvim:" }]
+
+[components.fd]
+commands = ["fd"]
+requires = ["mise"]
+tool = { name = "fd", version = "latest" }
+
+[components.fzf]
+commands = ["fzf"]
+requires = ["mise"]
+tool = { name = "fzf", version = "latest" }
+
+[components.ripgrep]
+commands = ["rg"]
+requires = ["mise"]
+tool = { name = "ripgrep", version = "latest" }
+links = [{ target = "{ds}/rgrc", source = "ds:dotfiles/rgrc" }]
+
+[components.tree-sitter]
+commands = ["tree-sitter"]
+requires = ["mise"]
+tool = { name = "tree-sitter", version = "latest" }
+
+[components.zoxide]
+commands = ["zoxide"]
+requires = ["mise"]
+tool = { name = "zoxide", version = "latest" }
+
+[components.jq]
+commands = ["jq"]
+requires = ["mise"]
+tool = { name = "jq", version = "latest" }
+
+[components.xh]
+commands = ["xh"]
+requires = ["mise"]
+tool = { name = "xh", version = "latest" }
+
+[components.tmux]
+commands = ["tmux"]
+packages = { apt = ["tmux", "file"], brew = ["tmux"] }
+links = [
+  { target = "{tmux}", source = "tmux:" },
+  { target = "{bin}/tm", source = "tmux:tm" },
+]
+
+[components.yazi]
+commands = ["yazi", "ya"]
+requires = ["mise"]
+tool = { name = "yazi", version = "latest" }
+links = [{ target = "{ds}/yazi", source = "ds:dotfiles/yazi" }]
+
+[components.bat]
+commands = ["bat"]
+requires = ["mise"]
+tool = { name = "bat", version = "latest" }
+
+[components.eza]
+commands = ["eza"]
+requires = ["mise"]
+tool = { name = "eza", version = "latest" }
+
+[components.gdu]
+commands = ["gdu"]
+requires = ["mise"]
+tool = { name = "gdu", version = "latest" }
+
+[components.delta]
+commands = ["delta"]
+requires = ["mise"]
+
+[components.delta.tool]
+name = "http:delta"
+version = "0.18.2"
+
+[components.delta.tool.platforms]
+linux-arm64 = { url = "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-aarch64-unknown-linux-gnu.tar.gz", checksum = "sha256:adf7674086daa4582f598f74ce9caa6b70c1ba8f4a57d2911499b37826b014f9" }
+linux-x64 = { url = "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-x86_64-unknown-linux-gnu.tar.gz", checksum = "sha256:99607c43238e11a77fe90a914d8c2d64961aff84b60b8186c1b5691b39955b0f" }
+macos-arm64 = { url = "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-aarch64-apple-darwin.tar.gz", checksum = "sha256:6ba38dce9f91ee1b9a24aa4aede1db7195258fe176c3f8276ae2d4457d8170a0" }
+macos-x64 = { url = "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-x86_64-apple-darwin.tar.gz", checksum = "sha256:e9b5c4a9e73d2119c687e074f0d97f188e30e5fe8ae0e6d455755f74bb5cc0cf" }
+
+[components.worktrunk]
+commands = ["wt"]
+requires = ["mise"]
+
+[components.worktrunk.tool]
+name = "http:worktrunk"
+version = "0.79.0"
+
+[components.worktrunk.tool.platforms]
+linux-arm64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-aarch64-unknown-linux-musl.tar.xz", checksum = "sha256:6bb148471c4f4e5e616a3d703a00f0095b2d0025d86658f8d610c95a7756e3e7" }
+linux-x64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-x86_64-unknown-linux-musl.tar.xz", checksum = "sha256:b8c190b1d652370ef9f6b8f4694a2d6831b5b22f4b789f047612aad32764c6cf" }
+macos-arm64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-aarch64-apple-darwin.tar.xz", checksum = "sha256:4d77ec416c3873c1364aa135022303723f9333372f693193537abe74e88aaec1" }
+macos-x64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-x86_64-apple-darwin.tar.xz", checksum = "sha256:160380bc5595ba2ab82170643315b58444f3108464c00fc5466b67cef3457ea0" }
+
+[components.ouch]
+commands = ["ouch"]
+requires = ["mise"]
+
+[components.ouch.tool]
+name = "http:ouch"
+version = "0.8.3"
+
+[components.ouch.tool.platforms]
+linux-arm64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-aarch64-unknown-linux-musl.tar.gz", checksum = "sha256:4619158de69e65e8d23147c3d8b46b116feb0259c8a1704df7d792394c2b5847" }
+linux-x64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-x86_64-unknown-linux-musl.tar.gz", checksum = "sha256:eaab9b997a823f584557ac5f85205105ae577a4c4fbd23926b686469cfa19881" }
+macos-arm64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-aarch64-apple-darwin.tar.gz", checksum = "sha256:969c1bd9105b5033cc9cac0a37c011d23482948d681b43f97c6f79311f3263d0" }
+macos-x64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-x86_64-apple-darwin.tar.gz", checksum = "sha256:c97188f4c09fb959ea0d3117781ae524431b62fcd8f1b8d19323550773cd438a" }
+
+[components.kitty]
+commands = ["kitty", "kitten"]
+requires = ["mise"]
+# Upstream Kitty binaries need glibc 2.35 or newer on Linux.
+glibc = "2.35"
+# Libraries the Kitty binary loads; installed before the tool.
+prerequisites = { apt = [
+  "libgl1",
+  "libegl1",
+  "libx11-6",
+  "libxcursor1",
+  "libxrandr2",
+  "libxinerama1",
+  "libxi6",
+  "libxkbcommon0",
+  "libxkbcommon-x11-0",
+  "libwayland-client0",
+] }
+helper = { repo = "kitty", package = "./cmd/kt", output = "bin/kt" }
+links = [
+  { target = "{ds}/kitty", source = "kitty:" },
+  { target = "{ds}/kt", source = "kitty:bin/kt" },
+  { target = "{bin}/kt", source = "ds:tools/kt" },
+]
+
+[components.kitty.tool]
+name = "http:kitty"
+version = "0.49.1"
+postinstall = 'sh "{assets}/tools/kitty-postinstall"'
+bin_path = "bin"
+strip_components = 0
+
+[components.kitty.tool.platforms]
+macos-arm64 = { url = "https://github.com/kovidgoyal/kitty/releases/download/v0.49.1/kitty-0.49.1.dmg", checksum = "sha256:d258b6dcab1866a9bc456c55b3754c6cdf6a7a6a93d038475275675bb9f2053a", format = "raw" }
+macos-x64 = { url = "https://github.com/kovidgoyal/kitty/releases/download/v0.49.1/kitty-0.49.1.dmg", checksum = "sha256:d258b6dcab1866a9bc456c55b3754c6cdf6a7a6a93d038475275675bb9f2053a", format = "raw" }
+linux-arm64 = { url = "https://github.com/kovidgoyal/kitty/releases/download/v0.49.1/kitty-0.49.1-arm64.txz", checksum = "sha256:828fcfe3e165c84d830f82545b6d568655b2620d77b7d5a4360e082bd9ba744b" }
+linux-x64 = { url = "https://github.com/kovidgoyal/kitty/releases/download/v0.49.1/kitty-0.49.1-x86_64.txz", checksum = "sha256:8cfd68ed484d9a32e4e389abffe1a0ec6e0fbd7be5c9ea1c4fa41b9ead4af791" }

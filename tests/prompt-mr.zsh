@@ -8,7 +8,7 @@ zmodload zsh/zselect
 trap 'zpty -d 2>/dev/null; cd "$root"; rm -rf "$work"' EXIT
 export XDG_CACHE_HOME="$work/cache" DS_MR_CALLS="$work/calls"
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
-export DS_PROMPT_SOURCE="$root/src/dotfiles/prompt.zsh" DS_MR_PROBE="$work/probe"
+export DS_PROMPT_SOURCE="$root/assets/dotfiles/prompt.zsh" DS_MR_PROBE="$work/probe"
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 mkdir "$work/bin"
 cat > "$work/bin/glab" <<'GLAB'

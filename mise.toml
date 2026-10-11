@@ -1,1 +1,41 @@
-.config/mise/config.toml
+[tools]
+go = "1.27.1"
+golangci-lint = "2"
+shellcheck = "0.11.0"
+shfmt = "3.14.1"
+
+[env]
+CGO_ENABLED = "0"
+
+[tasks.build]
+description = "Build ds for this host into dist/"
+run = "go build -trimpath -o dist/ds ./cmd/ds"
+
+[tasks.test]
+description = "Run unit and integration tests"
+run = "go test ./..."
+
+[tasks.lint]
+description = "Vet, lint, and check shell scripts"
+run = [
+  "go vet ./...",
+  "golangci-lint run",
+  "shellcheck ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve",
+  "shfmt -d ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve",
+]
+
+[tasks."test:zsh"]
+description = "Run the Zsh prompt tests"
+run = ["zsh -df tests/prompt.zsh", "zsh -df tests/prompt-mr.zsh"]
+
+[tasks.fmt]
+description = "Format Go and shell sources"
+run = ["gofmt -w cmd internal assets", "shfmt -w ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve"]
+
+[tasks.dist]
+description = "Build main-mode binaries for every platform into dist/"
+run = "go run ./cmd/ds-build dist --out dist"
+
+[tasks."bench:prompt"]
+description = "Measure prompt refresh latency in disposable repositories"
+run = "zsh -df tests/prompt-bench.zsh"

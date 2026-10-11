@@ -13,7 +13,7 @@ mkdir "$work/tools"
 print -r -- $'#!/bin/sh\nexit 1' > "$work/tools/glab"
 chmod +x "$work/tools/glab"
 export PATH="$work/tools:$PATH"
-source "$root/src/dotfiles/prompt.zsh"
+source "$root/assets/dotfiles/prompt.zsh"
 COLUMNS=160
 fail() { print -ru2 -- "prompt: $*"; exit 1; }
 expect() {
@@ -174,7 +174,7 @@ if [[ $OSTYPE == darwin* && ${commands[git]} == /usr/bin/git ]]; then
   _ds_prompt_resolve_git
   [[ -x $_ds_prompt_command ]] || fail 'developer selection recovery'
 fi
-source "$root/src/dotfiles/prompt.zsh"
+source "$root/assets/dotfiles/prompt.zsh"
 [[ ${(M)#precmd_functions:#_ds_prompt_precmd} == 1 ]] || fail 'duplicate hook'
 preexec_functions=()
 if () { return 42; }; then
@@ -207,7 +207,7 @@ COLUMNS=160
 
 zmodload zsh/zpty
 zmodload zsh/zselect
-export DS_PROMPT_SOURCE="$root/src/dotfiles/prompt.zsh" DS_PROMPT_PROBE="$work/probe"
+export DS_PROMPT_SOURCE="$root/assets/dotfiles/prompt.zsh" DS_PROMPT_PROBE="$work/probe"
 cat > "$work/init" <<'INIT'
 source "$DS_PROMPT_SOURCE"
 probe() { print -r -- "${(%%)PROMPT}" > "$DS_PROMPT_PROBE"; }

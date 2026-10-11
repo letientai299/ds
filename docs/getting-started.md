@@ -18,20 +18,19 @@ cd ~/dev/mine/ds
 
 The first `./ds` run trusts the checkout in mise and installs its Go. After a
 bootstrap, switching to the checkout reuses the installed mise, tools, and
-Neovim plugins; only links move. Clone `nvim.conf`, `tmux.conf`, or
-`kitty.conf` next to ds, or set `sources` in `<config>/ds/config.toml`, to edit
-them live; until then ds keeps the main build's snapshot of each and notes it
-in the plan.
+Neovim plugins; only links move. Clone `nvim.conf`, `tmux.conf`, or `kitty.conf`
+next to ds, or set `sources` in `<config>/ds/config.toml`, to edit them live;
+until then ds keeps the main build's snapshot of each and notes it in the plan.
 
-ds links `~/.local/bin/ds` to the launcher and every managed file to the
-working tree, so later commands run as `ds` and edits are live:
+ds links `~/.local/bin/ds` to the launcher and every managed file to the working
+tree, so later commands run as `ds` and edits are live:
 
 - Shell, Git, and tool files under `assets/` take effect in the next shell, or
   after `exec zsh`.
 - Go changes rebuild on the next `ds` run.
 - Catalog changes, such as new links or tools, apply on the next `ds add`.
-- Links follow the checkout that last ran `add`; running `./ds add` from
-  another worktree moves them there.
+- Links follow the checkout that last ran `add`; running `./ds add` from another
+  worktree moves them there.
 
 `ds upgrade` fast-forwards the checkouts instead of downloading a build;
 snapshots stay at the installed build.
@@ -79,9 +78,9 @@ owned and replaces them. Other content at managed paths is a conflict. Old
 records the new selection. Environments that still export
 `MISE_CONFIG_DIR=<config>/ds/mise` or a `MISE_ENV` with `core` or `remote` hide
 the new tools; `ds status` notes the old directory. Unset both, then remove
-`ds-source` and `ds/mise` once nothing else reads them. ds no longer
-provisions Docker; existing runtimes stay untouched, and the shell keeps Docker
-aliases and `serve`.
+`ds-source` and `ds/mise` once nothing else reads them. ds no longer provisions
+Docker; existing runtimes stay untouched, and the shell keeps Docker aliases and
+`serve`.
 
 [brew]: https://brew.sh/
 [mise]: https://mise.jdx.dev/getting-started.html

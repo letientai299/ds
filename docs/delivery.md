@@ -59,12 +59,14 @@ another site.
 matching binary on the controller, streams it over OpenSSH into a temporary
 directory under the remote cache directory, and runs its `add` with the given
 selectors, or `-l core`. Remote commands are single-line `sh -c` calls with
-quoted arguments, so homes with spaces and csh login shells work. A shell trap removes the transferred binary on exit;
-installed builds stay under the selected home. OpenSSH aliases, ProxyJump, and
-agents work unchanged. The target needs no Go, Git, archive tool, or GitHub
-token, and checkout and main callers deploy the same latest build.
+quoted arguments, so homes with spaces and csh login shells work. A shell trap
+removes the transferred binary on exit; installed builds stay under the selected
+home. OpenSSH aliases, ProxyJump, and agents work unchanged. The target needs no
+Go, Git, archive tool, or GitHub token, and checkout and main callers deploy the
+same latest build.
 
 [ci]: ../.github/workflows/ci.yml
 [ds-build]: ../cmd/ds-build/main.go
 [embed]: https://pkg.go.dev/embed
-[pages]: https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
+[pages]:
+  https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages

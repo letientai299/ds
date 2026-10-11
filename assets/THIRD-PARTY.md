@@ -13,11 +13,10 @@ dotfiles configuration, at commit `74965c96098134b192f00084f966b4b02438a739`.
 Its MIT [license][omz-license] ships beside the code in every main build.
 
 The port includes the Git plugin, its current-branch and clipboard helpers,
-directory shortcuts, and Docker aliases. Completion bindings are conditional
-on `compdef` being available. Docker completion generation and Git prompt hooks
-are omitted so the aliases work without Oh My Zsh
-startup or cache directories. Personal overrides live in
-[`aliases.zsh`][aliases].
+directory shortcuts, and Docker aliases. Completion bindings are conditional on
+`compdef` being available. Docker completion generation and Git prompt hooks are
+omitted so the aliases work without Oh My Zsh startup or cache directories.
+Personal overrides live in [`aliases.zsh`][aliases].
 
 ## Interactive Zsh plugins
 
@@ -27,6 +26,7 @@ licenses travel together in every main build:
 
 - `zsh-defer`: GPL-3.0, see its `LICENSE`.
 - `zsh-autosuggestions`: MIT, see its `LICENSE`.
+- `zsh-completions`: Zsh license, see its `LICENSE`.
 - `fzf-tab`: MIT, see its `LICENSE` and `lib/zsh-ls-colors/LICENSE`.
 - `zsh-syntax-highlighting`: BSD-3-Clause, see its `COPYING.md`.
 

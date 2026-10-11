@@ -1,9 +1,9 @@
 # Shell tools
 
-The `zsh` component links `serve`, `fzf-files`, and `fzf-dirs` into `~/.local/bin`; zoxide
-comes through mise. `extra` supplies eza and Worktrunk. Trial shells expose the
-same commands. Existing files at managed paths follow the normal ownership and
-conflict rules.
+The `zsh` component links `serve`, `fzf-files`, and `fzf-dirs` into
+`~/.local/bin`; zoxide comes through mise. `extra` supplies eza and Worktrunk.
+Trial shells expose the same commands. Existing files at managed paths follow
+the normal ownership and conflict rules.
 
 ## File selection and search
 
@@ -29,8 +29,7 @@ same bounded include settings as file selection.
 [Worktrunk][worktrunk] is available as `wt` in `extra`. Its upstream shell
 integration loads after completion initializes, or on the first invocation, so
 `wt switch` can change the current shell's directory. ds owns this integration;
-there is no need to run `wt config shell install`. Use native Git commands
-alongside Worktrunk; the old Git automation scripts are not included.
+there is no need to run `wt config shell install`.
 
 The `core` layer installs [Yazi][yazi]. Run `r` to open it and keep its final
 directory in the shell after quitting. Its managed configuration lives under
@@ -102,6 +101,27 @@ ouch decompress logs.tar.zst --dir restored
 Ouch supports ZIP, TAR, 7z, gzip, bzip2, xz, zstd, and other compression
 formats. RAR supports extraction and listing only.
 
+## Kitty
+
+`ds add -l ui` installs Kitty through mise and provides `kt`, which launches
+Kitty with the configuration and helpers from [`kitty.conf`][kitty-conf]. The
+`ui` layer is independent; add `core` too for the fzf and Neovim features used
+by that configuration.
+
+Kitty supports macOS and Linux with glibc 2.35 or newer. Plans that select it on
+older glibc hosts block before installation. A display is required to open a
+window. Ubuntu ARM64 CLI startup is verified; Rocky 9's older glibc cannot run
+the pinned upstream package.
+
+A checkout uses the sibling `kitty.conf`, `sources.kitty` in
+`<config>/ds/config.toml`, or the installed main build's snapshot, and builds
+the helper with that repository's Go toolchain when it is missing or older than
+its sources. Main builds embed the compiled helper, so destination hosts do not
+need Go. The `kt` launcher preserves the repository's per-instance
+configuration; ds does not register desktop shortcuts or change existing Kitty
+windows.
+
+[kitty-conf]: https://github.com/letientai299/kitty.conf
 [caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server
 [gdu]: https://github.com/dundee/gdu
 [ouch]: https://github.com/ouch-org/ouch
@@ -112,24 +132,3 @@ formats. RAR supports extraction and listing only.
 [zoxide]: https://github.com/ajeetdsouza/zoxide
 [completions]: https://github.com/zsh-users/zsh-completions
 [yazi]: https://yazi-rs.github.io/
-
-## Kitty
-
-`ds add -l ui` installs Kitty through mise and provides `kt`, which launches Kitty
-with the configuration and helpers from [`kitty.conf`][kitty-conf]. The `ui`
-layer is independent; add `core` too for the fzf and Neovim features used by
-that configuration.
-
-Kitty supports macOS and Linux with glibc 2.35 or newer. Plans that select it on
-older glibc hosts block before installation. A display is required to
-open a window. Ubuntu ARM64 CLI startup is verified; Rocky 9's older glibc
-cannot run the pinned upstream package.
-
-A checkout uses the sibling `kitty.conf`, `sources.kitty` in
-`<config>/ds/config.toml`, or the installed main build's snapshot, and builds the helper with that repository's Go
-toolchain when it is missing or older than its sources. Main builds embed the
-compiled helper, so destination hosts do not need Go. The `kt` launcher
-preserves the repository's per-instance configuration; ds does not register
-desktop shortcuts or change existing Kitty windows.
-
-[kitty-conf]: https://github.com/letientai299/kitty.conf

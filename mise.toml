@@ -30,7 +30,7 @@ run = ["zsh -df tests/prompt.zsh", "zsh -df tests/prompt-mr.zsh"]
 
 [tasks.fmt]
 description = "Format Go and shell sources"
-run = ["gofmt -w cmd internal assets", "shfmt -w ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve"]
+run = ["gofmt -w cmd internal", "shfmt -w ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve"]
 
 [tasks.dist]
 description = "Build main-mode binaries for every platform into dist/"

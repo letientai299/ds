@@ -56,7 +56,7 @@ await_text() {
   local pattern=$1
   repeat 300; do
     drain
-    [[ $terminal == *$pattern* ]] && return 0
+    [[ $terminal == *"$pattern"* ]] && return 0
     zselect -t 1 || true
   done
   fail "missing $pattern"
@@ -99,7 +99,7 @@ run ':'
 run 'git checkout -q second'
 [[ $(<"$work/probe") == *'!23'* ]] || fail 'branch cache missing'
 run 'COLUMNS=20; :'
-[[ $terminal == *$'\e]8;;\e\\'* ]] || fail 'truncated hyperlink unclosed'
+await_text $'\e]8;;\e\\'
 run 'COLUMNS=160; :'
 run 'setopt prompt_bang; source "$DS_PROMPT_SOURCE"'
 [[ $(<"$work/probe") == *'!23'* ]] || fail 'reload cache missing'

@@ -174,13 +174,13 @@ _ds_prompt_mr_fetch() {
     print -r -- "$cached $result"
     return 0
   fi
-  if result=$(command glab mr list --source-branch "$branch" --all --per-page 1 \
+  if result=$(command glab mr list --source-branch "$branch" --per-page 1 \
       --output json --jq 'if length == 0 then "0" else .[0] | "\(.iid) \(.web_url)" end' 2>/dev/null </dev/null); then
     read -r iid url <<< "$result"
     if [[ $iid == 0 ]]; then
       expiry=$(( EPOCHSECONDS + 300 ))
     elif [[ $iid == <1-> && $url == http(s|)://* && $url != *[[:cntrl:][:space:]]* ]]; then
-      expiry=$(( EPOCHSECONDS + 86400 ))
+      expiry=$(( EPOCHSECONDS + 60 ))
     else
       result=''
     fi
@@ -225,7 +225,7 @@ _ds_prompt_mr() {
   [[ -n $_ds_prompt_git && -n $_ds_prompt_root && -n $_ds_prompt_branch ]] || return 0
   (( $+commands[glab] )) || return 0
   local branch=${_ds_prompt_branch//\%/%25} fd
-  _ds_prompt_mr_key="${XDG_CACHE_HOME:-$HOME/.cache}/ds/prompt-mr${_ds_prompt_root}/branches/$branch/entry"
+  _ds_prompt_mr_key="${XDG_CACHE_HOME:-$HOME/.cache}/ds/prompt-mr-open${_ds_prompt_root}/branches/$branch/entry"
   local key=$_ds_prompt_mr_key
   if (( ${_ds_prompt_mr_expiry[$key]:-0} > EPOCHSECONDS )); then
     _ds_prompt_mr_render

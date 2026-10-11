@@ -2,6 +2,7 @@
 setopt err_exit pipe_fail extended_glob
 root=${0:A:h:h}
 work=$(mktemp -d "${TMPDIR:-/tmp}/ds-prompt-mr.XXXXXX")
+zmodload zsh/datetime
 zmodload zsh/zpty
 zmodload zsh/zselect
 trap 'zpty -d 2>/dev/null; cd "$root"; rm -rf "$work"' EXIT
@@ -14,10 +15,16 @@ cat > "$work/bin/glab" <<'GLAB'
 #!/bin/sh
 printf '%s\n' "$4" >> "$DS_MR_CALLS"
 sleep 0.5
+for arg do
+  if [ "$arg" = --all ]; then
+    printf '%s\n' '99 https://gitlab.example/test/repo/-/merge_requests/99'
+    exit 0
+  fi
+done
 case "$4" in
   main) printf '%s\n' '17 https://gitlab.example/test/repo/-/merge_requests/17' ;;
   second) printf '%s\n' '23 https://gitlab.example/test/repo/-/merge_requests/23' ;;
-  none) printf '%s\n' '0' ;;
+  none|merged|closed) printf '%s\n' '0' ;;
   fail) exit 1 ;;
   *) printf '99 https://gitlab.example/\033[31m' ;;
 esac
@@ -27,6 +34,9 @@ export PATH="$work/bin:$PATH"
 git init -qb main "$work/repo"
 cd "$work/repo"
 git -c user.name=Test -c user.email=test@example.invalid commit -q --allow-empty -m initial
+legacy="$XDG_CACHE_HOME/ds/prompt-mr${PWD:A}/branches/main/entry"
+mkdir -p "${legacy:h}"
+print "$(( EPOCHSECONDS + 86400 )) 99 https://gitlab.example/test/repo/-/merge_requests/99" > "$legacy"
 cat > "$work/init" <<'INIT'
 source "$DS_PROMPT_SOURCE"
 COLUMNS=160
@@ -63,7 +73,6 @@ run() {
   fail "prompt timeout: $1; $terminal"
 }
 zpty -b shell 'trap - EXIT; exec zsh -df'
-zmodload zsh/datetime
 start=$EPOCHREALTIME
 run "source ${(q)work}/init"
 (( EPOCHREALTIME - start < 0.4 )) || fail 'lookup blocked prompt'
@@ -75,6 +84,9 @@ await_text '!17'
 run ':'
 [[ $(<"$work/probe") == *'!17'* ]] || fail 'warm cache missing'
 [[ $(<"$work/calls") == main ]] || fail 'duplicate lookup'
+cachefile="$XDG_CACHE_HOME/ds/prompt-mr-open${PWD:A}/branches/main/entry"
+read -r expiry result < "$cachefile"
+(( expiry <= EPOCHSECONDS + 60 )) || fail 'active MR cache too long'
 run 'print -r -- ${#_ds_prompt_mr_fds} ${#_ds_prompt_mr_pending} > "$XDG_CACHE_HOME/fds"'
 [[ $(<"$XDG_CACHE_HOME/fds") == '0 0' ]] || fail 'descriptor state leaked'
 # Pending results must follow their branch.
@@ -98,7 +110,7 @@ await_text '!23'
 run ':'
 [[ $(<"$work/probe") == *'!23'* ]] || fail 'persistent cache missing'
 [[ $(<"$work/calls") == $'main\nsecond' ]] || fail 'persistent cache refetched'
-for branch in none fail unsafe; do
+for branch in none merged closed fail unsafe; do
   run "git checkout -qb $branch"
   zselect -t 70 || true
   run ':'

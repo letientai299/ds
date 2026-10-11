@@ -121,7 +121,7 @@ layer is independent; add `core` too for the fzf and Neovim features used by
 that configuration.
 
 Kitty supports macOS and Linux with glibc 2.35 or newer. Plans that select it on
-Alpine or older glibc hosts block before installation. A display is required to
+older glibc hosts block before installation. A display is required to
 open a window. Ubuntu ARM64 CLI startup is verified; Rocky 9's older glibc
 cannot run the pinned upstream package.
 

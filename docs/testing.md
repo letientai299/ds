@@ -25,7 +25,7 @@ and `deploy` against local builds.
 | --------- | --------------------------------------------------------------------- |
 | `test`    | Lint, Go tests, and Zsh prompt tests on Ubuntu and macOS              |
 | `dist`    | Checkout-mode preview against fetched sources, all builds, linkage    |
-| `linux`   | Alpine execution on amd64 and arm64; Ubuntu provisioning on `main`    |
+| `linux`   | Execution on amd64 and arm64; Ubuntu provisioning on `main`           |
 | `macos`   | Both macOS architectures; full provisioning in a temporary home       |
 | `publish` | Pages deployment and a bootstrap run against the live site, on `main` |
 

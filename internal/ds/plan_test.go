@@ -223,10 +223,23 @@ func TestLinuxPackagesNeedPrivilege(t *testing.T) {
 func TestKittyNeedsGlibc(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
-	f.env.Platform = Platform{OS: "linux", Arch: "arm64", Libc: "musl"}
+	f.env.Platform = Platform{OS: "linux", Arch: "arm64", Libc: "glibc", Glibc: "2.34"}
 	p := f.env.BuildPlan(context.Background(), f.state(), LayerRequest{Layers: []LayerName{"ui"}}, AddOptions{})
 	if !slices.ContainsFunc(p.Blockers, func(b Blocker) bool { return b.Subject == "kitty" }) {
 		t.Fatalf("blockers = %v", p.Blockers)
+	}
+}
+
+func TestMuslIsUnsupported(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	f.env.Platform = Platform{OS: "linux", Arch: "amd64", Libc: "musl"}
+	p := f.env.BuildPlan(context.Background(), f.state(), core, AddOptions{})
+	if len(p.Blockers) != 1 || p.Blockers[0].Subject != "platform" || len(p.Actions) != 0 {
+		t.Fatalf("blockers = %v, actions = %v", p.Blockers, actionNames(p))
+	}
+	if r := f.env.Status(context.Background(), f.state(), core); r.Healthy() {
+		t.Fatal("status healthy on musl")
 	}
 }
 

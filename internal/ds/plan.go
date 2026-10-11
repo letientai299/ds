@@ -154,6 +154,10 @@ func (e *Env) BuildPlan(ctx context.Context, st State, req Request, opt AddOptio
 	}
 	comps := e.Catalog.Expand(sel)
 	p := &Plan{Target: e.Target, Selection: sel, Components: comps}
+	if reason := platformBlocker(e.Platform); reason != "" {
+		p.block("platform", reason, "use macOS or a glibc Linux distribution")
+		return p
+	}
 
 	emb, embedded := e.Source.(*assets.Embedded)
 	if embedded && !buildComplete(e.buildDir(emb.Info.ID)) {

@@ -70,6 +70,11 @@ func (e *Env) Status(ctx context.Context, st State, req Request) StatusReport {
 		inspected := Selection{}.Union(req)
 		sel, r.Inspected = inspected, &inspected
 	}
+	if reason := platformBlocker(e.Platform); reason != "" {
+		r.Summary = SummaryIncomplete
+		r.Notes = append(r.Notes, reason)
+		return r
+	}
 	comps := e.Catalog.Expand(sel)
 	if len(comps) == 0 {
 		r.Summary = SummaryIncomplete

@@ -76,13 +76,10 @@ jobs:
         with:
           name: dist
           path: dist
-      - name: Execute on Alpine without glibc
+      - name: Execute on the runner
         run: |
           chmod +x dist/ds-*
-          docker run --rm -v "$PWD/dist:/dist:ro" alpine:3.20 sh -euc '
-            ds=$(ls /dist/ds-*-linux-${{ matrix.arch }})
-            "$ds" version
-            "$ds" --home /tmp/h status -l core'
+          "$(ls dist/ds-*-linux-${{ matrix.arch }})" version
       - name: Provision core and extra on Ubuntu as root
         if: github.event_name != 'pull_request'
         env:

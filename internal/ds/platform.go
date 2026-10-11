@@ -103,13 +103,18 @@ func versionAtLeast(have, want string) bool {
 	return true
 }
 
+// platformBlocker rejects hosts ds does not support, or returns "".
+func platformBlocker(p Platform) string {
+	if p.Libc == "musl" {
+		return "musl Linux (Alpine) is unsupported"
+	}
+	return ""
+}
+
 // glibcBlocker explains why a component cannot run on p, or returns "".
 func glibcBlocker(p Platform, comp *Component) string {
 	if comp.Glibc == "" || p.OS != "linux" {
 		return ""
-	}
-	if p.Libc != "glibc" {
-		return fmt.Sprintf("%s requires macOS or glibc %s+", comp.Name, comp.Glibc)
 	}
 	if p.Glibc == "" || !versionAtLeast(p.Glibc, comp.Glibc) {
 		return fmt.Sprintf("%s requires glibc %s+ (found %q)", comp.Name, comp.Glibc, p.Glibc)

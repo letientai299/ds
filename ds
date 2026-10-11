@@ -27,7 +27,12 @@ if [ -x "$bin" ] && [ -z "$(find "$root/cmd" "$root/internal" "$root/go.mod" "$r
 	-newer "$bin" -print 2>/dev/null | head -n 1)" ]; then
 	exec "$bin" "$@"
 fi
-go=$("$mise" -C "$root" which go) || die 'install the checkout toolchain: mise -C '"$root"' install'
+# Running this launcher trusts its checkout; Go installs on first use.
+"$mise" trust --quiet "$root" || die "mise trust $root failed"
+go=$("$mise" -C "$root" which go 2>/dev/null) || {
+	printf 'ds: installing Go for %s\n' "$root" >&2
+	"$mise" -C "$root" install go >&2 && go=$("$mise" -C "$root" which go)
+} || die "install Go: mise -C $root install go"
 CGO_ENABLED=0 "$go" build -C "$root" -trimpath -o "$bin" \
 	-ldflags "-X 'github.com/letientai299/ds/internal/cli.checkoutRoot=$root'" ./cmd/ds ||
 	die "build failed in $root"

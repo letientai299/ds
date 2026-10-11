@@ -1,18 +1,40 @@
 # Getting started and recovery
 
-## macOS from a checkout
+ds supports macOS and glibc Linux on amd64 and arm64. musl hosts such as Alpine
+are rejected before any change.
 
-Install [Homebrew][brew] and [mise][mise], then clone ds next to `nvim.conf`,
-`tmux.conf`, and `kitty.conf`:
+## From a checkout
+
+Use a checkout on machines where you edit ds. Install [mise][mise] (and
+[Homebrew][brew] on macOS), or provision with the bootstrap first, then clone
+ds:
 
 ```sh
-cd ~/dev/mine/ds && mise install
+git clone https://github.com/letientai299/ds ~/dev/mine/ds
+cd ~/dev/mine/ds
 ./ds add -l core -l extra -l ui --dry-run
 ./ds add -l core -l extra -l ui
 ```
 
-ds links `~/.local/bin/ds` to the launcher, so later commands run as `ds`. Open
-a new shell after the first addition.
+The first `./ds` run trusts the checkout in mise and installs its Go. After a
+bootstrap, switching to the checkout reuses the installed mise, tools, and
+Neovim plugins; only links move. Clone `nvim.conf`, `tmux.conf`, or
+`kitty.conf` next to ds, or set `sources` in `<config>/ds/config.toml`, to edit
+them live; until then ds keeps the main build's snapshot of each and notes it
+in the plan.
+
+ds links `~/.local/bin/ds` to the launcher and every managed file to the
+working tree, so later commands run as `ds` and edits are live:
+
+- Shell, Git, and tool files under `assets/` take effect in the next shell, or
+  after `exec zsh`.
+- Go changes rebuild on the next `ds` run.
+- Catalog changes, such as new links or tools, apply on the next `ds add`.
+- Links follow the checkout that last ran `add`; running `./ds add` from
+  another worktree moves them there.
+
+`ds upgrade` fast-forwards the checkouts instead of downloading a build;
+snapshots stay at the installed build.
 
 ## Ubuntu or another host
 

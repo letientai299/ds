@@ -19,7 +19,9 @@ compiles with the checkout root linked in; main builds compile with the
 stays in main mode.
 
 `<config>/ds/config.toml` selects live configuration checkouts in checkout mode;
-siblings named `nvim.conf`, `tmux.conf`, and `kitty.conf` are the default:
+siblings named `nvim.conf`, `tmux.conf`, and `kitty.conf` are the default, and
+a missing sibling falls back to the active main build's snapshot under
+`<data>/ds/current/assets`:
 
 ```toml
 [sources]

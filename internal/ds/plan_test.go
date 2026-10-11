@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/letientai299/ds/internal/assets"
 )
 
 var core = LayerRequest{Layers: []LayerName{"core"}}
@@ -144,6 +146,43 @@ func TestInstallerLinksAreOwned(t *testing.T) {
 	p := f.env.BuildPlan(context.Background(), f.state(), core, AddOptions{})
 	if len(p.Blockers) != 0 {
 		t.Fatalf("blockers = %v", p.Blockers)
+	}
+}
+
+func TestCheckoutReusesBuildSnapshot(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	paths := f.env.Target.Paths()
+	src := f.env.Source.(assets.Checkout)
+	lone := filepath.Join(t.TempDir(), "ds")
+	cfg := UserConfig{Sources: map[string]string{"tmux": src.Repos[assets.Tmux]}}
+
+	repos, err := cfg.CheckoutRepos(lone, paths)
+	if err != nil || repos[assets.Nvim] != filepath.Join(filepath.Dir(lone), "nvim.conf") {
+		t.Fatalf("without snapshot: %v %v", repos, err)
+	}
+	for _, repo := range []assets.Repo{assets.Nvim, assets.Kitty} {
+		writeFile(t, filepath.Join(buildSnapshot(paths, repo), "README"), "snapshot\n")
+	}
+	writeExec(t, filepath.Join(buildSnapshot(paths, assets.Kitty), "bin", "kt"), fakeCommand)
+	if repos, err = cfg.CheckoutRepos(lone, paths); err != nil {
+		t.Fatal(err)
+	}
+	if repos[assets.Nvim] != buildSnapshot(paths, assets.Nvim) || repos[assets.Tmux] != src.Repos[assets.Tmux] {
+		t.Fatalf("repos = %v", repos)
+	}
+
+	f.env.Source = assets.Checkout{Root: src.Root, Repos: repos}
+	p := f.env.BuildPlan(context.Background(), f.state(), LayerRequest{Layers: []LayerName{"core", "ui"}}, AddOptions{})
+	if len(p.Blockers) != 0 || !hasAction(p, "-> "+buildSnapshot(paths, assets.Nvim)) {
+		t.Fatalf("actions = %v, blockers = %v", actionNames(p), p.Blockers)
+	}
+	if slices.ContainsFunc(p.Actions, func(a Action) bool { _, ok := a.(BuildHelper); return ok }) {
+		t.Fatal("rebuilds the snapshot helper")
+	}
+	notes := strings.Join(p.Notes, "\n")
+	if !strings.Contains(notes, "nvim: using the installed build's snapshot") || !strings.Contains(notes, "kitty:") || strings.Contains(notes, "tmux:") {
+		t.Fatalf("notes = %v", p.Notes)
 	}
 }
 

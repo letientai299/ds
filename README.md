@@ -21,14 +21,15 @@ The bootstrap downloads the binary for this host, verifies its SHA-256, and runs
 
 ```sh
 git clone https://github.com/letientai299/ds
-cd ds && mise install
+cd ds
 ./ds add -l core -l extra -l ui --dry-run
 ./ds add -l core -l extra -l ui
 ```
 
-The `./ds` launcher builds the CLI with the checkout's Go toolchain and reads
-live assets, including uncommitted edits. Sibling `nvim.conf`, `tmux.conf`, and
-`kitty.conf` checkouts supply editor, Tmux, and Kitty configuration.
+The `./ds` launcher trusts the checkout in mise, installs its Go on first use,
+builds the CLI, and reads live assets, including uncommitted edits. Sibling
+`nvim.conf`, `tmux.conf`, and `kitty.conf` checkouts supply editor, Tmux, and
+Kitty configuration; without one, ds keeps the installed main build's snapshot.
 
 ## Everyday commands
 

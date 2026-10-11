@@ -371,7 +371,8 @@ func (e *Env) planHelpers(p *Plan, comps []ComponentName, mise string) {
 			continue
 		}
 		dir := src.Repos[comp.Helper.Repo]
-		if dir == "" || !exists(dir) {
+		// Snapshots ship compiled helpers.
+		if dir == "" || !exists(dir) || e.usesSnapshot(comp.Helper.Repo) {
 			continue
 		}
 		out := filepath.Join(dir, filepath.FromSlash(comp.Helper.Output))
@@ -410,6 +411,7 @@ func helperFresh(dir, out string) bool {
 func (e *Env) managedEntries(p *Plan, comps []ComponentName) []managed {
 	bin := e.Target.Placeholders()["bin"]
 	entries := []managed{managedLink{Target: filepath.Join(bin, "ds"), Source: e.dsExecutable()}}
+	var snapshots []assets.Repo
 	for _, name := range comps {
 		comp, _ := e.Catalog.Component(name)
 		for _, link := range comp.Links {
@@ -420,6 +422,10 @@ func (e *Env) managedEntries(p *Plan, comps []ComponentName) []managed {
 			if !e.sourceAvailable(link.Source) && !e.helperOutput(comp, link.Source) {
 				p.block(string(name), "missing source "+e.assetPath(link.Source), e.sourceRemedy(link.Source.Repo))
 				continue
+			}
+			if repo := link.Source.Repo; e.usesSnapshot(repo) && !slices.Contains(snapshots, repo) {
+				snapshots = append(snapshots, repo)
+				p.Notes = append(p.Notes, fmt.Sprintf("%s: using the installed build's snapshot; clone %s next to the checkout to edit it", repo, repo.CheckoutName()))
 			}
 			entries = append(entries, managedLink{Target: target, Source: e.assetPath(link.Source)})
 		}
@@ -449,6 +455,12 @@ func (e *Env) managedEntries(p *Plan, comps []ComponentName) []managed {
 		})
 	}
 	return entries
+}
+
+// usesSnapshot reports a checkout repo resolved to a main build snapshot.
+func (e *Env) usesSnapshot(repo assets.Repo) bool {
+	src, ok := e.Source.(assets.Checkout)
+	return ok && repo != assets.DS && src.Repos[repo] == buildSnapshot(e.Target.Paths(), repo)
 }
 
 // helperOutput reports a helper link whose binary the plan builds.

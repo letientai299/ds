@@ -3,8 +3,10 @@ package ds
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -149,40 +151,94 @@ func TestInstallerLinksAreOwned(t *testing.T) {
 	}
 }
 
-func TestCheckoutReusesBuildSnapshot(t *testing.T) {
+func TestResolveRepos(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)
 	paths := f.env.Target.Paths()
-	src := f.env.Source.(assets.Checkout)
-	lone := filepath.Join(t.TempDir(), "ds")
-	cfg := UserConfig{Sources: map[string]string{"tmux": src.Repos[assets.Tmux]}}
+	root := filepath.Join(t.TempDir(), "ds")
+	cfg := UserConfig{Sources: map[string]string{"tmux": "~/src/tmux.conf"}}
+	tests := []struct {
+		name string
+		src  assets.Source
+		want map[assets.Repo]RepoSource
+	}{
+		{"checkout", assets.Checkout{Root: root}, map[assets.Repo]RepoSource{
+			assets.Nvim:  {Dir: filepath.Join(filepath.Dir(root), "nvim.conf")},
+			assets.Tmux:  {Dir: filepath.Join(paths.Home, "src", "tmux.conf")},
+			assets.Kitty: {Dir: filepath.Join(filepath.Dir(root), "kitty.conf")},
+		}},
+		{"main build", embeddedBuild(t), map[assets.Repo]RepoSource{
+			assets.Nvim:  {Dir: filepath.Join(paths.DSData(), "sources", "nvim.conf"), Managed: true},
+			assets.Tmux:  {Dir: filepath.Join(paths.Home, "src", "tmux.conf")},
+			assets.Kitty: {Dir: filepath.Join(paths.DSData(), "sources", "kitty.conf"), Managed: true},
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := cfg.ResolveRepos(f.env.Catalog, tt.src, paths)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for repo, want := range tt.want {
+				want.URL = f.env.Catalog.RepoURL(repo)
+				if got[repo] != want {
+					t.Errorf("%s = %+v, want %+v", repo, got[repo], want)
+				}
+			}
+		})
+	}
+}
 
-	repos, err := cfg.CheckoutRepos(lone, paths)
-	if err != nil || repos[assets.Nvim] != filepath.Join(filepath.Dir(lone), "nvim.conf") {
-		t.Fatalf("without snapshot: %v %v", repos, err)
+func TestMissingRepoIsCloned(t *testing.T) {
+	t.Parallel()
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Skip("git required")
 	}
-	for _, repo := range []assets.Repo{assets.Nvim, assets.Kitty} {
-		writeFile(t, filepath.Join(buildSnapshot(paths, repo), "README"), "snapshot\n")
-	}
-	writeExec(t, filepath.Join(buildSnapshot(paths, assets.Kitty), "bin", "kt"), fakeCommand)
-	if repos, err = cfg.CheckoutRepos(lone, paths); err != nil {
-		t.Fatal(err)
-	}
-	if repos[assets.Nvim] != buildSnapshot(paths, assets.Nvim) || repos[assets.Tmux] != src.Repos[assets.Tmux] {
-		t.Fatalf("repos = %v", repos)
-	}
+	for _, managed := range []bool{false, true} {
+		t.Run(fmt.Sprintf("managed=%t", managed), func(t *testing.T) {
+			t.Parallel()
+			f := newFixture(t)
+			gitBin := filepath.Join(f.tools, "git")
+			if err := os.Remove(gitBin); err != nil {
+				t.Fatal(err)
+			}
+			symlink(t, realGit, gitBin)
+			f.env.Environ = f.env.Environ.with("GIT_CONFIG_GLOBAL", "/dev/null")
+			origin, _ := cloneWithUpstream(t, t.TempDir(), "kitty.conf")
+			dir := filepath.Join(t.TempDir(), "kitty.conf")
+			f.env.Repos[assets.Kitty] = RepoSource{Dir: dir, URL: "file://" + origin, Managed: managed}
 
-	f.env.Source = assets.Checkout{Root: src.Root, Repos: repos}
-	p := f.env.BuildPlan(context.Background(), f.state(), LayerRequest{Layers: []LayerName{"core", "ui"}}, AddOptions{})
-	if len(p.Blockers) != 0 || !hasAction(p, "-> "+buildSnapshot(paths, assets.Nvim)) {
-		t.Fatalf("actions = %v, blockers = %v", actionNames(p), p.Blockers)
-	}
-	if slices.ContainsFunc(p.Actions, func(a Action) bool { _, ok := a.(BuildHelper); return ok }) {
-		t.Fatal("rebuilds the snapshot helper")
-	}
-	notes := strings.Join(p.Notes, "\n")
-	if !strings.Contains(notes, "nvim: using the installed build's snapshot") || !strings.Contains(notes, "kitty:") || strings.Contains(notes, "tmux:") {
-		t.Fatalf("notes = %v", p.Notes)
+			kitty := ComponentRequest{Components: []ComponentName{"kitty"}}
+			p := f.env.BuildPlan(context.Background(), f.state(), kitty, AddOptions{})
+			if len(p.Blockers) != 0 {
+				t.Fatalf("blockers = %v", p.Blockers)
+			}
+			clone := slices.IndexFunc(p.Actions, func(a Action) bool {
+				c, ok := a.(CloneRepo)
+				return ok && c.Dir == dir && c.Shallow == managed
+			})
+			helper := slices.IndexFunc(p.Actions, func(a Action) bool {
+				b, ok := a.(BuildHelper)
+				return ok && b.Dir == dir
+			})
+			if clone < 0 || helper < clone {
+				t.Fatalf("actions = %v", actionNames(p))
+			}
+			st := f.state()
+			if err := f.env.Execute(context.Background(), p, &st, "add"); err != nil {
+				t.Fatalf("execute: %v\n%s", err, f.err.String())
+			}
+			if readFile(t, filepath.Join(dir, "f")) != "1\n" {
+				t.Fatal("repository not cloned")
+			}
+			if dest, _ := os.Readlink(filepath.Join(f.env.Target.Placeholders()["ds"], "kitty")); dest != dir {
+				t.Fatalf("kitty link = %q", dest)
+			}
+			if got := f.logLines("mise -C " + dir + " exec go -- go build"); len(got) != 1 {
+				t.Fatalf("helper builds = %v", f.logLines("mise"))
+			}
+		})
 	}
 }
 

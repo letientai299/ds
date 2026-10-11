@@ -51,9 +51,10 @@ dependencies, and owned files.
 
 ## Upgrade categories
 
-- `ds` refreshes ds and its assets, then converges the saved selection. A
-  checkout fast-forwards its clean, tracking source repositories and rebuilds. A
-  main build fetches and verifies the latest published build.
+- `ds` refreshes ds and its assets, then converges the saved selection. It
+  fast-forwards the ds checkout and user configuration checkouts when clean and
+  tracking, and resets ds-managed clones to their remote heads. A checkout then
+  rebuilds; a main build fetches and verifies the latest published build.
 - `tools` runs `mise upgrade` for tools of selected components. Explicit user
   requests in mise configuration stay authoritative.
 - `plugins` updates Neovim plugins when Neovim is selected.

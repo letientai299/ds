@@ -20,10 +20,11 @@ func (a *app) upgradeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upgrade [ds|tools|plugins|system|all]...",
 		Short: "Upgrade ds, selected tools, Neovim plugins, and system packages",
-		Long: "Bare upgrade covers every category. The ds category runs first: a\n" +
-			"checkout fast-forwards its clean source repositories and rebuilds; a\n" +
-			"main build fetches and verifies the latest build. The resulting ds then\n" +
-			"converges the saved selection and upgrades the remaining categories.",
+		Long: "Bare upgrade covers every category. The ds category runs first: it\n" +
+			"fast-forwards clean user checkouts and resets ds-managed clones; a\n" +
+			"checkout then rebuilds, and a main build fetches and verifies the latest\n" +
+			"build. The resulting ds converges the saved selection and upgrades the\n" +
+			"remaining categories.",
 		Example:   "  ds upgrade\n  ds upgrade tools\n  ds upgrade --skip system",
 		ValidArgs: []string{"ds", "tools", "plugins", "system", "all"},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -51,12 +52,12 @@ func (a *app) upgradeCmd() *cobra.Command {
 				return e.RunCategories(ctx, st, cats, dryRun)
 			}
 			rest := slices.DeleteFunc(slices.Clone(cats), func(c ds.Category) bool { return c == ds.CatDS })
+			if err := e.SyncSources(ctx, dryRun); err != nil {
+				return err
+			}
 			next := ""
 			switch src := e.Source.(type) {
 			case assets.Checkout:
-				if err := e.PullSources(ctx, dryRun); err != nil {
-					return err
-				}
 				next = src.Launcher()
 			case *assets.Embedded:
 				if next, _, err = e.FetchCandidate(ctx, dryRun); err != nil {

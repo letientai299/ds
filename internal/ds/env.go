@@ -15,6 +15,7 @@ import (
 type Env struct {
 	Target   Target
 	Source   assets.Source
+	Repos    map[assets.Repo]RepoSource
 	Catalog  *Catalog
 	Platform Platform
 	Runner   Runner
@@ -64,6 +65,9 @@ func (e *Env) buildDir(id string) string {
 
 // assetPath is the on-disk path that links should reference.
 func (e *Env) assetPath(ref assets.Ref) string {
+	if ref.Repo != assets.DS {
+		return filepath.Join(e.Repos[ref.Repo].Dir, filepath.FromSlash(ref.Path))
+	}
 	switch src := e.Source.(type) {
 	case assets.Checkout:
 		return src.Path(ref)
@@ -73,12 +77,14 @@ func (e *Env) assetPath(ref assets.Ref) string {
 	panic("unknown asset source")
 }
 
-// sourceAvailable reports whether ref exists in the asset source.
+// sourceAvailable reports whether ref exists on disk or in the snapshot.
 func (e *Env) sourceAvailable(ref assets.Ref) bool {
+	if ref.Repo != assets.DS {
+		return exists(e.assetPath(ref))
+	}
 	switch src := e.Source.(type) {
 	case assets.Checkout:
-		p := src.Path(ref)
-		return p != "" && exists(p)
+		return exists(src.Path(ref))
 	case *assets.Embedded:
 		return src.Has(ref)
 	}
@@ -103,9 +109,9 @@ func (e *Env) legacyRoots() []string {
 	roots := []string{p.DSData(), filepath.Join(p.Data, "ds-source")}
 	if src, ok := e.Source.(assets.Checkout); ok {
 		roots = append(roots, src.Root)
-		for _, p := range src.Repos {
-			roots = append(roots, p)
-		}
+	}
+	for _, repo := range e.Repos {
+		roots = append(roots, repo.Dir)
 	}
 	return roots
 }

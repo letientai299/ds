@@ -1,32 +1,46 @@
 # Architecture
 
-ds is one Go CLI with two asset sources. The [entrypoint][main] stays thin,
-[`internal/cli`][cli] maps [Cobra][cobra] commands onto domain operations in
-[`internal/ds`][ds], and [`internal/assets`][assets] reads assets from a
-checkout or from the snapshot embedded in a main build. CI tooling lives in
-[`internal/build`][build].
+ds is one Go CLI. The [entrypoint][main] stays thin, [`internal/cli`][cli] maps
+[Cobra][cobra] commands onto domain operations in [`internal/ds`][ds], and
+[`internal/assets`][assets] reads ds assets from a checkout or from the snapshot
+embedded in a main build. Configuration repositories are Git checkouts on the
+target. CI tooling lives in [`internal/build`][build].
 
 ## Execution modes
 
-| Mode       | Assets                                             | `upgrade ds`                                   |
-| ---------- | -------------------------------------------------- | ---------------------------------------------- |
-| Checkout   | Live files in the checkout and configuration repos | Fast-forward sources, rebuild, resume          |
-| Main build | Snapshot compiled into the executable              | Fetch and verify the latest build, then resume |
+| Mode       | ds assets                             | `upgrade ds`                                            |
+| ---------- | ------------------------------------- | ------------------------------------------------------- |
+| Checkout   | Live files in the checkout            | Sync sources, rebuild, resume                           |
+| Main build | Snapshot compiled into the executable | Sync sources, fetch and verify the latest build, resume |
 
 The build selects the mode, never the working directory. The checkout launcher
 compiles with the checkout root linked in; main builds compile with the
 `dsembed` tag and the snapshot. An installed main binary run inside a checkout
 stays in main mode.
 
-`<config>/ds/config.toml` selects live configuration checkouts in checkout mode;
-siblings named `nvim.conf`, `tmux.conf`, and `kitty.conf` are the default, and a
-missing sibling falls back to the active main build's snapshot under
-`<data>/ds/current/assets`:
+## Configuration repositories
+
+`nvim.conf`, `tmux.conf`, and `kitty.conf` stay separate repositories. ds clones
+one on first use, from the URL in the [catalog][catalog], when a selected
+component links into it. The first match places each repository:
+
+1. `sources.<repo>` in `<config>/ds/config.toml`.
+2. In checkout mode, a sibling of the ds checkout.
+3. In main mode, a shallow clone under `<data>/ds/sources`.
 
 ```toml
 [sources]
 nvim = "~/src/nvim.conf"
 ```
+
+The first two belong to the user: `upgrade ds` fast-forwards them only when
+clean and tracking, and stops otherwise. Clones under `<data>/ds/sources` belong
+to ds: `upgrade ds` resets them to the remote head and discards local edits.
+Edit configuration in a user checkout instead.
+
+Helpers such as `kt` build inside their repository with its pinned Go through
+`mise exec go`, so hosts that select Kitty install Go but no other tools of that
+repository.
 
 ## Convergence
 
@@ -48,10 +62,10 @@ blocked plan never executes. Actions are concrete types, not shell snippets, and
 every external command receives an argument array.
 
 Actions run in this order: stage the main build, fetch mise when no compatible
-one exists, install native packages, build checkout helpers, converge files,
-activate the main build, install mise tools, and bootstrap Neovim plugins.
-Activation precedes tool installation because configuration links resolve
-through the activated build.
+one exists, install native packages, clone missing configuration repositories,
+build helpers, converge files, activate the main build, install mise tools, and
+bootstrap Neovim plugins. Activation precedes tool installation because ds asset
+links resolve through the activated build.
 
 Execution rechecks each file's state before changing it and stops if the file
 changed since planning. Each run writes an operation record under
@@ -89,13 +103,14 @@ its checksum, and links it into `~/.local/bin`.
 ## Main build layout
 
 A main build stages under `<data>/ds/builds/<build-id>`: the executable,
-`assets/<repository>/`, and `build.json`, written last to mark completion.
-`<data>/ds/current` points at the active build; `~/.local/bin/ds` and every
-configuration link resolve through it. Activation is a same-directory symlink
-rename. ds keeps the active and previous builds and removes older ones.
+`assets/ds/`, and `build.json`, written last to mark completion.
+`<data>/ds/current` points at the active build; `~/.local/bin/ds` and every ds
+asset link resolve through it. Activation is a same-directory symlink rename. ds
+keeps the active and previous builds and removes older ones.
 
 [assets]: ../internal/assets
 [build]: ../internal/build
+[catalog]: ../assets/catalog.toml
 [cli]: ../internal/cli
 [cobra]: https://github.com/spf13/cobra
 [ds]: ../internal/ds

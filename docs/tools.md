@@ -113,13 +113,11 @@ older glibc hosts block before installation. A display is required to open a
 window. Ubuntu ARM64 CLI startup is verified; Rocky 9's older glibc cannot run
 the pinned upstream package.
 
-A checkout uses the sibling `kitty.conf`, `sources.kitty` in
-`<config>/ds/config.toml`, or the installed main build's snapshot, and builds
-the helper with that repository's Go toolchain when it is missing or older than
-its sources. Main builds embed the compiled helper, so destination hosts do not
-need Go. The `kt` launcher preserves the repository's per-instance
-configuration; ds does not register desktop shortcuts or change existing Kitty
-windows.
+ds clones `kitty.conf` like the other configuration repositories and builds the
+helper with that repository's Go when it is missing or older than its sources,
+so hosts that select Kitty install Go through mise. The `kt` launcher preserves
+the repository's per-instance configuration; ds does not register desktop
+shortcuts or change existing Kitty windows.
 
 [kitty-conf]: https://github.com/letientai299/kitty.conf
 [caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server

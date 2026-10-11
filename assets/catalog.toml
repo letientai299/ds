@@ -6,6 +6,12 @@
 # which skips that entry. Link sources name a repository and a path inside it.
 # Tool specs may use {assets} for the ds asset directory.
 
+# Configuration repositories, cloned on first use when no checkout exists.
+[repos]
+nvim = "https://github.com/letientai299/nvim.conf"
+tmux = "https://github.com/letientai299/tmux.conf"
+kitty = "https://github.com/letientai299/kitty.conf"
+
 [layers]
 core = [
   "mise",
@@ -105,6 +111,7 @@ tool = { name = "xh", version = "latest" }
 
 [components.tmux]
 commands = ["tmux"]
+requires = ["git"]
 packages = { apt = ["tmux", "file"], brew = ["tmux"] }
 links = [
   { target = "{tmux}", source = "tmux:" },
@@ -176,7 +183,7 @@ macos-x64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ou
 
 [components.kitty]
 commands = ["kitty", "kitten"]
-requires = ["mise"]
+requires = ["mise", "git"]
 # Upstream Kitty binaries need glibc 2.35 or newer on Linux.
 glibc = "2.35"
 # Libraries the Kitty binary loads; installed before the tool.

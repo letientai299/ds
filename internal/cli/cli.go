@@ -159,11 +159,15 @@ func (a *app) env(ctx context.Context, trial bool) (*ds.Env, error) {
 	if err != nil {
 		return nil, err
 	}
-	src, err := a.source(cfg, paths)
+	src, err := a.source()
 	if err != nil {
 		return nil, err
 	}
 	cat, err := ds.LoadCatalog(src)
+	if err != nil {
+		return nil, err
+	}
+	repos, err := cfg.ResolveRepos(cat, src, paths)
 	if err != nil {
 		return nil, err
 	}
@@ -190,6 +194,7 @@ func (a *app) env(ctx context.Context, trial bool) (*ds.Env, error) {
 	e := &ds.Env{
 		Target:      target,
 		Source:      src,
+		Repos:       repos,
 		Catalog:     cat,
 		Platform:    ds.DetectPlatform(ctx, runner, environ),
 		Runner:      runner,
@@ -213,7 +218,7 @@ func (a *app) env(ctx context.Context, trial bool) (*ds.Env, error) {
 	return e, nil
 }
 
-func (a *app) source(cfg ds.UserConfig, paths ds.Paths) (assets.Source, error) {
+func (a *app) source() (assets.Source, error) {
 	if a.io.Source != nil {
 		return a.io.Source, nil
 	}
@@ -227,11 +232,7 @@ func (a *app) source(cfg ds.UserConfig, paths ds.Paths) (assets.Source, error) {
 	if checkoutRoot == "" {
 		return nil, errors.New("this binary has no assets; run the checkout's ./ds launcher or a main build")
 	}
-	repos, err := cfg.CheckoutRepos(checkoutRoot, paths)
-	if err != nil {
-		return nil, err
-	}
-	return assets.Checkout{Root: checkoutRoot, Repos: repos}, nil
+	return assets.Checkout{Root: checkoutRoot}, nil
 }
 
 // lock takes the target lock, or adopts one handed over by a parent ds.

@@ -20,12 +20,11 @@ const DefaultDownloadURL = "https://letientai.io/ds"
 
 // Manifest describes the published main build.
 type Manifest struct {
-	Schema   int                             `json:"schema"`
-	Build    string                          `json:"build"`
-	Commit   string                          `json:"commit"`
-	Sources  map[assets.Repo]assets.Revision `json:"sources"`
-	Workflow *assets.Workflow                `json:"workflow,omitempty"`
-	Files    map[string]ManifestFile         `json:"files"`
+	Schema   int                     `json:"schema"`
+	Build    string                  `json:"build"`
+	Commit   string                  `json:"commit"`
+	Workflow *assets.Workflow        `json:"workflow,omitempty"`
+	Files    map[string]ManifestFile `json:"files"`
 }
 
 // ManifestFile is one platform binary.

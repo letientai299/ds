@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Refreshes embedded configuration snapshots without a ds commit.
   workflow_dispatch:
 
 concurrency:
@@ -37,22 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/sources
       - uses: jdx/mise-action@v4
-      - name: Validate checkout mode against the fetched sources
+      - name: Preview checkout mode
         run: |
           home=$RUNNER_TEMP/checkout-home
-          mkdir -p "$home/.config/ds"
-          printf '[sources]\nnvim = "%s"\ntmux = "%s"\nkitty = "%s"\n' \
-            "$PWD/_sources/nvim.conf" "$PWD/_sources/tmux.conf" "$PWD/_sources/kitty.conf" \
-            >"$home/.config/ds/config.toml"
           ./ds --home "$home" add -l core -l extra -l ui --dry-run
           ./ds --home "$home" version
-      - run: >-
-          go run ./cmd/ds-build dist --out dist
-          --source nvim=_sources/nvim.conf
-          --source tmux=_sources/tmux.conf
-          --source kitty=_sources/kitty.conf
+      - run: go run ./cmd/ds-build dist --out dist
       - run: go run ./cmd/ds-build check-static dist/ds-*-linux-*
       - uses: actions/upload-artifact@v7
         with:

@@ -87,67 +87,6 @@ func (e *StageError) Error() string {
 	return msg
 }
 
-// PullSources fast-forwards checkout repositories after verifying every one
-// is clean and tracks an upstream. It never switches branches.
-func (e *Env) PullSources(ctx context.Context, dryRun bool) error {
-	src, ok := e.Source.(assets.Checkout)
-	if !ok {
-		return errors.New("source pull requires checkout mode")
-	}
-	repos := []string{src.Root}
-	for _, repo := range assets.ConfigRepos {
-		if dir := src.Repos[repo]; dir != "" && exists(filepath.Join(dir, ".git")) && !slices.Contains(repos, dir) {
-			repos = append(repos, dir)
-		}
-	}
-	git := func(dir string, args ...string) (string, error) {
-		c := Cmd{Args: append([]string{"git", "-C", dir}, args...), Env: e.Environ.with("GIT_TERMINAL_PROMPT", "0")}
-		return output(ctx, e.Runner, c)
-	}
-	var problems []string
-	for _, dir := range repos {
-		if _, err := git(dir, "symbolic-ref", "-q", "HEAD"); err != nil {
-			problems = append(problems, dir+": detached HEAD")
-			continue
-		}
-		if status, err := git(dir, "status", "--porcelain", "--untracked-files=normal"); err != nil || status != "" {
-			problems = append(problems, dir+": uncommitted changes")
-			continue
-		}
-		if _, err := git(dir, "rev-parse", "--verify", "@{upstream}"); err != nil {
-			problems = append(problems, dir+": branch has no upstream")
-		}
-	}
-	if len(problems) > 0 {
-		return fmt.Errorf("sources not ready:\n  %s", strings.Join(problems, "\n  "))
-	}
-	var advanced []string
-	for _, dir := range repos {
-		if dryRun {
-			e.printf("ds: would fast-forward %s\n", dir)
-			continue
-		}
-		before, _ := git(dir, "rev-parse", "HEAD")
-		e.printf("ds: fast-forward %s\n", dir)
-		c := Cmd{
-			Args:   []string{"git", "-C", dir, "-c", "rebase.autostash=false", "pull", "--ff-only", "--no-rebase"},
-			Env:    e.Environ.with("GIT_TERMINAL_PROMPT", "0"),
-			Stdout: e.Stderr, Stderr: e.Stderr,
-		}
-		if err := e.Runner.Run(ctx, c); err != nil {
-			msg := fmt.Sprintf("pull %s: %v", dir, err)
-			if len(advanced) > 0 {
-				msg += "\nalready advanced: " + strings.Join(advanced, ", ")
-			}
-			return errors.New(msg)
-		}
-		if after, _ := git(dir, "rev-parse", "HEAD"); after != before {
-			advanced = append(advanced, dir)
-		}
-	}
-	return nil
-}
-
 // RunCategories upgrades tools, plugins, and system packages. The ds
 // category is handled by the caller before this runs.
 func (e *Env) RunCategories(ctx context.Context, st State, cats []Category, dryRun bool) error {

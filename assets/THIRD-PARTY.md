@@ -1,10 +1,8 @@
 # Third-party notices
 
 Main builds embed this file with the assets below. ds downloads mise and the
-tools it installs from their upstreams; they remain under their own licenses.
-
-Embedded `nvim.conf`, `tmux.conf`, and `kitty.conf` trees are exports of those
-repositories at the commits `ds version` reports and carry their own licenses.
+tools it installs from their upstreams, and clones `nvim.conf`, `tmux.conf`, and
+`kitty.conf`; they remain under their own licenses.
 
 ## Oh My Zsh
 

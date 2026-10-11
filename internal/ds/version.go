@@ -14,19 +14,19 @@ import (
 type VersionReport struct {
 	Mode       string            `json:"mode"`
 	Executable string            `json:"executable"`
-	Build      *assets.BuildInfo `json:"build,omitempty"`
-	Checkout   *CheckoutVersion  `json:"checkout,omitempty"`
+	Build      *assets.BuildInfo           `json:"build,omitempty"`
+	Checkout   *CheckoutVersion            `json:"checkout,omitempty"`
+	Sources    map[assets.Repo]RepoVersion `json:"sources"`
 }
 
-// CheckoutVersion describes live sources.
+// CheckoutVersion describes the live ds checkout.
 type CheckoutVersion struct {
-	Root    string                      `json:"root"`
-	Commit  string                      `json:"commit"`
-	Dirty   bool                        `json:"dirty"`
-	Sources map[assets.Repo]RepoVersion `json:"sources"`
+	Root   string `json:"root"`
+	Commit string `json:"commit"`
+	Dirty  bool   `json:"dirty"`
 }
 
-// RepoVersion describes one live repository.
+// RepoVersion describes one configuration repository.
 type RepoVersion struct {
 	Path   string `json:"path"`
 	Commit string `json:"commit,omitempty"`
@@ -36,18 +36,19 @@ type RepoVersion struct {
 
 // Version reports mode, source or build commit, and asset revisions.
 func (e *Env) Version(ctx context.Context) VersionReport {
-	r := VersionReport{Mode: e.Mode(), Executable: e.Executable}
+	r := VersionReport{Mode: e.Mode(), Executable: e.Executable, Sources: map[assets.Repo]RepoVersion{}}
 	switch src := e.Source.(type) {
 	case *assets.Embedded:
 		info := src.Info
 		r.Build = &info
 	case assets.Checkout:
 		root := e.gitRevision(ctx, src.Root)
-		c := &CheckoutVersion{Root: src.Root, Commit: root.Commit, Dirty: root.Dirty, Sources: map[assets.Repo]RepoVersion{}}
-		for repo, dir := range src.Repos {
-			c.Sources[repo] = e.gitRevision(ctx, dir)
+		r.Checkout = &CheckoutVersion{Root: src.Root, Commit: root.Commit, Dirty: root.Dirty}
+	}
+	for repo, rs := range e.Repos {
+		if exists(rs.Dir) {
+			r.Sources[repo] = e.gitRevision(ctx, rs.Dir)
 		}
-		r.Checkout = c
 	}
 	return r
 }
@@ -72,10 +73,6 @@ func RenderVersion(w io.Writer, r VersionReport) {
 		b := r.Build
 		fmt.Fprintf(w, "ds main build %s (%s)\n", b.ID, b.Platform)
 		fmt.Fprintf(w, "  ds     %s%s\n", b.Commit, dirtyMark(b.Dirty))
-		for _, repo := range slices.Sorted(maps.Keys(b.Sources)) {
-			s := b.Sources[repo]
-			fmt.Fprintf(w, "  %-6s %s%s\n", repo, s.Commit, dirtyMark(s.Dirty))
-		}
 		if b.Workflow != nil {
 			fmt.Fprintf(w, "  workflow %s\n", b.Workflow.URL)
 		}
@@ -83,14 +80,14 @@ func RenderVersion(w io.Writer, r VersionReport) {
 		c := r.Checkout
 		fmt.Fprintf(w, "ds checkout %s\n", c.Root)
 		fmt.Fprintf(w, "  ds     %s%s\n", c.Commit, dirtyMark(c.Dirty))
-		for _, repo := range slices.Sorted(maps.Keys(c.Sources)) {
-			s := c.Sources[repo]
-			if s.Error != "" {
-				fmt.Fprintf(w, "  %-6s %s (unavailable)\n", repo, s.Path)
-				continue
-			}
-			fmt.Fprintf(w, "  %-6s %s%s %s\n", repo, s.Commit, dirtyMark(s.Dirty), s.Path)
+	}
+	for _, repo := range slices.Sorted(maps.Keys(r.Sources)) {
+		s := r.Sources[repo]
+		if s.Error != "" {
+			fmt.Fprintf(w, "  %-6s %s (unavailable)\n", repo, s.Path)
+			continue
 		}
+		fmt.Fprintf(w, "  %-6s %s%s %s\n", repo, s.Commit, dirtyMark(s.Dirty), s.Path)
 	}
 }
 

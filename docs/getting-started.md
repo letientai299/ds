@@ -16,11 +16,11 @@ cd ~/dev/mine/ds
 ./ds add -l core -l extra -l ui
 ```
 
-The first `./ds` run trusts the checkout in mise and installs its Go. After a
-bootstrap, switching to the checkout reuses the installed mise, tools, and
-Neovim plugins; only links move. Clone `nvim.conf`, `tmux.conf`, or `kitty.conf`
-next to ds, or set `sources` in `<config>/ds/config.toml`, to edit them live;
-until then ds keeps the main build's snapshot of each and notes it in the plan.
+The first `./ds` run trusts the checkout in mise and installs its Go. ds clones
+`nvim.conf`, `tmux.conf`, and `kitty.conf` next to ds when they are missing, or
+uses the paths set in `sources` of `<config>/ds/config.toml`. After a bootstrap,
+switching to the checkout reuses the installed mise, tools, and Neovim plugins;
+only links move.
 
 ds links `~/.local/bin/ds` to the launcher and every managed file to the working
 tree, so later commands run as `ds` and edits are live:
@@ -32,8 +32,8 @@ tree, so later commands run as `ds` and edits are live:
 - Links follow the checkout that last ran `add`; running `./ds add` from another
   worktree moves them there.
 
-`ds upgrade` fast-forwards the checkouts instead of downloading a build;
-snapshots stay at the installed build.
+`ds upgrade` fast-forwards the checkouts instead of downloading a build. It
+stops when one has local changes, no upstream, or a detached HEAD.
 
 ## Ubuntu or another host
 

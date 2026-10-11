@@ -15,7 +15,9 @@ sh -c "$(curl -fsSL https://letientai.io/ds/bootstrap.sh)" -- -l core -l extra
 
 The bootstrap downloads the binary for this host, verifies its SHA-256, and runs
 `ds add` with the given selectors, or `-l core` without any. It needs `curl` or
-`wget` and a SHA-256 tool; no Go, Git, or checkout.
+`wget` and a SHA-256 tool; no Go, Git, or checkout. ds then installs Git and
+clones `nvim.conf`, `tmux.conf`, and `kitty.conf` as selected components need
+them.
 
 ## Run from a checkout
 
@@ -29,7 +31,7 @@ cd ds
 The `./ds` launcher trusts the checkout in mise, installs its Go on first use,
 builds the CLI, and reads live assets, including uncommitted edits. Sibling
 `nvim.conf`, `tmux.conf`, and `kitty.conf` checkouts supply editor, Tmux, and
-Kitty configuration; without one, ds keeps the installed main build's snapshot.
+Kitty configuration; ds clones missing ones next to the checkout.
 
 ## Everyday commands
 

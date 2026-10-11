@@ -37,6 +37,14 @@ type InstallPackages struct {
 	Sudo     bool
 }
 
+// CloneRepo clones a configuration repository. Managed clones are shallow.
+type CloneRepo struct {
+	Repo    assets.Repo
+	URL     string
+	Dir     string
+	Shallow bool
+}
+
 // BuildHelper compiles a configuration repository's Go helper.
 type BuildHelper struct {
 	Mise    string
@@ -71,6 +79,7 @@ type ActivateBuild struct{ ID string }
 func (StageBuild) isAction()      {}
 func (FetchMise) isAction()       {}
 func (InstallPackages) isAction() {}
+func (CloneRepo) isAction()       {}
 func (BuildHelper) isAction()     {}
 func (FileChange) isAction()      {}
 func (InstallTools) isAction()    {}
@@ -88,6 +97,7 @@ func (a InstallPackages) Describe() string {
 	}
 	return fmt.Sprintf("install %s packages%s: %s", a.Manager, sudo, strings.Join(a.Packages, " "))
 }
+func (a CloneRepo) Describe() string { return "clone " + a.URL + " into " + a.Dir }
 func (a BuildHelper) Describe() string {
 	return "build " + filepath.Join(a.Dir, a.Output) + " from " + a.Package
 }
@@ -190,6 +200,7 @@ func (e *Env) BuildPlan(ctx context.Context, st State, req Request, opt AddOptio
 		packages.Mise = mise
 		p.Actions = append(p.Actions, *packages)
 	}
+	e.planRepos(p, comps)
 	e.planHelpers(p, comps, mise)
 
 	entries = append(entries, e.managedEntries(p, comps)...)
@@ -358,25 +369,46 @@ func (e *Env) planPackages(ctx context.Context, p *Plan, comps []ComponentName, 
 	return &InstallPackages{Manager: manager, Packages: pkgs, Sudo: sudo}
 }
 
-// planHelpers builds checkout helpers that are missing or older than their
-// sources. Main builds embed compiled helpers.
-func (e *Env) planHelpers(p *Plan, comps []ComponentName, mise string) {
-	src, ok := e.Source.(assets.Checkout)
-	if !ok {
-		return
+// planRepos clones configuration repositories that selected components
+// use and that are not on disk yet.
+func (e *Env) planRepos(p *Plan, comps []ComponentName) {
+	var repos []assets.Repo
+	for _, name := range comps {
+		comp, _ := e.Catalog.Component(name)
+		for _, link := range comp.Links {
+			repos = append(repos, link.Source.Repo)
+		}
+		if comp.Helper != nil {
+			repos = append(repos, comp.Helper.Repo)
+		}
 	}
+	for _, repo := range assets.ConfigRepos {
+		src := e.Repos[repo]
+		if !slices.Contains(repos, repo) || exists(src.Dir) {
+			continue
+		}
+		p.Actions = append(p.Actions, CloneRepo{Repo: repo, URL: src.URL, Dir: src.Dir, Shallow: src.Managed})
+	}
+}
+
+// cloning reports whether the plan clones repo.
+func (p *Plan) cloning(repo assets.Repo) bool {
+	return slices.ContainsFunc(p.Actions, func(a Action) bool {
+		c, ok := a.(CloneRepo)
+		return ok && c.Repo == repo
+	})
+}
+
+// planHelpers builds helpers that are missing or older than their sources.
+func (e *Env) planHelpers(p *Plan, comps []ComponentName, mise string) {
 	for _, name := range comps {
 		comp, _ := e.Catalog.Component(name)
 		if comp.Helper == nil {
 			continue
 		}
-		dir := src.Repos[comp.Helper.Repo]
-		// Snapshots ship compiled helpers.
-		if dir == "" || !exists(dir) || e.usesSnapshot(comp.Helper.Repo) {
-			continue
-		}
-		out := filepath.Join(dir, filepath.FromSlash(comp.Helper.Output))
-		if helperFresh(dir, out) {
+		dir := e.Repos[comp.Helper.Repo].Dir
+		cloning := p.cloning(comp.Helper.Repo)
+		if !cloning && (!exists(dir) || helperFresh(dir, filepath.Join(dir, filepath.FromSlash(comp.Helper.Output)))) {
 			continue
 		}
 		p.Actions = append(p.Actions, BuildHelper{Mise: mise, Dir: dir, Package: comp.Helper.Package, Output: comp.Helper.Output})
@@ -411,7 +443,6 @@ func helperFresh(dir, out string) bool {
 func (e *Env) managedEntries(p *Plan, comps []ComponentName) []managed {
 	bin := e.Target.Placeholders()["bin"]
 	entries := []managed{managedLink{Target: filepath.Join(bin, "ds"), Source: e.dsExecutable()}}
-	var snapshots []assets.Repo
 	for _, name := range comps {
 		comp, _ := e.Catalog.Component(name)
 		for _, link := range comp.Links {
@@ -419,13 +450,9 @@ func (e *Env) managedEntries(p *Plan, comps []ComponentName) []managed {
 			if !ok {
 				continue
 			}
-			if !e.sourceAvailable(link.Source) && !e.helperOutput(comp, link.Source) {
-				p.block(string(name), "missing source "+e.assetPath(link.Source), e.sourceRemedy(link.Source.Repo))
+			if !e.sourceAvailable(link.Source) && !p.cloning(link.Source.Repo) && !e.helperOutput(p, comp, link.Source) {
+				p.block(string(name), "missing source "+e.assetPath(link.Source), "")
 				continue
-			}
-			if repo := link.Source.Repo; e.usesSnapshot(repo) && !slices.Contains(snapshots, repo) {
-				snapshots = append(snapshots, repo)
-				p.Notes = append(p.Notes, fmt.Sprintf("%s: using the installed build's snapshot; clone %s next to the checkout to edit it", repo, repo.CheckoutName()))
 			}
 			entries = append(entries, managedLink{Target: target, Source: e.assetPath(link.Source)})
 		}
@@ -457,24 +484,13 @@ func (e *Env) managedEntries(p *Plan, comps []ComponentName) []managed {
 	return entries
 }
 
-// usesSnapshot reports a checkout repo resolved to a main build snapshot.
-func (e *Env) usesSnapshot(repo assets.Repo) bool {
-	src, ok := e.Source.(assets.Checkout)
-	return ok && repo != assets.DS && src.Repos[repo] == buildSnapshot(e.Target.Paths(), repo)
-}
-
 // helperOutput reports a helper link whose binary the plan builds.
-func (e *Env) helperOutput(comp *Component, ref assets.Ref) bool {
-	src, ok := e.Source.(assets.Checkout)
-	return ok && comp.Helper != nil && ref.Repo == comp.Helper.Repo &&
-		ref.Path == comp.Helper.Output && exists(src.Repos[ref.Repo])
-}
-
-func (e *Env) sourceRemedy(repo assets.Repo) string {
-	if _, ok := e.Source.(assets.Checkout); ok && repo != assets.DS {
-		return fmt.Sprintf("clone %s or set sources.%s in %s", repo.CheckoutName(), repo, e.Target.Paths().UserConfig())
-	}
-	return ""
+func (e *Env) helperOutput(p *Plan, comp *Component, ref assets.Ref) bool {
+	return comp.Helper != nil && ref.Repo == comp.Helper.Repo && ref.Path == comp.Helper.Output &&
+		slices.ContainsFunc(p.Actions, func(a Action) bool {
+			b, ok := a.(BuildHelper)
+			return ok && b.Dir == e.Repos[ref.Repo].Dir && b.Output == ref.Path
+		})
 }
 
 func (e *Env) planFiles(p *Plan, st State, entries []managed, opt AddOptions) {

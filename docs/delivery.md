@@ -7,18 +7,16 @@ releases, or historical builds; the site holds only the latest build.
 
 ## Snapshots
 
-[`ds-build dist`][ds-build] fetches nothing itself. CI checks out `nvim.conf`,
-`tmux.conf`, and `kitty.conf` once per run and passes them as `--source` flags.
-For each repository, the exporter takes tracked and untracked files that Git
-does not ignore, keeps hidden files, executable modes, and in-repository
-symlinks, and writes a deterministic gzip tar. Each platform's tar also holds
-the compiled Kitty helper. [Go embedding][embed] compiles the tar and build
-metadata into the binary.
+[`ds-build dist`][ds-build] exports the ds `assets/` directory only: tracked and
+untracked files that Git does not ignore, with hidden files, executable modes,
+and in-repository symlinks, into a deterministic gzip tar. [Go embedding][embed]
+compiles the tar and build metadata into the binary. Configuration repositories
+are not embedded; hosts clone them on first use, so their changes reach hosts on
+the next `ds upgrade` without a ds build.
 
-The build ID combines the ds commit, a digest of every ds source file, the
-configuration commits, and the exported content. `ds version` prints it with
-each repository's commit and the workflow run. A manual workflow run refreshes
-configuration snapshots without a ds commit.
+The build ID combines the ds commit, a digest of every ds source file, and the
+exported content. `ds version` prints it with the workflow run and the commit of
+each cloned configuration repository.
 
 ## Published files
 
@@ -47,8 +45,7 @@ site.
 1. In repository settings, set Pages to deploy from GitHub Actions.
 2. Run the workflow on `main` and confirm the bootstrap step passes.
 
-The site lives under the owner's Pages domain, `https://letientai.io/ds`. All
-configuration repositories are public, so the workflow token reads them.
+The site lives under the owner's Pages domain, `https://letientai.io/ds`.
 
 `DS_DOWNLOAD_URL`, or `download_url` in `<config>/ds/config.toml`, points ds at
 another site.
@@ -62,8 +59,9 @@ selectors, or `-l core`. Remote commands are single-line `sh -c` calls with
 quoted arguments, so homes with spaces and csh login shells work. A shell trap
 removes the transferred binary on exit; installed builds stay under the selected
 home. OpenSSH aliases, ProxyJump, and agents work unchanged. The target needs no
-Go, Git, archive tool, or GitHub token, and checkout and main callers deploy the
-same latest build.
+Go, archive tool, or GitHub token, but it needs HTTPS access to GitHub: ds
+installs Git when missing and clones the configuration repositories there.
+Checkout and main callers deploy the same latest build.
 
 [ci]: ../.github/workflows/ci.yml
 [ds-build]: ../cmd/ds-build/main.go

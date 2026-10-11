@@ -12,12 +12,12 @@ repositories, and an in-process download site. They cover selector rules,
 additive selection, dependencies, idempotent convergence, previews that write
 nothing, conflicts and backups, user mise pins, rc symlinks, explicit-home
 isolation, locking, partial failures and retries, trial isolation, snapshot
-modes and hidden files, main-build staging and activation, checksum and
-publication races, SSH argument quoting, and transfer cleanup.
+modes and hidden files, repository placement, clones, and source sync,
+main-build staging and activation, checksum and publication races, SSH argument
+quoting, and transfer cleanup.
 
-`mise run dist` builds every platform into `dist/` from sibling configuration
-checkouts. Serve that directory and set `DS_DOWNLOAD_URL` to exercise `upgrade`
-and `deploy` against local builds.
+`mise run dist` builds every platform into `dist/`. Serve that directory and set
+`DS_DOWNLOAD_URL` to exercise `upgrade` and `deploy` against local builds.
 
 ## CI
 

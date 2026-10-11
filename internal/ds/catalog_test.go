@@ -80,6 +80,11 @@ links = [{ target = "{home}/x", source = "ds:x" }]`, "invalid target"},
 		{"bad source", `[components.b]
 commands = ["b"]
 links = [{ target = "{ds}/x", source = "docker:x" }]`, "invalid asset reference"},
+		{"repository without URL", `[components.b]
+commands = ["b"]
+links = [{ target = "{ds}/x", source = "nvim:x" }]`, "repository nvim has no URL"},
+		{"unknown repository", `[repos]
+docker = "https://example.invalid/docker"`, `invalid repository "docker"`},
 		{"unknown manager", `[components.b]
 commands = ["b"]
 packages = { dnf = ["b"] }`, "unsupported package manager dnf"},

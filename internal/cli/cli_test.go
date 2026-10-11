@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -28,13 +29,25 @@ func invoke(t *testing.T, args ...string) (int, string, string) {
 	if err := os.WriteFile(filepath.Join(repos[assets.Tmux], "tm"), []byte("#!/bin/sh\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
+	var cfg strings.Builder
+	cfg.WriteString("[sources]\n")
+	for repo, dir := range repos {
+		fmt.Fprintf(&cfg, "%s = %q\n", repo, dir)
+	}
+	home := filepath.Join(dir, "home")
+	if err := os.MkdirAll(filepath.Join(home, ".config", "ds"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".config", "ds", "config.toml"), []byte(cfg.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	var stdout, stderr bytes.Buffer
 	code := Run(context.Background(), args, IO{
 		Stdin:   strings.NewReader(""),
 		Stdout:  &stdout,
 		Stderr:  &stderr,
-		Environ: []string{"HOME=" + filepath.Join(dir, "home"), "PATH=/usr/bin:/bin"},
-		Source:  assets.Checkout{Root: root, Repos: repos},
+		Environ: []string{"HOME=" + home, "PATH=/usr/bin:/bin"},
+		Source:  assets.Checkout{Root: root},
 		UID:     501,
 	})
 	return code, stdout.String(), stderr.String()
@@ -103,7 +116,7 @@ func TestEnvKeepsHomeFlag(t *testing.T) {
 	a := &app{io: IO{
 		Stdout: &bytes.Buffer{}, Stderr: &bytes.Buffer{},
 		Environ: []string{"HOME=/nonexistent"},
-		Source:  assets.Checkout{Root: root, Repos: map[assets.Repo]string{}},
+		Source:  assets.Checkout{Root: root},
 	}}
 	cmd := a.rootCmd()
 	cmd.SetArgs([]string{"--home", home, "version"})

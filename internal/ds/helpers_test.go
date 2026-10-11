@@ -106,14 +106,19 @@ func newFixture(t *testing.T) *fixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	src := assets.Checkout{Root: repoRoot(t), Repos: repos}
+	src := assets.Checkout{Root: repoRoot(t)}
 	cat, err := LoadCatalog(src)
 	if err != nil {
 		t.Fatal(err)
 	}
+	sources := map[assets.Repo]RepoSource{}
+	for repo, dir := range repos {
+		sources[repo] = RepoSource{Dir: dir, URL: cat.RepoURL(repo)}
+	}
 	f.env = &Env{
 		Target:   HomeTarget{P: paths},
 		Source:   src,
+		Repos:    sources,
 		Catalog:  cat,
 		Platform: Platform{OS: "darwin", Arch: "arm64"},
 		Runner:   ExecRunner{},

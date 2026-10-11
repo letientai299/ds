@@ -1,5 +1,6 @@
-// Package assets provides ds configuration assets from a live checkout or
-// from the snapshot embedded in a main build.
+// Package assets provides ds assets from a live checkout or from the
+// snapshot embedded in a main build. Configuration repositories are separate
+// Git checkouts on the target.
 package assets
 
 import (
@@ -64,13 +65,6 @@ func (r Ref) archivePath() string {
 	return string(r.Repo) + "/" + r.Path
 }
 
-// Revision records the source of one repository in a build.
-type Revision struct {
-	URL    string `json:"url,omitempty"`
-	Commit string `json:"commit"`
-	Dirty  bool   `json:"dirty,omitempty"`
-}
-
 // Workflow records the CI run that produced a build.
 type Workflow struct {
 	RunID      int64  `json:"run_id"`
@@ -78,15 +72,14 @@ type Workflow struct {
 	URL        string `json:"url,omitempty"`
 }
 
-// BuildInfo identifies a main build and its embedded configuration.
+// BuildInfo identifies a main build.
 type BuildInfo struct {
-	Schema   int               `json:"schema"`
-	ID       string            `json:"id"`
-	Platform string            `json:"platform"`
-	Commit   string            `json:"commit"`
-	Dirty    bool              `json:"dirty,omitempty"`
-	Workflow *Workflow         `json:"workflow,omitempty"`
-	Sources  map[Repo]Revision `json:"sources"`
+	Schema   int       `json:"schema"`
+	ID       string    `json:"id"`
+	Platform string    `json:"platform"`
+	Commit   string    `json:"commit"`
+	Dirty    bool      `json:"dirty,omitempty"`
+	Workflow *Workflow `json:"workflow,omitempty"`
 }
 
 // Source supplies ds assets. Checkout and Embedded are its variants.
@@ -95,26 +88,18 @@ type Source interface {
 	isSource()
 }
 
-// Checkout reads live assets from a source checkout and configuration
-// repositories.
-type Checkout struct {
-	Root  string
-	Repos map[Repo]string
-}
+// Checkout reads live ds assets from a source checkout.
+type Checkout struct{ Root string }
 
 func (Checkout) isSource() {}
 
-// Path returns the live filesystem path of ref, or "" when its repository
-// is not configured.
+// Path returns the live filesystem path of a ds asset, or "" for other
+// repositories.
 func (c Checkout) Path(ref Ref) string {
-	base := c.Repos[ref.Repo]
-	if ref.Repo == DS {
-		base = filepath.Join(c.Root, "assets")
-	}
-	if base == "" {
+	if ref.Repo != DS {
 		return ""
 	}
-	return filepath.Join(base, filepath.FromSlash(ref.Path))
+	return filepath.Join(c.Root, "assets", filepath.FromSlash(ref.Path))
 }
 
 // Launcher is the checkout's POSIX entrypoint.
@@ -124,7 +109,7 @@ func (c Checkout) Launcher() string { return filepath.Join(c.Root, "ds") }
 func (c Checkout) ReadFile(ref Ref) ([]byte, error) {
 	p := c.Path(ref)
 	if p == "" {
-		return nil, fmt.Errorf("%s source is not configured", ref.Repo)
+		return nil, fmt.Errorf("%s is not a ds asset", ref)
 	}
 	return os.ReadFile(p)
 }

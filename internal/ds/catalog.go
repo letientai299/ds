@@ -27,6 +27,7 @@ type Catalog struct {
 	layerOrder []LayerName
 	components map[ComponentName]*Component
 	order      []ComponentName
+	repoURLs   map[assets.Repo]string
 }
 
 // Component declares one selectable unit of tooling and configuration.
@@ -84,6 +85,7 @@ var (
 )
 
 type rawCatalog struct {
+	Repos      map[string]string       `toml:"repos"`
 	Layers     map[string][]string     `toml:"layers"`
 	Components map[string]rawComponent `toml:"components"`
 }
@@ -122,8 +124,16 @@ func ParseCatalog(data []byte) (*Catalog, error) {
 	c := &Catalog{
 		layers:     map[LayerName][]ComponentName{},
 		components: map[ComponentName]*Component{},
+		repoURLs:   map[assets.Repo]string{},
 	}
 	var errs []error
+	for name, url := range raw.Repos {
+		if repo := assets.Repo(name); repo.Valid() && repo != assets.DS && url != "" {
+			c.repoURLs[repo] = url
+			continue
+		}
+		errs = append(errs, fmt.Errorf("invalid repository %q", name))
+	}
 	for name, rc := range raw.Components {
 		comp, err := parseComponent(name, rc)
 		if err != nil {
@@ -251,6 +261,9 @@ func (c *Catalog) validate() []error {
 			if err := validTarget(link.Target); err != nil {
 				errs = append(errs, fmt.Errorf("component %s: %w", name, err))
 			}
+			if repo := link.Source.Repo; repo != assets.DS && c.repoURLs[repo] == "" {
+				errs = append(errs, fmt.Errorf("component %s: repository %s has no URL", name, repo))
+			}
 			claim(name, link.Target)
 		}
 		for _, block := range comp.Blocks {
@@ -350,6 +363,9 @@ func (c *Catalog) Component(name ComponentName) (*Component, bool) {
 	comp, ok := c.components[name]
 	return comp, ok
 }
+
+// RepoURL is the clone URL of a configuration repository.
+func (c *Catalog) RepoURL(repo assets.Repo) string { return c.repoURLs[repo] }
 
 // HasLayer reports whether a layer exists.
 func (c *Catalog) HasLayer(name LayerName) bool {

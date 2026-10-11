@@ -2,6 +2,7 @@ package ds
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,23 +13,15 @@ import (
 	"github.com/letientai299/ds/internal/build"
 )
 
-// embeddedBuild snapshots the live assets and the fixture repositories.
-func embeddedBuild(t *testing.T, repos map[assets.Repo]string) *assets.Embedded {
+// embeddedBuild snapshots the live ds assets.
+func embeddedBuild(t *testing.T) *assets.Embedded {
 	t.Helper()
-	for _, repo := range assets.ConfigRepos {
-		dir := repos[repo]
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
-			git(t, dir, "init", "-q")
-		}
-		git(t, dir, "add", "-A")
-		git(t, dir, "commit", "-qm", "snapshot", "--allow-empty")
-	}
-	s, err := build.Collect(context.Background(), build.Options{Root: repoRoot(t), Sources: repos})
+	s, err := build.Collect(context.Background(), build.Options{Root: repoRoot(t)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	out := t.TempDir()
-	if err := s.WriteEmbedded(out, "darwin/arm64", []byte("#!/bin/sh\n")); err != nil {
+	if err := s.WriteEmbedded(out, "darwin/arm64"); err != nil {
 		t.Fatal(err)
 	}
 	meta, _ := os.ReadFile(filepath.Join(out, "build.json"))
@@ -46,16 +39,16 @@ func TestMainBuildStagesAndActivates(t *testing.T) {
 		t.Skip("git required")
 	}
 	f := newFixture(t)
-	repos := f.env.Source.(assets.Checkout).Repos
 	exe := filepath.Join(t.TempDir(), "ds-download")
 	writeExec(t, exe, "#!/bin/sh\necho ds\n")
 	f.env.Executable = exe
 
 	builds := []*assets.Embedded{}
 	for i := range 3 {
-		writeFile(t, filepath.Join(repos[assets.Nvim], "init.lua"), strings.Repeat("-- v\n", i+1))
-		f.env.Source = embeddedBuild(t, repos)
-		builds = append(builds, f.env.Source.(*assets.Embedded))
+		emb := embeddedBuild(t)
+		emb.Info.ID = fmt.Sprintf("%s-%d", emb.Info.ID, i)
+		f.env.Source = emb
+		builds = append(builds, emb)
 		p := f.add(core, AddOptions{})
 		if !hasAction(p, "stage build") || !hasAction(p, "activate build") {
 			t.Fatalf("build %d actions: %v", i, actionNames(p))
@@ -75,8 +68,8 @@ func TestMainBuildStagesAndActivates(t *testing.T) {
 		t.Fatalf("builds kept = %v", names)
 	}
 	cfg := f.env.Target.Placeholders()
-	if got := readFile(t, filepath.Join(cfg["nvim"], "init.lua")); got != strings.Repeat("-- v\n", 3) {
-		t.Fatalf("nvim config through current = %q", got)
+	if dest, _ := os.Readlink(cfg["nvim"]); dest != f.env.Repos[assets.Nvim].Dir {
+		t.Fatalf("nvim link = %q", dest)
 	}
 	if got := readFile(t, filepath.Join(cfg["bin"], "ds")); got != "#!/bin/sh\necho ds\n" {
 		t.Fatalf("ds link target = %q", got)

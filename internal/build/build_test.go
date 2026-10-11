@@ -62,13 +62,10 @@ func fixtureOptions(t *testing.T) Options {
 	})
 	write(t, filepath.Join(root, "assets/dotfiles/ignored.txt"), "no", 0o644)
 	write(t, filepath.Join(root, "assets/dotfiles/untracked"), "yes", 0o644)
-	nvim := repo(t, filepath.Join(dir, "nvim.conf"), map[string]string{"init.lua": "-- init\n", "lua/x.lua": "x"})
-	if err := os.Symlink("lua/x.lua", filepath.Join(nvim, "link.lua")); err != nil {
+	if err := os.Symlink(".hidden", filepath.Join(root, "assets/dotfiles/link")); err != nil {
 		t.Fatal(err)
 	}
-	tmux := repo(t, filepath.Join(dir, "tmux.conf"), map[string]string{"tm.sh": "#!/bin/sh\n"})
-	kitty := repo(t, filepath.Join(dir, "kitty.conf"), map[string]string{"conf/kitty.conf": "k"})
-	return Options{Root: root, Sources: map[assets.Repo]string{assets.Nvim: nvim, assets.Tmux: tmux, assets.Kitty: kitty}}
+	return Options{Root: root}
 }
 
 func TestSnapshotRoundTrip(t *testing.T) {
@@ -78,7 +75,7 @@ func TestSnapshotRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := t.TempDir()
-	if err := s.WriteEmbedded(out, "linux/amd64", []byte("helper")); err != nil {
+	if err := s.WriteEmbedded(out, "linux/amd64"); err != nil {
 		t.Fatal(err)
 	}
 	meta, _ := os.ReadFile(filepath.Join(out, "build.json"))
@@ -87,8 +84,8 @@ func TestSnapshotRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !s.Info.Sources[assets.Nvim].Dirty || s.Info.Sources[assets.Tmux].Dirty {
-		t.Fatalf("dirty flags: %+v", s.Info.Sources)
+	if !s.Info.Dirty {
+		t.Fatal("untracked asset not marked dirty")
 	}
 	dest := filepath.Join(t.TempDir(), "assets")
 	if err := emb.Extract(dest); err != nil {
@@ -103,9 +100,6 @@ func TestSnapshotRoundTrip(t *testing.T) {
 		{"ds/_underscore/file", 0o644},
 		{"ds/dotfiles/untracked", 0o644},
 		{"ds/tools/run.sh", 0o755},
-		{"tmux/tm.sh", 0o755},
-		{"kitty/bin/kt", 0o755},
-		{"nvim/init.lua", 0o644},
 	}
 	for _, c := range checks {
 		info, err := os.Stat(filepath.Join(dest, c.path))
@@ -122,7 +116,7 @@ func TestSnapshotRoundTrip(t *testing.T) {
 			t.Errorf("%s must not be exported", absent)
 		}
 	}
-	if link, err := os.Readlink(filepath.Join(dest, "nvim", "link.lua")); err != nil || link != "lua/x.lua" {
+	if link, err := os.Readlink(filepath.Join(dest, "ds", "dotfiles", "link")); err != nil || link != ".hidden" {
 		t.Errorf("symlink = %q, %v", link, err)
 	}
 	if data, err := emb.ReadFile(assets.Ref{Repo: assets.DS, Path: "catalog.toml"}); err != nil || string(data) != "x" {
@@ -154,7 +148,7 @@ func TestBuildIDTracksSources(t *testing.T) {
 
 func TestSymlinkEscapeRejected(t *testing.T) {
 	opt := fixtureOptions(t)
-	if err := os.Symlink("../../etc/passwd", filepath.Join(opt.Sources[assets.Nvim], "escape")); err != nil {
+	if err := os.Symlink("../../../etc/passwd", filepath.Join(opt.Root, "assets", "escape")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Collect(context.Background(), opt); err == nil || !strings.Contains(err.Error(), "outside its repository") {

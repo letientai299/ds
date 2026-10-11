@@ -96,9 +96,12 @@ func (e *Env) apply(ctx context.Context, a Action, st *State) error {
 		return download(ctx, e.HTTP, a.Download, a.Path, 0o755)
 	case InstallPackages:
 		return e.installPackages(ctx, a)
+	case CloneRepo:
+		return e.cloneRepo(ctx, a)
 	case BuildHelper:
+		// Naming go limits mise to the pinned Go, not every repository tool.
 		c := Cmd{
-			Args: []string{a.Mise, "-C", a.Dir, "exec", "--", "go", "build", "-trimpath", "-o", a.Output, a.Package},
+			Args: []string{a.Mise, "-C", a.Dir, "exec", "go", "--", "go", "build", "-trimpath", "-o", a.Output, a.Package},
 			Env:  e.Environ.with("CGO_ENABLED", "0", "MISE_TRUSTED_CONFIG_PATHS", a.Dir, "MISE_YES", "1"),
 			Dir:  a.Dir, Stdout: e.Stderr, Stderr: e.Stderr,
 		}

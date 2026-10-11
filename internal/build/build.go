@@ -1,4 +1,4 @@
-// Package build exports configuration snapshots and produces main builds.
+// Package build exports ds asset snapshots and produces main builds.
 package build
 
 import (
@@ -32,8 +32,6 @@ var Platforms = []string{"darwin/arm64", "darwin/amd64", "linux/arm64", "linux/a
 type Options struct {
 	// Root is the ds checkout.
 	Root string
-	// Sources are configuration repository checkouts.
-	Sources map[assets.Repo]string
 	// Workflow identifies the CI run, when there is one.
 	Workflow *assets.Workflow
 }
@@ -46,7 +44,7 @@ type entry struct {
 	data []byte
 }
 
-// Snapshot is the platform-independent export of every repository.
+// Snapshot is the platform-independent export of the ds assets.
 type Snapshot struct {
 	Info    assets.BuildInfo
 	entries []entry
@@ -54,34 +52,18 @@ type Snapshot struct {
 	source string
 }
 
-// Collect exports tracked and untracked, non-ignored files of ds assets and
-// the configuration repositories.
+// Collect exports tracked and untracked, non-ignored files of ds assets.
 func Collect(ctx context.Context, opt Options) (*Snapshot, error) {
-	s := &Snapshot{Info: assets.BuildInfo{Schema: 1, Sources: map[assets.Repo]assets.Revision{}, Workflow: opt.Workflow}}
-	rev, err := revision(ctx, opt.Root)
-	if err != nil {
+	s := &Snapshot{Info: assets.BuildInfo{Schema: 1, Workflow: opt.Workflow}}
+	var err error
+	if s.Info.Commit, s.Info.Dirty, err = revision(ctx, opt.Root); err != nil {
 		return nil, err
 	}
-	s.Info.Commit, s.Info.Dirty = rev.Commit, rev.Dirty
 	if err := s.add(ctx, assets.DS, opt.Root, "assets"); err != nil {
 		return nil, err
 	}
 	if s.source, err = sourceDigest(ctx, opt.Root); err != nil {
 		return nil, err
-	}
-	for _, repo := range assets.ConfigRepos {
-		dir := opt.Sources[repo]
-		if dir == "" {
-			return nil, fmt.Errorf("%s source is required", repo)
-		}
-		rev, err := revision(ctx, dir)
-		if err != nil {
-			return nil, err
-		}
-		s.Info.Sources[repo] = rev
-		if err := s.add(ctx, repo, dir, ""); err != nil {
-			return nil, err
-		}
 	}
 	slices.SortFunc(s.entries, func(a, b entry) int { return strings.Compare(a.name, b.name) })
 	s.Info.ID = s.id()
@@ -99,17 +81,15 @@ func git(ctx context.Context, dir string, args ...string) (string, error) {
 	return string(out), nil
 }
 
-func revision(ctx context.Context, dir string) (assets.Revision, error) {
-	commit, err := git(ctx, dir, "rev-parse", "HEAD")
-	if err != nil {
-		return assets.Revision{}, err
+func revision(ctx context.Context, dir string) (commit string, dirty bool, err error) {
+	if commit, err = git(ctx, dir, "rev-parse", "HEAD"); err != nil {
+		return "", false, err
 	}
 	status, err := git(ctx, dir, "status", "--porcelain")
 	if err != nil {
-		return assets.Revision{}, err
+		return "", false, err
 	}
-	url, _ := git(ctx, dir, "remote", "get-url", "origin")
-	return assets.Revision{URL: strings.TrimSpace(url), Commit: strings.TrimSpace(commit), Dirty: status != ""}, nil
+	return strings.TrimSpace(commit), status != "", nil
 }
 
 // add exports files of dir below prefix as <repo>/<relative path>.
@@ -187,10 +167,6 @@ func sourceDigest(ctx context.Context, root string) (string, error) {
 func (s *Snapshot) id() string {
 	h := sha256.New()
 	fmt.Fprintf(h, "ds %s %t %s\n", s.Info.Commit, s.Info.Dirty, s.source)
-	for _, repo := range slices.Sorted(maps.Keys(s.Info.Sources)) {
-		rev := s.Info.Sources[repo]
-		fmt.Fprintf(h, "%s %s %t\n", repo, rev.Commit, rev.Dirty)
-	}
 	for _, e := range s.entries {
 		sum := sha256.Sum256(e.data)
 		fmt.Fprintf(h, "%s %o %s %x\n", e.name, e.mode, e.link, sum)
@@ -202,25 +178,16 @@ func (s *Snapshot) id() string {
 	return commit + "-" + hex.EncodeToString(h.Sum(nil))[:10]
 }
 
-const helperName = "kitty/bin/kt"
-
 // WriteEmbedded writes build.json and assets.tar.gz for one platform into
-// dir, adding the platform's compiled helper.
-func (s *Snapshot) WriteEmbedded(dir, platform string, helper []byte) error {
+// dir.
+func (s *Snapshot) WriteEmbedded(dir, platform string) error {
 	info := s.Info
 	info.Platform = platform
 	meta, err := json.MarshalIndent(info, "", "  ")
 	if err != nil {
 		return err
 	}
-	entries := slices.Clone(s.entries)
-	if helper != nil {
-		// The compiled helper replaces any checked-in binary.
-		entries = slices.DeleteFunc(entries, func(e entry) bool { return e.name == helperName })
-		entries = append(entries, entry{name: helperName, mode: 0o755, data: helper})
-		slices.SortFunc(entries, func(a, b entry) int { return strings.Compare(a.name, b.name) })
-	}
-	archive, err := tarball(entries)
+	archive, err := tarball(s.entries)
 	if err != nil {
 		return err
 	}
@@ -273,19 +240,6 @@ func tarball(entries []entry) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// BuildHelper compiles the Kitty helper for platform.
-func BuildHelper(ctx context.Context, kittyDir, platform, out string) ([]byte, error) {
-	goos, goarch, _ := strings.Cut(platform, "/")
-	cmd := exec.CommandContext(ctx, "go", "build", "-trimpath", "-ldflags", "-s -w", "-o", out, "./cmd/kt")
-	cmd.Dir = kittyDir
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+goos, "GOARCH="+goarch, "GOFLAGS=-mod=readonly")
-	cmd.Stdout, cmd.Stderr = os.Stderr, os.Stderr
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("build kitty helper for %s: %w", platform, err)
-	}
-	return os.ReadFile(out)
-}
-
 // BuildBinary compiles ds with the embedded snapshot for platform.
 func BuildBinary(ctx context.Context, root, platform, out string) error {
 	goos, goarch, _ := strings.Cut(platform, "/")
@@ -301,12 +255,11 @@ func BuildBinary(ctx context.Context, root, platform, out string) error {
 
 // Manifest mirrors the published manifest.
 type Manifest struct {
-	Schema   int                             `json:"schema"`
-	Build    string                          `json:"build"`
-	Commit   string                          `json:"commit"`
-	Sources  map[assets.Repo]assets.Revision `json:"sources"`
-	Workflow *assets.Workflow                `json:"workflow,omitempty"`
-	Files    map[string]ManifestFile         `json:"files"`
+	Schema   int                     `json:"schema"`
+	Build    string                  `json:"build"`
+	Commit   string                  `json:"commit"`
+	Workflow *assets.Workflow        `json:"workflow,omitempty"`
+	Files    map[string]ManifestFile `json:"files"`
 }
 
 // ManifestFile is one published binary.
@@ -323,23 +276,14 @@ func Dist(ctx context.Context, opt Options, out string, platforms []string) (Man
 	if err != nil {
 		return Manifest{}, err
 	}
-	m := Manifest{Schema: 1, Build: s.Info.ID, Commit: s.Info.Commit, Sources: s.Info.Sources, Workflow: opt.Workflow, Files: map[string]ManifestFile{}}
+	m := Manifest{Schema: 1, Build: s.Info.ID, Commit: s.Info.Commit, Workflow: opt.Workflow, Files: map[string]ManifestFile{}}
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		return m, err
 	}
 	embedded := filepath.Join(opt.Root, "internal", "assets", "embedded")
 	defer os.RemoveAll(embedded)
-	work, err := os.MkdirTemp("", "ds-dist-")
-	if err != nil {
-		return m, err
-	}
-	defer os.RemoveAll(work)
 	for _, platform := range platforms {
-		helper, err := BuildHelper(ctx, opt.Sources[assets.Kitty], platform, filepath.Join(work, "kt-"+strings.ReplaceAll(platform, "/", "-")))
-		if err != nil {
-			return m, err
-		}
-		if err := s.WriteEmbedded(embedded, platform, helper); err != nil {
+		if err := s.WriteEmbedded(embedded, platform); err != nil {
 			return m, err
 		}
 		name := fmt.Sprintf("ds-%s-%s", s.Info.ID, strings.ReplaceAll(platform, "/", "-"))

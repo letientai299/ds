@@ -211,10 +211,11 @@ func toolNames(cat *Catalog, comps []ComponentName) []string {
 
 // toolFact is mise's view of one effective global tool request.
 type toolFact struct {
-	Version   string `json:"version"`
-	Requested string `json:"requested_version"`
-	Installed bool   `json:"installed"`
-	Source    struct {
+	Version     string `json:"version"`
+	Requested   string `json:"requested_version"`
+	Installed   bool   `json:"installed"`
+	InstallPath string `json:"install_path"`
+	Source      struct {
 		Path string `json:"path"`
 	} `json:"source"`
 }

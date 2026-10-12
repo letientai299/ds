@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
+	"os"
 	"slices"
 	"strings"
 
@@ -36,14 +38,22 @@ type StatusReport struct {
 	Files      []FileStatus      `json:"files"`
 	Build      *BuildStatus      `json:"build,omitempty"`
 	Notes      []string          `json:"notes,omitempty"`
+	Runtime    VersionReport     `json:"runtime"`
+	Paths      map[string]string `json:"paths"`
+	Mise       ComponentStatus   `json:"mise"`
+	Platform   string            `json:"platform"`
 }
 
 // ComponentStatus is the tooling state of one component.
 type ComponentStatus struct {
-	Name    ComponentName `json:"name"`
-	State   string        `json:"state"`
-	Version string        `json:"version,omitempty"`
-	Detail  string        `json:"detail,omitempty"`
+	Name        ComponentName     `json:"name"`
+	State       string            `json:"state"`
+	Version     string            `json:"version,omitempty"`
+	Detail      string            `json:"detail,omitempty"`
+	Requested   string            `json:"requested,omitempty"`
+	Source      string            `json:"source,omitempty"`
+	InstallPath string            `json:"install_path,omitempty"`
+	Commands    map[string]string `json:"commands,omitempty"`
 }
 
 // FileStatus is the state of one managed path.
@@ -66,6 +76,34 @@ func (r StatusReport) Healthy() bool { return r.Summary == SummaryComplete }
 func (e *Env) Status(ctx context.Context, st State, req Request) StatusReport {
 	sel := st.Selection
 	r := StatusReport{Schema: 1, Mode: e.Mode(), Target: describeTarget(e.Target), Selection: st.Selection}
+	r.Runtime = e.Version(ctx)
+	r.Platform = e.Platform.String() + suffix(e.Platform.Libc, e.Platform.Glibc)
+	for repo, rs := range e.Repos {
+		if _, ok := r.Runtime.Sources[repo]; !ok {
+			if _, err := os.Stat(rs.Dir); err != nil {
+				r.Runtime.Sources[repo] = RepoVersion{Path: rs.Dir, Error: err.Error()}
+			} else {
+				r.Runtime.Sources[repo] = e.gitRevision(ctx, rs.Dir)
+			}
+		}
+	}
+	p := e.Target.Paths()
+	r.Paths = map[string]string{
+		"config": p.UserConfig(), "state": statePath(e.Target),
+		"data": p.DSData(), "cache": p.Cache,
+		"bin":         e.Target.Placeholders()["bin"],
+		"mise config": e.Target.MiseConfigDir(), "mise tools": fragmentPath(e.Target),
+		"mise data": p.MiseData, "mise cache": p.MiseCache, "mise state": p.MiseState,
+	}
+	if emb, ok := e.Source.(*assets.Embedded); ok {
+		r.Build = &BuildStatus{Running: emb.Info.ID, Current: currentBuild(p.DSData())}
+	}
+	mise, notes := e.findMise(ctx)
+	r.Mise = ComponentStatus{Name: "mise", State: compMissing}
+	if mise.Path != "" {
+		r.Mise.State, r.Mise.Version, r.Mise.Detail = compInstalled, mise.Version, mise.Path
+	}
+	r.Notes = append(notes, e.legacyMiseNote()...)
 	if req != nil {
 		inspected := Selection{}.Union(req)
 		sel, r.Inspected = inspected, &inspected
@@ -82,8 +120,6 @@ func (e *Env) Status(ctx context.Context, st State, req Request) StatusReport {
 		return r
 	}
 
-	mise, notes := e.findMise(ctx)
-	r.Notes = append(append(r.Notes, notes...), e.legacyMiseNote()...)
 	var facts map[string]toolFact
 	if mise.Path != "" {
 		var err error
@@ -109,41 +145,45 @@ func (e *Env) Status(ctx context.Context, st State, req Request) StatusReport {
 	for _, b := range scratch.Blockers {
 		r.Files = append(r.Files, FileStatus{Path: b.Subject, State: compUnavailable, Detail: b.Reason})
 	}
-	if emb, ok := e.Source.(*assets.Embedded); ok {
-		r.Build = &BuildStatus{Running: emb.Info.ID, Current: currentBuild(e.Target.Paths().DSData())}
-	}
 	r.Summary = summarize(r)
 	return r
 }
 
 func (e *Env) componentStatus(comp *Component, mise miseFound, facts map[string]toolFact) ComponentStatus {
 	s := ComponentStatus{Name: comp.Name, State: compInstalled}
+	s.Commands = map[string]string{}
+	for _, name := range comp.Commands {
+		s.Commands[name] = lookPath(name, e.lookupPath())
+	}
 	if reason := glibcBlocker(e.Platform, comp) + toolBlocker(e.Platform, comp); reason != "" {
-		return ComponentStatus{Name: comp.Name, State: compUnavailable, Detail: reason}
+		s.State, s.Detail = compUnavailable, reason
+		return s
 	}
 	switch {
 	case comp.Name == "mise":
 		if mise.Path == "" {
-			return ComponentStatus{Name: comp.Name, State: compMissing}
+			s.State = compMissing
+			return s
 		}
 		s.Version, s.Detail = mise.Version, mise.Path
 	case len(comp.Packages) > 0:
 		if missing := e.missingCommands(comp); len(missing) > 0 {
-			return ComponentStatus{Name: comp.Name, State: compMissing, Detail: "missing " + strings.Join(missing, ", ")}
+			s.State, s.Detail = compMissing, "missing "+strings.Join(missing, ", ")
+			return s
 		}
 	}
 	if comp.Tool != nil {
 		fact, ok := facts[comp.Tool.Name]
+		s.Requested, s.Source, s.InstallPath = fact.Requested, fact.Source.Path, fact.InstallPath
 		switch {
 		case !ok:
-			return ComponentStatus{Name: comp.Name, State: compMissing, Detail: comp.Tool.Name + " is not requested"}
+			s.State, s.Detail = compMissing, comp.Tool.Name+" is not requested"
+			return s
 		case !fact.Installed:
-			return ComponentStatus{Name: comp.Name, State: compMissing, Detail: comp.Tool.Name + "@" + fact.Requested + " is not installed"}
+			s.State, s.Detail = compMissing, comp.Tool.Name+"@"+fact.Requested+" is not installed"
+			return s
 		}
 		s.Version = fact.Version
-		if fact.Requested != "" && !strings.HasSuffix(fact.Source.Path, "10-ds.toml") {
-			s.Detail = "requested " + fact.Requested + " by " + fact.Source.Path
-		}
 	}
 	return s
 }
@@ -163,17 +203,36 @@ func summarize(r StatusReport) string {
 // RenderStatus prints a report for people.
 func RenderStatus(w io.Writer, r StatusReport, verbose bool) {
 	fmt.Fprintf(w, "%s (%s mode)\n", r.Target, r.Mode)
+	fmt.Fprintf(w, "platform: %s\n", r.Platform)
+	fmt.Fprintf(w, "executable: %s\n", orNone(r.Runtime.Executable))
+	RenderVersion(w, r.Runtime)
+	for _, repo := range slices.Sorted(maps.Keys(r.Runtime.Sources)) {
+		if s := r.Runtime.Sources[repo]; s.Error != "" {
+			fmt.Fprintf(w, "note: %s: %s\n", repo, s.Error)
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(r.Paths)) {
+		fmt.Fprintf(w, "%s: %s\n", name, r.Paths[name])
+	}
+	fmt.Fprintf(w, "mise: %s%s\n", r.Mise.State, suffix(r.Mise.Version, r.Mise.Detail))
 	fmt.Fprintf(w, "selection: %s\n", r.Selection)
 	if r.Inspected != nil {
 		fmt.Fprintf(w, "inspecting: %s\n", *r.Inspected)
 	}
-	if r.Build != nil && (verbose || r.Build.Current != r.Build.Running) {
+	if r.Build != nil {
 		fmt.Fprintf(w, "build: running %s, current %s\n", r.Build.Running, orNone(r.Build.Current))
 	}
 	fmt.Fprintf(w, "status: %s\n", r.Summary)
 	for _, c := range r.Components {
-		if verbose || c.State != compInstalled {
-			fmt.Fprintf(w, "  %-11s %s%s\n", c.State, c.Name, suffix(c.Version, c.Detail))
+		fmt.Fprintf(w, "  %-11s %s%s\n", c.State, c.Name, suffix(c.Version, c.Detail))
+		if c.Source != "" {
+			fmt.Fprintf(w, "    request: %s (%s)\n", c.Requested, c.Source)
+		}
+		if c.InstallPath != "" {
+			fmt.Fprintf(w, "    install: %s\n", c.InstallPath)
+		}
+		for _, name := range slices.Sorted(maps.Keys(c.Commands)) {
+			fmt.Fprintf(w, "    %s: %s\n", name, orNone(c.Commands[name]))
 		}
 	}
 	for _, f := range r.Files {

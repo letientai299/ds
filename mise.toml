@@ -20,8 +20,8 @@ description = "Vet, lint, and check shell scripts"
 run = [
   "go vet ./...",
   "golangci-lint run",
-  "shellcheck ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve",
-  "shfmt -d ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve",
+  "shellcheck ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve assets/tools/claude-statusline",
+  "shfmt -d ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve assets/tools/claude-statusline",
 ]
 
 [tasks."test:zsh"]
@@ -30,7 +30,7 @@ run = ["zsh -df tests/prompt.zsh", "zsh -df tests/prompt-mr.zsh"]
 
 [tasks.fmt]
 description = "Format Go and shell sources"
-run = ["gofmt -w cmd internal", "shfmt -w ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve"]
+run = ["gofmt -w cmd internal", "shfmt -w ds assets/bootstrap.sh assets/tools/kt assets/tools/kitty-postinstall assets/tools/serve assets/tools/claude-statusline"]
 
 [tasks.dist]
 description = "Build main-mode binaries for every platform into dist/"

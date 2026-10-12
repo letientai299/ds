@@ -142,6 +142,7 @@ func (t HomeTarget) Placeholders() map[string]string {
 		"ssh":       filepath.Join(t.P.Home, ".ssh", "config"),
 		"nvim":      filepath.Join(t.P.Config, "nvim"),
 		"tmux":      filepath.Join(t.P.Config, "tmux"),
+		"claude":    filepath.Join(t.P.Home, ".claude"),
 	}
 }
 
@@ -176,6 +177,27 @@ func expandText(t Target, text string) string {
 		text = strings.ReplaceAll(text, "{"+key+"}", value)
 	}
 	return text
+}
+
+// expandValue substitutes placeholders in every string of a decoded value.
+func expandValue(t Target, v any) any {
+	switch v := v.(type) {
+	case string:
+		return expandText(t, v)
+	case map[string]any:
+		out := make(map[string]any, len(v))
+		for key, item := range v {
+			out[key] = expandValue(t, item)
+		}
+		return out
+	case []any:
+		out := make([]any, len(v))
+		for i, item := range v {
+			out[i] = expandValue(t, item)
+		}
+		return out
+	}
+	return v
 }
 
 // lockPath is the advisory lock file of a target.

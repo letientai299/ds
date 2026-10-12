@@ -101,6 +101,21 @@ ouch decompress logs.tar.zst --dir restored
 Ouch supports ZIP, TAR, 7z, gzip, bzip2, xz, zstd, and other compression
 formats. RAR supports extraction and listing only.
 
+## AI agents
+
+`ds add -l ai` installs native [Claude Code][claude-code] and [Codex][codex]
+binaries through mise. For Claude Code, it also links `claude-statusline` into
+`~/.local/bin` and sets the `statusLine` key in `~/.claude/settings.json` to run
+it. ds changes only that key; other settings, including their order, stay as
+they are. The script mirrors the [Zsh prompt][prompt-doc]: host alias,
+directory, model, effort, Git state, and the open MR for the branch. It also
+shows the used context window percentage: green below 50%, yellow below 80%,
+red above. Git and `glab` results come from a per-directory cache that refreshes
+in the background. The script needs `jq`.
+
+An existing `statusLine` value ds did not write conflicts; `--force` backs up
+`settings.json` and replaces the value.
+
 ## Kitty
 
 `ds add -l ui` installs Kitty through mise and provides `kt`, which launches
@@ -119,6 +134,9 @@ so hosts that select Kitty install Go through mise. The `kt` launcher preserves
 the repository's per-instance configuration; ds does not register desktop
 shortcuts or change existing Kitty windows.
 
+[prompt-doc]: prompt.md
+[claude-code]: https://code.claude.com/docs/en/overview
+[codex]: https://learn.chatgpt.com/docs/codex/cli
 [kitty-conf]: https://github.com/letientai299/kitty.conf
 [caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server
 [gdu]: https://github.com/dundee/gdu

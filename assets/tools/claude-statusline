@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+# Claude Code status line, translated from the zsh prompt
+# (assets/dotfiles/prompt.zsh). Reads session JSON from stdin.
+# Slow git/glab segments are cached per cwd and refreshed in the background,
+# so model/effort changes render immediately.
+
+CYAN=$'\033[36m'
+BLUE=$'\033[34m'
+MAGENTA=$'\033[35m'
+YELLOW=$'\033[33m'
+GREEN=$'\033[32m'
+RED=$'\033[31m'
+ORANGE=$'\033[38;5;208m'
+BOLD_RED=$'\033[1;31m'
+DIM=$'\033[2m'
+RESET=$'\033[0m'
+
+GIT_TTL=5
+MR_HIT_TTL=60
+MR_MISS_TTL=300
+
+# GNU stat first: BSD-style -f prints filesystem info on Linux.
+mtime() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo 0; }
+
+# Spawn "$0 --refresh-<kind> <cwd> <branch>" when the cache file is stale.
+refresh_if_stale() {
+	local file=$1 ttl=$2 kind=$3 cwd=$4 branch=$5
+	local lock="$file.lock"
+	[ -e "$file" ] && [ $(($(date +%s) - $(mtime "$file"))) -lt "$ttl" ] && return
+	# Drop locks left by a killed refresher.
+	[ -e "$lock" ] && [ $(($(date +%s) - $(mtime "$lock"))) -gt 60 ] && rm -f "$lock"
+	(
+		set -o noclobber
+		: >"$lock"
+	) 2>/dev/null || return
+	nohup bash "$0" "--refresh-$kind" "$cwd" "$branch" "$file" </dev/null >/dev/null 2>&1 &
+	disown 2>/dev/null
+}
+
+git_segment() {
+	local cwd=$1
+	local -a g=(git --no-optional-locks -C "$cwd")
+	local out branch oid ahead behind staged changed untracked conflicts
+	out=$("${g[@]}" status --porcelain=v2 --branch 2>/dev/null) || return
+	IFS=$'\t' read -r branch oid ahead behind staged changed untracked conflicts < <(
+		awk '
+      /^# branch.head /{h=$3}
+      /^# branch.oid /{o=substr($3,1,7)}
+      /^# branch.ab /{a=substr($3,2); b=substr($4,2)}
+      /^[12] /{ if (substr($2,1,1)!=".") s++; if (substr($2,2,1)!=".") c++ }
+      /^u /{x++}
+      /^\? /{u++}
+      END{ printf "%s\t%s\t%d\t%d\t%d\t%d\t%d\t%d\n",
+        (h=="(detached)" ? "-" : h), o, a, b, s, c, u, x }' <<<"$out"
+	)
+	[ "$branch" = "-" ] && branch=""
+	[ -z "$branch" ] && [ -n "$oid" ] && branch="@${oid}"
+	[ -z "$branch" ] && return
+	local stash subject
+	stash=$("${g[@]}" stash list 2>/dev/null | grep -c .)
+	subject=$("${g[@]}" log -1 --pretty=%s 2>/dev/null)
+
+	local status=""
+	[ "$ahead" -gt 0 ] && status="${status} ${CYAN}↑${ahead}${RESET}"
+	[ "$behind" -gt 0 ] && status="${status} ${BLUE}↓${behind}${RESET}"
+	[ "$staged" -gt 0 ] && status="${status} ${GREEN}+${staged}${RESET}"
+	[ "$changed" -gt 0 ] && status="${status} ${YELLOW}!${changed}${RESET}"
+	[ "$untracked" -gt 0 ] && status="${status} ${MAGENTA}?${untracked}${RESET}"
+	[ "$conflicts" -gt 0 ] && status="${status} ${RED}×${conflicts}${RESET}"
+	[ "$stash" -gt 0 ] && status="${status} ${ORANGE}≡${stash}${RESET}"
+
+	local subject_display=""
+	if [ -n "$subject" ]; then
+		if [[ "$subject" == WIP* ]]; then
+			subject_display=" ${BOLD_RED}${subject}${RESET}"
+		else
+			subject_display=" ${subject}"
+		fi
+	fi
+	printf ' %s⑂ %s%s%s%s' "$MAGENTA" "$branch" "$RESET" "$status" "$subject_display"
+}
+
+# Clickable OSC 8 link; args: kind num url.
+pr_segment() {
+	local kind=$1 num=$2 url=$3 label
+	[ -z "$num" ] && return
+	[ "$kind" = "mr" ] && label="!${num}" || label="#${num}"
+	# shellcheck disable=SC1003 # \033\\ is the OSC 8 terminator, not a quote.
+	printf '\033]8;;%s\033\\%s%s%s\033]8;;\033\\' "$url" "$GREEN" "$label" "$RESET"
+}
+
+# Open MR for the branch; glab lists open MRs by default.
+mr_segment() {
+	local cwd=$1 branch=$2 result num url
+	command -v glab >/dev/null 2>&1 || return
+	result=$(cd "$cwd" && glab mr list --source-branch "$branch" --per-page 1 \
+		--output json --jq 'if length == 0 then "" else .[0] | "\(.iid) \(.web_url)" end' \
+		2>/dev/null </dev/null)
+	read -r num url <<<"$result"
+	[[ "$num" =~ ^[0-9]+$ ]] || return
+	[[ "$url" =~ ^https?://[^[:space:][:cntrl:]]+$ ]] || return
+	pr_segment mr "$num" "$url"
+}
+
+write_atomic() { # file, content-producing command output on stdin
+	local tmp="$1.$$"
+	cat >"$tmp" && mv -f "$tmp" "$1"
+}
+
+case "$1" in
+--refresh-git)
+	git_segment "$2" | write_atomic "$4"
+	rm -f "$4.lock"
+	exit 0
+	;;
+--refresh-mr)
+	mr_segment "$2" "$3" | write_atomic "$4"
+	rm -f "$4.lock"
+	exit 0
+	;;
+esac
+
+input=$(cat)
+
+# A non-whitespace separator keeps empty fields; tabs would collapse.
+IFS=$'\x1f' read -r cwd model_name effort_level ctx_pct pr_num pr_url pr_kind < <(
+	jq -r '[(.workspace.current_dir // .cwd // ""), (.model.display_name // ""),
+          (.effort.level // ""), (.context_window.used_percentage // "" | if type == "number" then floor else . end),
+          (.pr.number // ""), (.pr.url // ""), (.pr.kind // "")]
+          | map(tostring | gsub("[\u001f\n]"; " ")) | join("\u001f")' <<<"$input"
+)
+[ -z "$cwd" ] && cwd="$(pwd)"
+
+ctx_display=""
+[ -n "$LC_SSH_ALIAS" ] && ctx_display="${BLUE}[${LC_SSH_ALIAS}]${RESET} "
+
+dir_display="${CYAN}${cwd##*/}${RESET}"
+
+model_display=""
+if [ -n "$model_name" ]; then
+	model_display=" ${BLUE}${model_name}${RESET}"
+	[ -n "$effort_level" ] && model_display="${model_display}${DIM}:${effort_level}${RESET}"
+fi
+if [[ "$ctx_pct" =~ ^[0-9]+$ ]]; then
+	ctx_color=$GREEN
+	[ "$ctx_pct" -ge 50 ] && ctx_color=$YELLOW
+	[ "$ctx_pct" -ge 80 ] && ctx_color=$RED
+	model_display="${model_display} ${ctx_color}${ctx_pct}%${RESET}"
+fi
+
+cache_dir="${TMPDIR:-/tmp}/claude-statusline-$UID"
+[ -d "$cache_dir" ] || mkdir -p "$cache_dir"
+key=${cwd//[^A-Za-z0-9._-]/_}
+git_file="$cache_dir/$key.git"
+mr_file="$cache_dir/$key.mr"
+
+git_display=""
+if [ -e "$git_file" ]; then
+	git_display=$(<"$git_file")
+else
+	git_display=$(git_segment "$cwd") # first render only
+	printf '%s' "$git_display" | write_atomic "$git_file"
+fi
+refresh_if_stale "$git_file" "$GIT_TTL" git "$cwd" ""
+
+pr_display=""
+if [ -n "$pr_num" ]; then
+	pr_display=$(pr_segment "$pr_kind" "$pr_num" "$pr_url")
+else
+	branch=$(git --no-optional-locks -C "$cwd" symbolic-ref --short HEAD 2>/dev/null)
+	if [ -n "$branch" ]; then
+		# Cache per branch so a switch never shows the previous branch's MR.
+		mr_file="$mr_file.${branch//[^A-Za-z0-9._-]/_}"
+		[ -e "$mr_file" ] && pr_display=$(<"$mr_file")
+		mr_ttl=$MR_MISS_TTL
+		[ -n "$pr_display" ] && mr_ttl=$MR_HIT_TTL
+		refresh_if_stale "$mr_file" "$mr_ttl" mr "$cwd" "$branch"
+	fi
+fi
+
+[ -n "$pr_display" ] && pr_display="${pr_display} "
+printf "%s%s%s%s%s\n" "$pr_display" "$ctx_display" "$dir_display" "$model_display" "$git_display"

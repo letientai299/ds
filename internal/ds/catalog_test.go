@@ -19,7 +19,7 @@ func TestShippedCatalogIsValid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := joinNames(cat.Layers(), ","); got != "core,extra,ui" {
+	if got := joinNames(cat.Layers(), ","); got != "ai,core,extra,ui" {
 		t.Fatalf("layers = %s", got)
 	}
 	core := cat.LayerMembers("core")

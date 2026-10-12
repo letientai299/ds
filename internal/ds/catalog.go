@@ -42,6 +42,7 @@ type Component struct {
 	Tool          *Tool
 	Links         []LinkSpec
 	Blocks        []BlockSpec
+	JSON          []JSONSpec
 	Helper        *HelperSpec
 	Glibc         string
 }
@@ -65,6 +66,12 @@ type BlockSpec struct {
 	Text   string
 }
 
+// JSONSpec declares top-level keys ds sets in a user JSON file.
+type JSONSpec struct {
+	Target string
+	Set    map[string]any
+}
+
 // HelperSpec declares a Go helper built from a configuration repository.
 type HelperSpec struct {
 	Repo    assets.Repo
@@ -81,7 +88,7 @@ const (
 var (
 	namePattern   = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 	targetPattern = regexp.MustCompile(`^\{([a-z]+)\}(/.*)?$`)
-	targetKeys    = []string{"bin", "ds", "zshrc", "gitconfig", "ssh", "nvim", "tmux"}
+	targetKeys    = []string{"bin", "ds", "zshrc", "gitconfig", "ssh", "nvim", "tmux", "claude"}
 )
 
 type rawCatalog struct {
@@ -98,6 +105,7 @@ type rawComponent struct {
 	Tool     map[string]any      `toml:"tool"`
 	Links    []rawLink           `toml:"links"`
 	Blocks   []BlockSpec         `toml:"blocks"`
+	JSON     []JSONSpec          `toml:"json"`
 	Helper   *rawHelper          `toml:"helper"`
 	Glibc    string              `toml:"glibc"`
 }
@@ -183,6 +191,7 @@ func parseComponent(name string, rc rawComponent) (*Component, error) {
 		Packages:      rc.Packages,
 		Prerequisites: rc.Prereqs,
 		Blocks:        rc.Blocks,
+		JSON:          rc.JSON,
 		Glibc:         rc.Glibc,
 	}
 	var errs []error
@@ -274,6 +283,15 @@ func (c *Catalog) validate() []error {
 				errs = append(errs, fmt.Errorf("component %s: empty block for %s", name, block.Target))
 			}
 			claim(name, block.Target)
+		}
+		for _, spec := range comp.JSON {
+			if err := validTarget(spec.Target); err != nil {
+				errs = append(errs, fmt.Errorf("component %s: %w", name, err))
+			}
+			if len(spec.Set) == 0 {
+				errs = append(errs, fmt.Errorf("component %s: empty json for %s", name, spec.Target))
+			}
+			claim(name, spec.Target)
 		}
 	}
 	if cycle := c.findCycle(); cycle != nil {

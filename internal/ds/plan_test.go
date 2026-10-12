@@ -462,3 +462,25 @@ func TestTrialIsolation(t *testing.T) {
 		t.Fatal("trial tmux lacks its own server")
 	}
 }
+
+func TestClaudeStatusLineIsConfigured(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	settings := filepath.Join(f.home, ".claude", "settings.json")
+	writeFile(t, settings, `{"theme": "dark"}`)
+	f.add(LayerRequest{Layers: []LayerName{"ai"}}, AddOptions{})
+	if !slices.ContainsFunc(f.logLines("mise"), func(l string) bool { return strings.Contains(l, "install claude-code") }) {
+		t.Fatalf("claude-code not installed: %v", f.logLines("mise"))
+	}
+	bin := f.env.Target.Placeholders()["bin"]
+	if dest, _ := os.Readlink(filepath.Join(bin, "claude-statusline")); !strings.HasSuffix(dest, "assets/tools/claude-statusline") {
+		t.Fatalf("claude-statusline -> %s", dest)
+	}
+	got := readFile(t, settings)
+	if !strings.Contains(got, `"theme": "dark"`) || !strings.Contains(got, `"command": "`+bin+`/claude-statusline"`) {
+		t.Fatalf("settings:\n%s", got)
+	}
+	if again := f.env.BuildPlan(context.Background(), f.state(), nil, AddOptions{}); len(again.Actions) != 0 {
+		t.Fatalf("second plan not empty: %v", actionNames(again))
+	}
+}

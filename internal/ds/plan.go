@@ -463,6 +463,17 @@ func (e *Env) managedEntries(p *Plan, comps []ComponentName) []managed {
 			}
 			entries = append(entries, managedBlock{Target: target, Body: expandText(e.Target, block.Text)})
 		}
+		for _, spec := range comp.JSON {
+			target, ok := expand(e.Target, spec.Target)
+			if !ok {
+				continue
+			}
+			set := map[string]any{}
+			for key, value := range spec.Set {
+				set[key] = expandValue(e.Target, value)
+			}
+			entries = append(entries, managedJSON{Target: target, Set: set})
+		}
 	}
 	fragment, err := renderFragment(e.Catalog, comps, e.assetDir())
 	if err != nil {

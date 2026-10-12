@@ -123,17 +123,17 @@ func (e *Env) applyFile(a FileChange, st *State) error {
 	if in := a.Entry.inspect(st.Owned, e.legacyRoots()); in.State != a.Expect {
 		return fmt.Errorf("%s changed since planning (now %s); rerun", target, in.State)
 	}
-	_, block := a.Entry.(managedBlock)
+	inPlace := editsInPlace(a.Entry)
 	if a.Backup != "" {
 		backup := moveToBackup
-		if block {
+		if inPlace {
 			backup = copyToBackup
 		}
 		if err := backup(target, a.Backup); err != nil {
 			return err
 		}
 	}
-	replace := a.Expect == stateStale || (block && a.Expect == stateConflict)
+	replace := a.Expect == stateStale || (inPlace && a.Expect == stateConflict)
 	own, err := a.Entry.write(replace)
 	if err != nil {
 		return err

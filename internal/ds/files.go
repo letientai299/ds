@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -37,8 +40,8 @@ type inspection struct {
 	Locked bool
 }
 
-// managed is desired content at a path: managedLink, managedBlock, or
-// managedFile.
+// managed is desired content at a path: managedLink, managedBlock,
+// managedFile, or managedJSON.
 type managed interface {
 	path() string
 	inspect(own map[string]Ownership, roots []string) inspection
@@ -352,4 +355,185 @@ func copyToBackup(target, backup string) error {
 	}
 	_, err = io.Copy(dst, src)
 	return errors.Join(err, dst.Close())
+}
+
+// managedJSON sets top-level keys of a user JSON file and leaves the rest.
+type managedJSON struct {
+	Target string
+	Set    map[string]any
+}
+
+func (m managedJSON) path() string { return m.Target }
+
+func (m managedJSON) describe() string {
+	return "json keys " + strings.Join(slices.Sorted(maps.Keys(m.Set)), ", ") + " in " + m.Target
+}
+
+// editsInPlace reports entries that change part of a user file.
+func editsInPlace(m managed) bool {
+	switch m.(type) {
+	case managedBlock, managedJSON:
+		return true
+	}
+	return false
+}
+
+// jsonMember is one top-level key with its raw value.
+type jsonMember struct {
+	Key string
+	Raw json.RawMessage
+}
+
+// parseJSONObject reads a top-level object, keeping key order. Empty input
+// is an empty object.
+func parseJSONObject(data []byte) ([]jsonMember, error) {
+	if len(bytes.TrimSpace(data)) == 0 {
+		return nil, nil
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('{') {
+		return nil, errors.New("not a JSON object")
+	}
+	var members []jsonMember
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			return nil, err
+		}
+		key, _ := tok.(string)
+		var raw json.RawMessage
+		if err := dec.Decode(&raw); err != nil {
+			return nil, err
+		}
+		members = append(members, jsonMember{Key: key, Raw: raw})
+	}
+	if _, err := dec.Token(); err != nil {
+		return nil, err
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return nil, errors.New("trailing data after JSON object")
+	}
+	return members, nil
+}
+
+// renderJSONObject writes members with two-space indentation.
+func renderJSONObject(members []jsonMember) ([]byte, error) {
+	if len(members) == 0 {
+		return []byte("{}\n"), nil
+	}
+	var buf bytes.Buffer
+	buf.WriteString("{\n")
+	for i, member := range members {
+		key, err := json.Marshal(member.Key)
+		if err != nil {
+			return nil, err
+		}
+		buf.WriteString("  ")
+		buf.Write(key)
+		buf.WriteString(": ")
+		if err := json.Indent(&buf, member.Raw, "  ", "  "); err != nil {
+			return nil, err
+		}
+		if i < len(members)-1 {
+			buf.WriteByte(',')
+		}
+		buf.WriteByte('\n')
+	}
+	buf.WriteString("}\n")
+	return buf.Bytes(), nil
+}
+
+// canonicalJSON is a key-sorted encoding that ignores formatting.
+func canonicalJSON(v map[string]any) []byte {
+	data, _ := json.Marshal(v)
+	return data
+}
+
+func (m managedJSON) read() (members []jsonMember, mode fs.FileMode, exists bool, err error) {
+	info, err := os.Lstat(m.Target)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, 0o644, false, nil
+	}
+	if err != nil {
+		return nil, 0, false, err
+	}
+	if info.Mode()&fs.ModeSymlink != 0 {
+		return nil, 0, false, errors.New("is a symlink; replace it with a regular file or edit its destination")
+	}
+	if !info.Mode().IsRegular() {
+		return nil, 0, false, errors.New("existing " + kindOf(info))
+	}
+	data, err := os.ReadFile(m.Target)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	members, err = parseJSONObject(data)
+	if err != nil {
+		return nil, 0, false, fmt.Errorf("invalid JSON: %w", err)
+	}
+	return members, info.Mode().Perm(), true, nil
+}
+
+func (m managedJSON) inspect(own map[string]Ownership, _ []string) inspection {
+	members, _, exists, err := m.read()
+	if err != nil {
+		return inspection{State: stateConflict, Reason: err.Error(), Locked: true}
+	}
+	if !exists {
+		return inspection{State: stateMissing}
+	}
+	current := map[string]any{}
+	differs := false
+	for key, want := range m.Set {
+		i := slices.IndexFunc(members, func(mem jsonMember) bool { return mem.Key == key })
+		if i < 0 {
+			continue
+		}
+		var got any
+		if err := json.Unmarshal(members[i].Raw, &got); err != nil {
+			return inspection{State: stateConflict, Reason: "invalid JSON: " + err.Error(), Locked: true}
+		}
+		current[key] = got
+		if !bytes.Equal(canonicalJSON(map[string]any{key: got}), canonicalJSON(map[string]any{key: want})) {
+			differs = true
+		}
+	}
+	switch {
+	case differs:
+		if rec, ok := own[m.Target]; ok && rec.Kind == ownJSON && rec.SHA256 == digest(canonicalJSON(current)) {
+			return inspection{State: stateStale}
+		}
+		return inspection{State: stateConflict, Reason: "existing values differ for " + m.describe()}
+	case len(current) == len(m.Set):
+		return inspection{State: statePresent}
+	case len(current) == 0:
+		return inspection{State: stateMissing}
+	}
+	return inspection{State: stateStale}
+}
+
+func (m managedJSON) write(bool) (Ownership, error) {
+	members, mode, _, err := m.read()
+	if err != nil {
+		return Ownership{}, err
+	}
+	for _, key := range slices.Sorted(maps.Keys(m.Set)) {
+		raw, err := json.Marshal(m.Set[key])
+		if err != nil {
+			return Ownership{}, err
+		}
+		if i := slices.IndexFunc(members, func(mem jsonMember) bool { return mem.Key == key }); i >= 0 {
+			members[i].Raw = raw
+			continue
+		}
+		members = append(members, jsonMember{Key: key, Raw: raw})
+	}
+	data, err := renderJSONObject(members)
+	if err != nil {
+		return Ownership{}, err
+	}
+	if err := writeAtomic(m.Target, data, mode); err != nil {
+		return Ownership{}, err
+	}
+	return Ownership{Kind: ownJSON, SHA256: digest(canonicalJSON(m.Set))}, nil
 }

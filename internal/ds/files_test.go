@@ -170,3 +170,69 @@ func symlink(t *testing.T, dest, p string) {
 		t.Fatal(err)
 	}
 }
+
+func TestJSONStates(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	want := map[string]any{"statusLine": map[string]any{"type": "command", "command": "/x/sl"}}
+	ours := Ownership{Kind: ownJSON, SHA256: digest(canonicalJSON(map[string]any{
+		"statusLine": map[string]any{"type": "command", "command": "/old"},
+	}))}
+	tests := []struct {
+		name    string
+		content *string
+		owned   bool
+		want    fileState
+		locked  bool
+	}{
+		{name: "missing file", want: stateMissing},
+		{name: "empty file", content: ptr(""), want: stateMissing},
+		{name: "key absent", content: ptr(`{"theme":"dark"}`), want: stateMissing},
+		{name: "same value reformatted", content: ptr(`{"statusLine":{"command":"/x/sl","type":"command"}}`), want: statePresent},
+		{name: "old owned value", content: ptr(`{"statusLine":{"type":"command","command":"/old"}}`), owned: true, want: stateStale},
+		{name: "foreign value", content: ptr(`{"statusLine":{"type":"command","command":"/mine"}}`), want: stateConflict},
+		{name: "invalid json", content: ptr(`{"a":`), want: stateConflict, locked: true},
+		{name: "not an object", content: ptr(`[]`), want: stateConflict, locked: true},
+	}
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			target := filepath.Join(dir, "settings"+string(rune('a'+i))+".json")
+			if tt.content != nil {
+				writeFile(t, target, *tt.content)
+			}
+			own := map[string]Ownership{}
+			if tt.owned {
+				own[target] = ours
+			}
+			got := managedJSON{Target: target, Set: want}.inspect(own, nil)
+			if got.State != tt.want || got.Locked != tt.locked {
+				t.Fatalf("got %+v, want %s locked=%t", got, tt.want, tt.locked)
+			}
+		})
+	}
+}
+
+func TestJSONWritePreservesOtherKeys(t *testing.T) {
+	t.Parallel()
+	target := filepath.Join(t.TempDir(), "settings.json")
+	writeFile(t, target, `{"b": 1, "statusLine": {"command": "old"}, "a": {"x": [1, 2]}}`)
+	entry := managedJSON{Target: target, Set: map[string]any{"statusLine": map[string]any{"command": "new"}}}
+	own, err := entry.write(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "{\n  \"b\": 1,\n  \"statusLine\": {\n    \"command\": \"new\"\n  },\n  \"a\": {\n    \"x\": [\n      1,\n      2\n    ]\n  }\n}\n"
+	if got := readFile(t, target); got != want {
+		t.Fatalf("got:\n%s\nwant:\n%s", got, want)
+	}
+	if got := entry.inspect(map[string]Ownership{target: own}, nil).State; got != statePresent {
+		t.Fatalf("after write: %s", got)
+	}
+	fresh := filepath.Join(t.TempDir(), "new.json")
+	if _, err := (managedJSON{Target: fresh, Set: entry.Set}).write(false); err != nil {
+		t.Fatal(err)
+	}
+	if got := readFile(t, fresh); got != "{\n  \"statusLine\": {\n    \"command\": \"new\"\n  }\n}\n" {
+		t.Fatalf("fresh file: %s", got)
+	}
+}

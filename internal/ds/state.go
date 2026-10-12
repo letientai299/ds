@@ -30,6 +30,7 @@ const (
 	ownLink  = "link"
 	ownFile  = "file"
 	ownBlock = "block"
+	ownJSON  = "json"
 )
 
 const stateSchema = 1

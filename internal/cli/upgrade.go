@@ -25,8 +25,8 @@ func (a *app) upgradeCmd() *cobra.Command {
 			"checkout then rebuilds, and a main build fetches and verifies the latest\n" +
 			"build. The resulting ds converges the saved selection and upgrades the\n" +
 			"remaining categories.",
-		Example:   "  ds upgrade\n  ds upgrade tools\n  ds upgrade --skip system",
-		ValidArgs: []string{"ds", "tools", "plugins", "system", "all"},
+		Example:           "  ds upgrade\n  ds upgrade tools\n  ds upgrade --skip system",
+		ValidArgsFunction: completeUpgrade,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
 			cats, err := ds.ParseCategories(args, skip)
@@ -70,7 +70,9 @@ func (a *app) upgradeCmd() *cobra.Command {
 			return a.handoff(ctx, next, lock, rest)
 		},
 	}
+	cmd.Long += "\n\n" + formatChoices("Categories", upgradeChoices())
 	cmd.Flags().StringArrayVar(&skip, "skip", nil, "skip a category, such as system (repeatable)")
+	registerCompletion(cmd, "skip", completeSkip)
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview without changing anything")
 	return cmd
 }

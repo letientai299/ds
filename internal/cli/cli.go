@@ -124,7 +124,11 @@ func (a *app) rootCmd() *cobra.Command {
 		},
 	}
 	root.CompletionOptions.DisableDefaultCmd = true
+	root.CompletionOptions.DefaultShellCompDirective = new(cobra.ShellCompDirectiveNoFileComp)
 	root.PersistentFlags().StringVar(&a.home, "home", "", "operate on this home instead of $HOME")
+	if err := root.MarkPersistentFlagDirname("home"); err != nil {
+		panic(err)
+	}
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return &ds.UsageError{Msg: err.Error()} })
 	root.AddCommand(
 		a.addCmd(), a.statusCmd(), a.shellCmd(), a.deployCmd(),
@@ -245,8 +249,10 @@ func (a *app) lock(e *ds.Env) (*ds.Lock, error) {
 
 type selectorFlags struct{ layers []string }
 
-func (s *selectorFlags) register(cmd *cobra.Command) {
+func (s *selectorFlags) register(cmd *cobra.Command, a *app) {
 	cmd.Flags().StringArrayVarP(&s.layers, "layer", "l", nil, "select a layer (repeatable)")
+	registerCompletion(cmd, "layer", a.completeLayers)
+	a.selectorHelp(cmd)
 }
 
 func (a *app) addCmd() *cobra.Command {
@@ -276,7 +282,7 @@ func (a *app) addCmd() *cobra.Command {
 		},
 		ValidArgsFunction: a.completeComponents,
 	}
-	sel.register(cmd)
+	sel.register(cmd, a)
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview without changing anything")
 	cmd.Flags().BoolVar(&opt.Force, "force", false, "back up and replace conflicting files")
 	cmd.Flags().BoolVar(&opt.NoPackages, "no-packages", false, "skip native packages; require their commands")
@@ -332,7 +338,7 @@ func (a *app) statusCmd() *cobra.Command {
 		},
 		ValidArgsFunction: a.completeComponents,
 	}
-	sel.register(cmd)
+	sel.register(cmd, a)
 	cmd.Flags().BoolVarP(&st.verbose, "verbose", "v", false, "list healthy items too")
 	cmd.Flags().BoolVar(&st.json, "json", false, "print JSON to stdout")
 	cmd.Flags().BoolVar(&st.check, "check", false, "exit 1 unless status is complete")
@@ -471,8 +477,9 @@ func (a *app) deployCmd() *cobra.Command {
 			}
 			return e.Deploy(ctx, opt)
 		},
+		ValidArgsFunction: a.completeDeploy,
 	}
-	sel.register(cmd)
+	sel.register(cmd, a)
 	cmd.Flags().StringVar(&home, "home", "", "remote home; relative paths resolve against the login home")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "preview remotely; only temporary transport files are written")
 	cmd.Flags().BoolVar(&force, "force", false, "back up and replace conflicting remote files")
@@ -536,16 +543,4 @@ func (a *app) versionCmd() *cobra.Command {
 	}
 	cmd.Flags().BoolVar(&asJSON, "json", false, "print JSON to stdout")
 	return cmd
-}
-
-func (a *app) completeComponents(cmd *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
-	e, err := a.env(cmd.Context(), false)
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	var names []string
-	for _, c := range e.Catalog.Components() {
-		names = append(names, string(c))
-	}
-	return names, cobra.ShellCompDirectiveNoFileComp
 }

@@ -1,6 +1,8 @@
 # Command reference
 
-`ds --help` and `ds COMMAND --help` print the authoritative flags.
+`ds --help` and `ds help COMMAND` print the authoritative flags.
+Selector command help lists components and layer members from the catalog.
+`ds COMMAND --help` prints the same help.
 
 | Command                                        | Behavior                                              |
 | ---------------------------------------------- | ----------------------------------------------------- |
@@ -23,6 +25,12 @@ occurrence; repeat it for several layers. One invocation uses either layers or
 components, never both, so `ds add -l ui nvim` fails before any effect. A layer
 name given positionally fails with a hint to use `--layer`. Run separate
 invocations to add a layer and a component.
+
+Tab completion suggests components for `add` and `status`, and for `deploy`
+after its host argument. After `-l` or `--layer`, it suggests layers with their
+members. Selected names are omitted, and suggestions respect the choice between
+components and layers. `upgrade` completes categories at every argument and
+after `--skip`.
 
 `add` takes the union with the saved selection, resolves dependencies, and
 converges the result. Repeating an addition changes nothing. Neither `add` nor

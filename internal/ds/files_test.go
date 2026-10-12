@@ -16,12 +16,12 @@ func TestResolvePaths(t *testing.T) {
 	}
 	getenv := func(k string) string { return env[k] }
 	tests := []struct {
-		name, home, config, miseData string
+		name, home, config, miseData, cursor string
 	}{
-		{"default honors XDG", "", "/elsewhere/config", "/elsewhere/mise"},
-		{"explicit home ignores inherited paths", "/scratch/job/home", "/scratch/job/home/.config", "/scratch/job/home/.local/share/mise"},
-		{"relative home resolves against login home", "jobs/one", "/home/me/jobs/one/.config", "/home/me/jobs/one/.local/share/mise"},
-		{"tilde", "~/alt home", "/home/me/alt home/.config", "/home/me/alt home/.local/share/mise"},
+		{"default honors XDG", "", "/elsewhere/config", "/elsewhere/mise", "/elsewhere/config/cursor"},
+		{"explicit home ignores inherited paths", "/scratch/job/home", "/scratch/job/home/.config", "/scratch/job/home/.local/share/mise", "/scratch/job/home/.cursor"},
+		{"relative home resolves against login home", "jobs/one", "/home/me/jobs/one/.config", "/home/me/jobs/one/.local/share/mise", "/home/me/jobs/one/.cursor"},
+		{"tilde", "~/alt home", "/home/me/alt home/.config", "/home/me/alt home/.local/share/mise", "/home/me/alt home/.cursor"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -29,10 +29,32 @@ func TestResolvePaths(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if p.Config != tt.config || p.MiseData != tt.miseData {
-				t.Fatalf("config %s mise %s", p.Config, p.MiseData)
+			if p.Config != tt.config || p.MiseData != tt.miseData || p.CursorConfig != tt.cursor {
+				t.Fatalf("config %s mise %s cursor %s", p.Config, p.MiseData, p.CursorConfig)
 			}
 		})
+	}
+}
+
+func TestCursorConfigDirOverride(t *testing.T) {
+	t.Parallel()
+	getenv := func(k string) string {
+		switch k {
+		case "HOME":
+			return "/home/me"
+		case "XDG_CONFIG_HOME":
+			return "/elsewhere/config"
+		case "CURSOR_CONFIG_DIR":
+			return "/opt/cursor"
+		}
+		return ""
+	}
+	p, err := ResolvePaths(getenv, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.CursorConfig != "/opt/cursor" {
+		t.Fatalf("cursor config %s", p.CursorConfig)
 	}
 }
 

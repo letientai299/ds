@@ -88,7 +88,7 @@ const (
 var (
 	namePattern   = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 	targetPattern = regexp.MustCompile(`^\{([a-z]+)\}(/.*)?$`)
-	targetKeys    = []string{"bin", "ds", "zshrc", "gitconfig", "ssh", "nvim", "tmux", "claude"}
+	targetKeys    = []string{"bin", "ds", "zshrc", "gitconfig", "ssh", "nvim", "tmux", "claude", "cursor"}
 )
 
 type rawCatalog struct {

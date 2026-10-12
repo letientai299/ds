@@ -19,6 +19,9 @@ type Paths struct {
 	MiseData   string
 	MiseCache  string
 	MiseState  string
+
+	// CursorConfig is the directory that holds cli-config.json.
+	CursorConfig string
 }
 
 // Getenv reads an environment variable.
@@ -53,6 +56,11 @@ func ResolvePaths(getenv Getenv, explicitHome string) (Paths, error) {
 	p.MiseData = xdg("MISE_DATA_DIR", filepath.Join(p.Data, "mise"))
 	p.MiseCache = xdg("MISE_CACHE_DIR", filepath.Join(p.Cache, "mise"))
 	p.MiseState = xdg("MISE_STATE_DIR", filepath.Join(p.State, "mise"))
+	if v := getenv("CURSOR_CONFIG_DIR"); filepath.IsAbs(v) {
+		p.CursorConfig = filepath.Clean(v)
+	} else if v := getenv("XDG_CONFIG_HOME"); filepath.IsAbs(v) {
+		p.CursorConfig = filepath.Join(filepath.Clean(v), "cursor")
+	}
 	return p, nil
 }
 
@@ -68,6 +76,7 @@ func homePaths(home string) Paths {
 	p.MiseData = filepath.Join(p.Data, "mise")
 	p.MiseCache = filepath.Join(p.Cache, "mise")
 	p.MiseState = filepath.Join(p.State, "mise")
+	p.CursorConfig = filepath.Join(home, ".cursor")
 	return p
 }
 
@@ -143,6 +152,7 @@ func (t HomeTarget) Placeholders() map[string]string {
 		"nvim":      filepath.Join(t.P.Config, "nvim"),
 		"tmux":      filepath.Join(t.P.Config, "tmux"),
 		"claude":    filepath.Join(t.P.Home, ".claude"),
+		"cursor":    t.P.CursorConfig,
 	}
 }
 

@@ -103,18 +103,32 @@ formats. RAR supports extraction and listing only.
 
 ## AI agents
 
-`ds add -l ai` installs native [Claude Code][claude-code] and [Codex][codex]
-binaries through mise. For Claude Code, it also links `claude-statusline` into
-`~/.local/bin` and sets the `statusLine` key in `~/.claude/settings.json` to run
-it. ds changes only that key; other settings, including their order, stay as
-they are. The script mirrors the [Zsh prompt][prompt-doc]: host alias,
-directory, model, effort, Git state, and the open MR for the branch. It also
-shows the used context window percentage: green below 50%, yellow below 80%,
-red above. Git and `glab` results come from a per-directory cache that refreshes
-in the background. The script needs `jq`.
+`ds add -l ai` installs native [Claude Code][claude-code], [Codex][codex],
+and the [Cursor CLI][cursor-cli] through mise. Cursor exposes only `agent` and
+`cursor-agent`; its bundled Node and ripgrep stay off `PATH`.
+
+For Claude Code and Cursor, ds links a status line script into `~/.local/bin`
+and sets `statusLine` to run it. Claude's file is `~/.claude/settings.json`.
+Cursor's file is `$CURSOR_CONFIG_DIR/cli-config.json` when that variable is
+absolute, otherwise `$XDG_CONFIG_HOME/cursor/cli-config.json` when
+`XDG_CONFIG_HOME` is absolute, otherwise `~/.cursor/cli-config.json`. ds changes
+only the `statusLine` key; other settings, including their order, stay as they
+are. Both scripts need `jq`.
+
+The Claude script mirrors the [Zsh prompt][prompt-doc]: host alias, directory,
+model, effort, Git state, and the open MR for the branch. It also shows the
+used context window percentage: green below 50%, yellow below 80%, red above.
+Git and `glab` results come from a per-directory cache that refreshes in the
+background.
+
+The Cursor script shows permission mode, the generated session title, model,
+context percentage, host alias from `LC_SSH_ALIAS`, directory, branch, and the
+open MR. `YOLO` means Run Everything. `review` means Auto-review. `ask` means
+the allowlist. Context percentage is green below 60%, yellow below 85%, and red
+from 85% up.
 
 An existing `statusLine` value ds did not write conflicts; `--force` backs up
-`settings.json` and replaces the value.
+the file and replaces the value.
 
 ## Kitty
 
@@ -137,6 +151,7 @@ shortcuts or change existing Kitty windows.
 [prompt-doc]: prompt.md
 [claude-code]: https://code.claude.com/docs/en/overview
 [codex]: https://learn.chatgpt.com/docs/codex/cli
+[cursor-cli]: https://cursor.com/docs/cli/overview
 [kitty-conf]: https://github.com/letientai299/kitty.conf
 [caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server
 [gdu]: https://github.com/dundee/gdu

@@ -2,9 +2,10 @@
 # their tools, native packages, dependencies, and owned configuration.
 #
 # Link, block, and json targets use target placeholders: {bin}, {ds}, {zshrc},
-# {gitconfig}, {ssh}, {nvim}, {tmux}, and {claude}. A trial shell leaves {ssh}
-# and {claude} unset, which skips that entry. Link sources name a repository and
-# a path inside it. Tool specs may use {assets} for the ds asset directory.
+# {gitconfig}, {ssh}, {nvim}, {tmux}, {claude}, and {cursor}. A trial shell
+# leaves {ssh}, {claude}, and {cursor} unset, which skips that entry. Link
+# sources name a repository and a path inside it. Tool specs may use {assets}
+# for the ds asset directory.
 
 # Configuration repositories, cloned on first use when no checkout exists.
 [repos]
@@ -31,7 +32,7 @@ core = [
 ]
 extra = ["bat", "delta", "worktrunk", "eza", "gdu", "ouch"]
 ui = ["kitty"]
-ai = ["claude", "codex"]
+ai = ["claude", "codex", "cursor"]
 
 [components.mise]
 commands = ["mise"]
@@ -138,6 +139,21 @@ json = [
 commands = ["codex"]
 requires = ["mise"]
 tool = { name = "codex", version = "latest" }
+
+[components.cursor]
+commands = ["agent", "cursor-agent"]
+requires = ["mise", "jq"]
+links = [{ target = "{bin}/cursor-statusline", source = "ds:tools/cursor-statusline" }]
+json = [
+  { target = "{cursor}/cli-config.json", set = { statusLine = { type = "command", command = "{bin}/cursor-statusline", padding = 2 } } },
+]
+
+# Expose only the CLI; the package also bundles node and rg.
+[components.cursor.tool]
+name = "cursor-agent"
+version = "latest"
+bin_path = "bin"
+postinstall = 'mkdir -p "$MISE_TOOL_INSTALL_PATH/bin" && for c in agent cursor-agent; do ln -sf ../dist-package/cursor-agent "$MISE_TOOL_INSTALL_PATH/bin/$c"; done'
 
 [components.bat]
 commands = ["bat"]

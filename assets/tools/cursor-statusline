@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+# Cursor CLI status line. Reads StatusLinePayload JSON from stdin.
+set -euo pipefail
+
+payload=$(cat)
+autorun=false
+sid=""
+
+eval "$(echo "$payload" | jq -r '
+  def s($p): ($p // "") | tostring | if . == "null" then "" else . end;
+  [
+    "model=\(s(.model.display_name) | @sh)",
+    "param=\(s(.model.param_summary) | @sh)",
+    "pct_raw=\(s(.context_window.used_percentage) | @sh)",
+    "dir=\(s(.workspace.current_dir // .cwd) | @sh)",
+    "vim=\(s(.vim.mode) | @sh)",
+    "wt=\(s(.worktree.name) | @sh)",
+    "session=\(s(.session_name) | @sh)",
+    "sid=\(s(.session_id) | @sh)",
+    "autorun=\(s(.autorun) | @sh)"
+  ] | join("\n")
+')"
+
+[[ "$model" == "''" || -z "$model" ]] && model="model"
+
+# Effort often appears in display_name ("… High") and again in param_summary.
+param_plain=${param//[()]/}
+param_plain=${param_plain##[[:space:]]}
+param_plain=${param_plain%%[[:space:]]}
+if [[ -n "$param_plain" ]]; then
+	model_lc=$(printf '%s' "$model" | tr '[:upper:]' '[:lower:]')
+	param_lc=$(printf '%s' "$param_plain" | tr '[:upper:]' '[:lower:]')
+	if [[ "$model_lc" == *"$param_lc"* ]]; then
+		param=""
+	fi
+fi
+
+if [[ -n "$pct_raw" ]]; then
+	pct=${pct_raw%.*}
+else
+	pct=""
+fi
+
+if [[ -n "$pct" ]]; then
+	if ((pct >= 85)); then
+		ctx_color="38;5;203"
+	elif ((pct >= 60)); then
+		ctx_color="38;5;222"
+	else
+		ctx_color="38;5;114"
+	fi
+else
+	ctx_color="38;5;245"
+fi
+
+branch=""
+if [[ -n "$dir" ]] && git -C "$dir" rev-parse --git-dir >/dev/null 2>&1; then
+	branch=$(git -C "$dir" branch --show-current 2>/dev/null || true)
+fi
+
+# PR/MR: branch name first; never wait on gh/glab (CLI kills this at timeoutMs).
+pr=""
+pr_url=""
+pr_from_branch() {
+	local b=$1
+	if [[ "$b" =~ (^|[-/_])(pr|PR|mr|MR)[-/_]?([0-9]{1,6})($|[-/_]) ]]; then
+		printf '%s' "${BASH_REMATCH[3]}"
+		return
+	fi
+	if [[ "$b" =~ [#!]([0-9]{1,6}) ]]; then
+		printf '%s' "${BASH_REMATCH[1]}"
+		return
+	fi
+}
+
+# Web URL for PR/MR $2 from the origin remote of repo $1, for ids we did not
+# get from gh/glab (those report their own url).
+pr_url_from_remote() {
+	local d=$1 n=$2 remote host path
+	remote=$(git -C "$d" remote get-url origin 2>/dev/null || true)
+	[[ -z "$remote" ]] && return
+	remote=${remote%.git}
+	if [[ "$remote" =~ ^(ssh|git|https?)://([^@/]+@)?([^:/]+)(:[0-9]+)?/(.+)$ ]]; then
+		host=${BASH_REMATCH[3]}
+		path=${BASH_REMATCH[5]}
+	elif [[ "$remote" =~ ^[^@]+@([^:]+):(.+)$ ]]; then
+		host=${BASH_REMATCH[1]}
+		path=${BASH_REMATCH[2]}
+	else
+		return
+	fi
+	if [[ "$host" == *github* ]]; then
+		printf 'https://%s/%s/pull/%s' "$host" "$path" "$n"
+	else
+		printf 'https://%s/%s/-/merge_requests/%s' "$host" "$path" "$n"
+	fi
+}
+
+if [[ -n "$branch" ]]; then
+	pr=$(pr_from_branch "$branch" || true)
+	if [[ -n "$pr" ]]; then
+		pr_url=$(pr_url_from_remote "$dir" "$pr" || true)
+	else
+		cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/cursor-statusline"
+		mkdir -p "$cache_dir"
+		key=$(printf '%s\t%s' "$dir" "$branch" | shasum -a 256 | awk '{print $1}')
+		cache="$cache_dir/pr-$key"
+		lock="$cache.lock"
+		now=$(date +%s)
+		ttl=180
+		mtime=0
+		if [[ -f "$cache" ]]; then
+			mtime=$(stat -f %m "$cache" 2>/dev/null || stat -c %Y "$cache")
+			IFS=$'\t' read -r pr pr_url <"$cache" || true
+			pr=${pr:-}
+			pr_url=${pr_url:-}
+			[[ -n "$pr" && -z "$pr_url" ]] && pr_url=$(pr_url_from_remote "$dir" "$pr" || true)
+		fi
+		if ((now - mtime >= ttl)); then
+			if [[ ! -f "$lock" ]] || ((now - $(stat -f %m "$lock" 2>/dev/null || stat -c %Y "$lock" 2>/dev/null || echo 0) > 30)); then
+				: >"$lock"
+				(
+					looked="" looked_url="" raw=""
+					if command -v gh >/dev/null 2>&1; then
+						raw=$(cd "$dir" && gh pr view --json number,url --jq '[.number, .url] | @tsv' 2>/dev/null || true)
+					fi
+					if [[ -z "$raw" ]] && command -v glab >/dev/null 2>&1; then
+						raw=$(cd "$dir" && glab mr view -F json 2>/dev/null | jq -r 'select(.iid) | [.iid, .web_url] | @tsv' 2>/dev/null || true)
+					fi
+					IFS=$'\t' read -r looked looked_url <<<"$raw" || true
+					printf '%s\t%s' "${looked:-}" "${looked_url:-}" >"$cache"
+					rm -f "$lock"
+				) >/dev/null 2>&1 &
+			fi
+		fi
+	fi
+fi
+
+pct_label=""
+if [[ "$pct" =~ ^[0-9]+$ ]]; then
+	frac=${pct_raw#*.}
+	if [[ "$pct_raw" == *.* && "$frac" != "0" && "$frac" != "00" ]]; then
+		pct_label=$(printf '%.1f%%' "$pct_raw")
+	else
+		pct_label="${pct}%"
+	fi
+fi
+
+path_display=$dir
+if [[ -n "$dir" && "$dir" == "$HOME" ]]; then
+	path_display="~"
+elif [[ -n "$dir" && "$dir" == "$HOME/"* ]]; then
+	# shellcheck disable=SC2088 # literal home prefix, not a path to expand
+	path_display=$(printf '~/%s' "${dir#"$HOME"/}")
+fi
+[[ -z "$path_display" ]] && path_display="/"
+
+mr_label=""
+if [[ -n "$pr" ]]; then
+	if [[ "$pr_url" == *"/merge_requests/"* ]]; then
+		mr_label="!${pr}"
+	else
+		mr_label="#${pr}"
+	fi
+fi
+
+dim=$'\033[38;5;245m'
+sep=$'\033[38;5;240m'
+reset=$'\033[0m'
+model_color=$'\033[1;38;5;117m'
+path_color=$'\033[38;5;75m'
+branch_color=$'\033[38;5;183m'
+mr_color=$'\033[38;5;150m'
+ssh_color=$'\033[38;5;111m'
+yolo_color=$'\033[1;38;5;203m'
+review_color=$'\033[38;5;222m'
+ask_color=$'\033[38;5;114m'
+
+cursor_config_dir() {
+	if [[ -n ${CURSOR_CONFIG_DIR:-} ]]; then
+		printf '%s' "$CURSOR_CONFIG_DIR"
+	elif [[ -n ${XDG_CONFIG_HOME:-} ]]; then
+		printf '%s/cursor' "$XDG_CONFIG_HOME"
+	else
+		printf '%s/.cursor' "$HOME"
+	fi
+}
+
+# approvalMode lives in the session store. autorun only says whether Run
+# Everything is on, so Auto-review and the allowlist need this lookup.
+approval_mode() {
+	local id=$1 root restore=0 matches
+	[[ -n $id ]] || return 0
+	root=$(cursor_config_dir)
+	shopt -q nullglob || restore=1
+	shopt -s nullglob
+	matches=("$root"/chats/*/"$id"/store.db)
+	[[ $restore -eq 1 ]] && shopt -u nullglob
+	[[ ${#matches[@]} -eq 1 ]] || return 0
+	python3 -c '
+import binascii, json, sqlite3, sys
+con = sqlite3.connect("file:%s?mode=ro" % sys.argv[1], uri=True, timeout=0.2)
+row = con.execute("select value from meta limit 1").fetchone()
+if not row or row[0] is None:
+    raise SystemExit
+raw = row[0]
+if isinstance(raw, str):
+    text = raw.strip()
+    if text and len(text) % 2 == 0 and all(c in "0123456789abcdefABCDEF" for c in text):
+        raw = binascii.unhexlify(text)
+if isinstance(raw, (bytes, bytearray)):
+    raw = raw.decode()
+print(json.loads(raw).get("approvalMode") or "")
+' "${matches[0]}" 2>/dev/null || true
+}
+
+if [[ $autorun == true ]]; then
+	perm_label="YOLO"
+	perm_color=$yolo_color
+else
+	case $(approval_mode "$sid") in
+	auto-review)
+		perm_label="review"
+		perm_color=$review_color
+		;;
+	*)
+		perm_label="ask"
+		perm_color=$ask_color
+		;;
+	esac
+fi
+
+line1="${perm_color}${perm_label}${reset} ${sep}· ${model_color}${model}${reset}"
+[[ -n "$param" ]] && line1+=" ${dim}${param}${reset}"
+[[ -n "$session" ]] && line1+=" ${sep}· ${dim}${session}${reset}"
+if [[ -n "$pct_label" ]]; then
+	line1+=" ${sep}· ${reset}"$'\033['"${ctx_color}m${pct_label}${reset}"
+fi
+[[ -n "$vim" ]] && line1+=" ${sep}· ${dim}${vim}${reset}"
+
+parent=${path_display%/*}
+base=${path_display##*/}
+if [[ "$path_display" == */* && "$parent" != "$path_display" ]]; then
+	path_colored="${dim}${parent}/${path_color}${base}${reset}"
+else
+	path_colored="${path_color}${path_display}${reset}"
+fi
+
+line2="$path_colored"
+[[ -n "$branch" ]] && line2+=" ${sep}· ${branch_color}${branch}${reset}"
+[[ -n "$wt" ]] && line2+=" ${sep}· ${dim}${wt}${reset}"
+if [[ -n "$mr_label" ]]; then
+	if [[ -n "$pr_url" ]]; then
+		line2+=" ${sep}· ${mr_color}"$'\033]8;;'"${pr_url}"$'\a'"${mr_label}"$'\033]8;;\a'"${reset}"
+	else
+		line2+=" ${sep}· ${mr_color}${mr_label}${reset}"
+	fi
+fi
+
+ssh_alias=${LC_SSH_ALIAS:-}
+ssh_alias=${ssh_alias//[[:cntrl:]]/}
+if [[ -n "$ssh_alias" ]]; then
+	line2="${ssh_color}[${ssh_alias}]${reset} ${line2}"
+fi
+
+printf '%b\n%b\n' "$line1" "$line2"

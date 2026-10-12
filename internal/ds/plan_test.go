@@ -484,3 +484,25 @@ func TestClaudeStatusLineIsConfigured(t *testing.T) {
 		t.Fatalf("second plan not empty: %v", actionNames(again))
 	}
 }
+
+func TestCursorStatusLineIsConfigured(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	settings := filepath.Join(f.home, ".cursor", "cli-config.json")
+	writeFile(t, settings, `{"version": 1}`)
+	f.add(LayerRequest{Layers: []LayerName{"ai"}}, AddOptions{})
+	if !slices.ContainsFunc(f.logLines("mise"), func(l string) bool { return strings.Contains(l, "cursor-agent") }) {
+		t.Fatalf("cursor-agent not installed: %v", f.logLines("mise"))
+	}
+	bin := f.env.Target.Placeholders()["bin"]
+	if dest, _ := os.Readlink(filepath.Join(bin, "cursor-statusline")); !strings.HasSuffix(dest, "assets/tools/cursor-statusline") {
+		t.Fatalf("cursor-statusline -> %s", dest)
+	}
+	got := readFile(t, settings)
+	if !strings.Contains(got, `"version": 1`) || !strings.Contains(got, `"command": "`+bin+`/cursor-statusline"`) {
+		t.Fatalf("settings:\n%s", got)
+	}
+	if again := f.env.BuildPlan(context.Background(), f.state(), nil, AddOptions{}); len(again.Actions) != 0 {
+		t.Fatalf("second plan not empty: %v", actionNames(again))
+	}
+}

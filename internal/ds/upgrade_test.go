@@ -160,17 +160,16 @@ func TestUpgradeCatalogDownloads(t *testing.T) {
 			if err := f.env.upgradeTools(context.Background(), []ComponentName{"delta", "kitty", "ouch", "worktrunk", "bat"}, dryRun); err != nil {
 				t.Fatal(err)
 			}
-			for _, tool := range []string{"delta", "kitty", "ouch", "worktrunk"} {
-				if !strings.Contains(f.err.String(), "http:"+tool+" pinned to ") {
-					t.Fatal(f.err.String())
-				}
+			if !strings.Contains(f.err.String(), "http:kitty pinned to ") {
+				t.Fatal(f.err.String())
 			}
+			want := "upgrade aqua:dandavison/delta aqua:ouch-org/ouch aqua:max-sixty/worktrunk bat"
 			upgrades := f.logLines("mise -C / upgrade")
 			if dryRun {
-				if len(upgrades) != 0 || !strings.Contains(f.err.String(), "would run mise upgrade bat") {
+				if len(upgrades) != 0 || !strings.Contains(f.err.String(), "would run mise "+want) {
 					t.Fatalf("upgrades: %v; output: %s", upgrades, f.err.String())
 				}
-			} else if len(upgrades) != 1 || !strings.HasSuffix(upgrades[0], "upgrade bat") {
+			} else if len(upgrades) != 1 || !strings.HasSuffix(upgrades[0], want) {
 				t.Fatalf("upgrades: %v", upgrades)
 			}
 		})

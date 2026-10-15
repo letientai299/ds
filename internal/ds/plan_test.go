@@ -85,7 +85,7 @@ func TestSelectionIsAdditive(t *testing.T) {
 		t.Fatalf("selection = %s", st.Selection)
 	}
 	fragment := readFile(t, fragmentPath(f.env.Target))
-	if !strings.Contains(fragment, "bat") || !strings.Contains(fragment, "http:delta") {
+	if !strings.Contains(fragment, "bat") || !strings.Contains(fragment, "aqua:dandavison/delta") {
 		t.Fatalf("fragment lost extra tools:\n%s", fragment)
 	}
 }

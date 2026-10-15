@@ -39,7 +39,7 @@ case "$1" in
 install)
 	shift
 	mkdir -p "$state"
-	for tool in "$@"; do : >"$state/$(printf %s "$tool" | tr : -)"; done
+	for tool in "$@"; do : >"$state/$(printf %s "$tool" | tr :/ -_)"; done
 	;;
 ls)
 	printf '{'
@@ -47,7 +47,7 @@ ls)
 	conf=$MISE_CONFIG_DIR/conf.d/10-ds.toml
 	for f in "$state"/*; do
 		[ -e "$f" ] || continue
-		name=$(basename "$f" | sed 's/^http-/http:/; s/^npm-/npm:/')
+		name=$(basename "$f" | sed 's/^http-/http:/; s/^npm-/npm:/; s/^aqua-/aqua:/; s|_|/|g')
 		printf '%s"%s":[{"version":"1.0.0","requested_version":"latest","installed":true,"source":{"path":"%s"}}]' "$sep" "$name" "$conf"
 		sep=,
 	done

@@ -175,42 +175,24 @@ commands = ["delta"]
 requires = ["mise"]
 
 [components.delta.tool]
-name = "http:delta"
-version = "0.18.2"
-
-[components.delta.tool.platforms]
-linux-arm64 = { url = "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-aarch64-unknown-linux-gnu.tar.gz", checksum = "sha256:adf7674086daa4582f598f74ce9caa6b70c1ba8f4a57d2911499b37826b014f9" }
-linux-x64 = { url = "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-x86_64-unknown-linux-gnu.tar.gz", checksum = "sha256:99607c43238e11a77fe90a914d8c2d64961aff84b60b8186c1b5691b39955b0f" }
-macos-arm64 = { url = "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-aarch64-apple-darwin.tar.gz", checksum = "sha256:6ba38dce9f91ee1b9a24aa4aede1db7195258fe176c3f8276ae2d4457d8170a0" }
-macos-x64 = { url = "https://github.com/dandavison/delta/releases/download/0.18.2/delta-0.18.2-x86_64-apple-darwin.tar.gz", checksum = "sha256:e9b5c4a9e73d2119c687e074f0d97f188e30e5fe8ae0e6d455755f74bb5cc0cf" }
+name = "aqua:dandavison/delta"
+version = "latest"
 
 [components.worktrunk]
 commands = ["wt"]
 requires = ["mise"]
 
 [components.worktrunk.tool]
-name = "http:worktrunk"
-version = "0.79.0"
-
-[components.worktrunk.tool.platforms]
-linux-arm64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-aarch64-unknown-linux-musl.tar.xz", checksum = "sha256:6bb148471c4f4e5e616a3d703a00f0095b2d0025d86658f8d610c95a7756e3e7" }
-linux-x64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-x86_64-unknown-linux-musl.tar.xz", checksum = "sha256:b8c190b1d652370ef9f6b8f4694a2d6831b5b22f4b789f047612aad32764c6cf" }
-macos-arm64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-aarch64-apple-darwin.tar.xz", checksum = "sha256:4d77ec416c3873c1364aa135022303723f9333372f693193537abe74e88aaec1" }
-macos-x64 = { url = "https://github.com/max-sixty/worktrunk/releases/download/v0.79.0/worktrunk-x86_64-apple-darwin.tar.xz", checksum = "sha256:160380bc5595ba2ab82170643315b58444f3108464c00fc5466b67cef3457ea0" }
+name = "aqua:max-sixty/worktrunk"
+version = "latest"
 
 [components.ouch]
 commands = ["ouch"]
 requires = ["mise"]
 
 [components.ouch.tool]
-name = "http:ouch"
-version = "0.8.3"
-
-[components.ouch.tool.platforms]
-linux-arm64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-aarch64-unknown-linux-musl.tar.gz", checksum = "sha256:4619158de69e65e8d23147c3d8b46b116feb0259c8a1704df7d792394c2b5847" }
-linux-x64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-x86_64-unknown-linux-musl.tar.gz", checksum = "sha256:eaab9b997a823f584557ac5f85205105ae577a4c4fbd23926b686469cfa19881" }
-macos-arm64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-aarch64-apple-darwin.tar.gz", checksum = "sha256:969c1bd9105b5033cc9cac0a37c011d23482948d681b43f97c6f79311f3263d0" }
-macos-x64 = { url = "https://github.com/ouch-org/ouch/releases/download/0.8.3/ouch-x86_64-apple-darwin.tar.gz", checksum = "sha256:c97188f4c09fb959ea0d3117781ae524431b62fcd8f1b8d19323550773cd438a" }
+name = "aqua:ouch-org/ouch"
+version = "latest"
 
 [components.kitty]
 commands = ["kitty", "kitten"]

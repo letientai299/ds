@@ -27,7 +27,7 @@ local_todo() {
 
 _ds_worktrunk_init() {
   (( ${+_ds_worktrunk_loaded} )) && return 0
-  local -a binaries=("$MISE_DATA_DIR"/installs/http-worktrunk/latest/{,bin/,*/}wt(N))
+  local -a binaries=("$MISE_DATA_DIR"/installs/aqua-max-sixty-worktrunk/latest/{,bin/,*/}wt(N))
   (( $#binaries )) || return 1
   local script
   script=$("$binaries[1]" config shell init zsh) || return $?

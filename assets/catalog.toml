@@ -72,7 +72,7 @@ blocks = [
 [components.neovim]
 commands = ["nvim"]
 requires = ["mise", "git"]
-tool = { name = "neovim", version = "0.12.5" }
+tool = { name = "neovim", version = "latest" }
 links = [{ target = "{nvim}", source = "nvim:" }]
 
 [components.fd]

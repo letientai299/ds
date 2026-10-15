@@ -60,17 +60,22 @@ dependencies, and owned files.
 ## Upgrade categories
 
 - `ds` refreshes ds and its assets, then converges the saved selection. It
-  fast-forwards the ds checkout and user configuration checkouts when clean and
-  tracking, and resets ds-managed clones to their remote heads. A checkout then
-  rebuilds; a main build fetches and verifies the latest published build.
+  concurrently fetches `origin/main`, stashes local changes, rebases user
+  checkouts, restores changes, and pushes each current branch to its matching
+  branch on `origin`. Stashes include untracked files and restore staged state.
+  Failures roll back the local commit and changes, then warn while upgrades
+  continue. Detached checkouts and existing Git operations warn and skip.
+  Pushes never force. Linked worktrees synchronize serially to protect shared
+  stashes. Ds-managed clones reset to their remote heads. A checkout rebuilds;
+  a main build fetches and verifies the latest published build.
 - `tools` runs `mise upgrade` for tools of selected components. Explicit user
   requests in mise configuration stay authoritative.
 - `plugins` updates Neovim plugins when Neovim is selected.
 - `system` upgrades packages through Homebrew or apt.
 
 Bare `upgrade` runs every category, `ds` first. Narrow categories do not pull
-sources. A failed `ds` stage stops the rest; other failures are reported per
-category.
+sources. Repository sync failures warn and continue. Other failures in the `ds`
+stage stop the rest; remaining failures are reported per category.
 
 ## Privileges
 

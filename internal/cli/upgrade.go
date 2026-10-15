@@ -22,7 +22,8 @@ func (a *app) upgradeCmd() *cobra.Command {
 		Use:   "upgrade [ds|tools|plugins|system|all]...",
 		Short: "Upgrade ds, selected tools, Neovim plugins, and system packages",
 		Long: "Bare upgrade covers every category. The ds category runs first: it\n" +
-			"fast-forwards clean user checkouts and resets ds-managed clones; a\n" +
+			"concurrently stashes, rebases onto origin/main, restores, and pushes.\n" +
+			"Failures roll back with warnings; managed clones reset. A\n" +
 			"checkout then rebuilds, and a main build fetches and verifies the latest\n" +
 			"build. The resulting ds converges the saved selection and upgrades the\n" +
 			"remaining categories.",

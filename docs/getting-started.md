@@ -32,8 +32,8 @@ tree, so later commands run as `ds` and edits are live:
 - Links follow the checkout that last ran `add`; running `./ds add` from another
   worktree moves them there.
 
-`ds upgrade` fast-forwards the checkouts instead of downloading a build. It
-stops when one has local changes, no upstream, or a detached HEAD.
+`ds upgrade` syncs checkouts concurrently instead of downloading a build.
+See [upgrade categories][upgrades] for synchronization and rollback behavior.
 
 ## Ubuntu or another host
 
@@ -84,3 +84,4 @@ Docker; existing runtimes stay untouched, and the shell keeps Docker aliases and
 
 [brew]: https://brew.sh/
 [mise]: https://mise.jdx.dev/getting-started.html
+[upgrades]: cli.md#upgrade-categories

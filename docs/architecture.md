@@ -33,10 +33,10 @@ component links into it. The first match places each repository:
 nvim = "~/src/nvim.conf"
 ```
 
-The first two belong to the user: `upgrade ds` fast-forwards them only when
-clean and tracking, and stops otherwise. Clones under `<data>/ds/sources` belong
-to ds: `upgrade ds` resets them to the remote head and discards local edits.
-Edit configuration in a user checkout instead.
+The first two belong to the user; `upgrade ds` preserves their edits.
+Clones under `<data>/ds/sources` belong to ds: `upgrade ds` resets them to the
+remote head and discards local edits. Edit configuration in a user checkout
+instead. See [upgrade categories][upgrades] for synchronization and recovery.
 
 Helpers such as `kt` build inside their repository with its pinned Go through
 `mise exec go`, so hosts that select Kitty install Go but no other tools of that
@@ -117,3 +117,4 @@ keeps the active and previous builds and removes older ones.
 [main]: ../cmd/ds/main.go
 [mise-bootstrap]: https://mise.jdx.dev/cli/bootstrap.html
 [mise-config]: https://mise.jdx.dev/configuration.html
+[upgrades]: cli.md#upgrade-categories

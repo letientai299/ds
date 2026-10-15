@@ -2,8 +2,11 @@ package ds
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -158,5 +161,65 @@ func TestRunCategoriesUsesSelection(t *testing.T) {
 	}
 	if !strings.Contains(f.err.String(), "plugins skipped") || !strings.Contains(f.err.String(), "system skipped") {
 		t.Fatalf("output:\n%s", f.err.String())
+	}
+}
+
+func TestUpgradePreservesExternalTools(t *testing.T) {
+	t.Parallel()
+	for _, dryRun := range []bool{false, true} {
+		t.Run(fmt.Sprint(dryRun), func(t *testing.T) {
+			f := newFixture(t)
+			f.add(ComponentRequest{Components: []ComponentName{"claude", "bat"}}, AddOptions{})
+			fragment := fragmentPath(f.env.Target)
+			content := strings.ReplaceAll(readFile(t, fragment), "claude-code = 'latest'\n", "")
+			if content == readFile(t, fragment) {
+				t.Fatal("claude request was not removed")
+			}
+			writeFile(t, fragment, content)
+			if err := os.Remove(filepath.Join(f.env.Target.Paths().MiseData, "fake", "claude-code")); err != nil {
+				t.Fatal(err)
+			}
+			writeExec(t, filepath.Join(f.tools, "claude"), fakeCommand)
+			st := f.state()
+			if p := f.env.BuildPlan(context.Background(), st, nil, AddOptions{}); len(p.Blockers) == 0 {
+				t.Fatal("add lost conflict protection")
+			}
+			before := snapshot(t, f.home)
+			p := f.env.BuildPlan(context.Background(), st, nil, AddOptions{KeepConflicts: true})
+			if len(p.Blockers) > 0 || hasAction(p, "install mise tools") || len(p.Notes) == 0 {
+				t.Fatalf("upgrade plan: %+v; %v", p, actionNames(p))
+			}
+			if !dryRun {
+				if err := f.env.Execute(context.Background(), p, &st, "upgrade"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := f.env.RunCategories(context.Background(), st, []Category{CatTools, CatPlugins}, dryRun); err != nil {
+				t.Fatal(err)
+			}
+			if readFile(t, fragment) != content {
+				t.Fatal("upgrade replaced edited fragment")
+			}
+			upgrades := f.logLines("mise -C / upgrade")
+			if dryRun {
+				if len(upgrades) != 0 || !reflect.DeepEqual(before, snapshot(t, f.home)) {
+					t.Fatal("dry run changed target")
+				}
+				if !strings.Contains(f.err.String(), "would run mise upgrade jq bat") {
+					t.Fatal(f.err.String())
+				}
+			} else if len(upgrades) != 1 || !strings.HasSuffix(upgrades[0], "upgrade jq bat") {
+				t.Fatalf("upgrades: %v", upgrades)
+			}
+			r := f.env.Status(context.Background(), st, nil)
+			if r.Summary != SummaryConflict {
+				t.Fatalf("conflict disappeared: %+v", r)
+			}
+			for _, c := range r.Components {
+				if c.Name == "claude" && (c.State != compInstalled || c.Detail != externalToolDetail) {
+					t.Fatalf("native claude: %+v", c)
+				}
+			}
+		})
 	}
 }

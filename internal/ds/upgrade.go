@@ -128,6 +128,20 @@ func (e *Env) upgradeTools(ctx context.Context, comps []ComponentName, dryRun bo
 	if mise.Path == "" {
 		return errors.New("mise is missing; run ds add first")
 	}
+	facts, err := e.listTools(ctx, mise.Path)
+	if err != nil {
+		return err
+	}
+	tools = slices.DeleteFunc(tools, func(name string) bool {
+		if _, requested := facts[name]; requested {
+			return false
+		}
+		e.printf("ds upgrade: skipping %s; not managed by mise\n", name)
+		return true
+	})
+	if len(tools) == 0 {
+		return nil
+	}
 	if dryRun {
 		e.printf("ds upgrade: would run mise upgrade %s\n", strings.Join(tools, " "))
 		return nil

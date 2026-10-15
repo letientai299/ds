@@ -155,6 +155,14 @@ func (e *Env) componentStatus(comp *Component, mise miseFound, facts map[string]
 	for _, name := range comp.Commands {
 		s.Commands[name] = lookPath(name, e.lookupPath())
 	}
+	if comp.Tool != nil {
+		if _, requested := facts[comp.Tool.Name]; !requested {
+			if commands := e.externalCommands(comp); len(commands) > 0 {
+				s.Commands, s.Detail = commands, externalToolDetail
+				return s
+			}
+		}
+	}
 	if reason := glibcBlocker(e.Platform, comp) + toolBlocker(e.Platform, comp); reason != "" {
 		s.State, s.Detail = compUnavailable, reason
 		return s
@@ -238,7 +246,7 @@ func RenderStatus(w io.Writer, r StatusReport, verbose, color bool) {
 			version += "requested " + c.Requested
 		}
 		detail := c.Detail
-		if !verbose && c.State == compInstalled {
+		if !verbose && c.State == compInstalled && c.Detail != externalToolDetail {
 			detail = ""
 		}
 		renderStatusRow(w, c.State, string(c.Name), suffix(version, detail), color)
@@ -255,8 +263,13 @@ func RenderStatus(w io.Writer, r StatusReport, verbose, color bool) {
 			fmt.Fprintf(w, "    %s: %s\n", name, orNone(c.Commands[name]))
 		}
 	}
+	filesShown := false
 	for _, f := range r.Files {
 		if verbose || f.State != statePresent.String() {
+			if !filesShown {
+				fmt.Fprintln(w, "\nfiles:")
+				filesShown = true
+			}
 			renderStatusRow(w, f.State, f.Path, suffix("", f.Detail), color)
 		}
 	}

@@ -154,3 +154,57 @@ func TestStatusMainDiagnostics(t *testing.T) {
 		t.Fatalf("unactivated main build: %+v", r)
 	}
 }
+
+func TestStatusExternalTools(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name, component string
+		prepare         func(*testing.T, *fixture, string)
+		installed       bool
+	}{
+		{name: "native claude", component: "claude", installed: true, prepare: func(t *testing.T, f *fixture, name string) {
+			writeExec(t, filepath.Join(f.tools, name), fakeCommand)
+		}},
+		{name: "native bat", component: "bat", installed: true, prepare: func(t *testing.T, f *fixture, name string) {
+			writeExec(t, filepath.Join(f.tools, name), fakeCommand)
+		}},
+		{name: "absent", component: "claude"},
+		{name: "stale shim", component: "claude", prepare: func(t *testing.T, f *fixture, name string) {
+			writeExec(t, filepath.Join(f.env.Target.Paths().MiseData, "shims", name), fakeCommand)
+		}},
+		{name: "unrequested mise install", component: "claude", prepare: func(t *testing.T, f *fixture, name string) {
+			binary := filepath.Join(f.env.Target.Paths().MiseData, "installs", "claude-code", "1", name)
+			writeExec(t, binary, fakeCommand)
+			symlink(t, binary, filepath.Join(f.tools, name))
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFixture(t)
+			comp, _ := f.env.Catalog.Component(ComponentName(tt.component))
+			if tt.prepare != nil {
+				tt.prepare(t, f, comp.Commands[0])
+			}
+			before := snapshot(t, f.home)
+			s := f.env.componentStatus(comp, miseFound{}, nil)
+			if (s.State == compInstalled) != tt.installed {
+				t.Fatalf("status: %+v", s)
+			}
+			if tt.installed {
+				r := StatusReport{Components: []ComponentStatus{s}}
+				if summarize(r) != SummaryComplete {
+					t.Fatal("external tool is unhealthy")
+				}
+				for _, verbose := range []bool{false, true} {
+					var out bytes.Buffer
+					RenderStatus(&out, r, verbose, false)
+					if !strings.Contains(out.String(), "installed   "+tt.component+" ("+externalToolDetail+")") {
+						t.Fatalf("external detail missing: %s", out.String())
+					}
+				}
+			}
+			if !reflect.DeepEqual(before, snapshot(t, f.home)) {
+				t.Fatal("status changed target files")
+			}
+		})
+	}
+}

@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"slices"
@@ -138,11 +139,16 @@ func (a *app) continueCmd() *cobra.Command {
 
 // continueUpgrade converges the saved selection, then runs categories.
 func (a *app) continueUpgrade(ctx context.Context, e *ds.Env, st ds.State, cats []ds.Category, dryRun bool) error {
-	p := e.BuildPlan(ctx, st, nil, ds.AddOptions{})
+	p := e.BuildPlan(ctx, st, nil, ds.AddOptions{KeepConflicts: true})
 	if dryRun {
 		ds.RenderPlan(a.io.Stdout, p)
-	} else if err := e.Execute(ctx, p, &st, "upgrade"); err != nil {
-		return err
+	} else {
+		for _, note := range p.Notes {
+			fmt.Fprintln(a.io.Stderr, "note: "+note)
+		}
+		if err := e.Execute(ctx, p, &st, "upgrade"); err != nil {
+			return err
+		}
 	}
 	if len(cats) == 0 {
 		return nil

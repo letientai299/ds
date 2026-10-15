@@ -149,6 +149,8 @@ func (p *Plan) block(subject, reason, remedy string) {
 type AddOptions struct {
 	Force      bool
 	NoPackages bool
+	// KeepConflicts preserves user edits during upgrades.
+	KeepConflicts bool
 	// SkipPackages leaves native packages alone without requiring them,
 	// as a trial does.
 	SkipPackages bool
@@ -211,7 +213,7 @@ func (e *Env) BuildPlan(ctx context.Context, st State, req Request, opt AddOptio
 		p.Actions = append(p.Actions, ActivateBuild{ID: emb.Info.ID})
 	}
 	if !opt.SkipTools {
-		e.planTools(ctx, p, comps, mise, fetched)
+		e.planTools(ctx, p, comps, mise, fetched, opt)
 	}
 	return p
 }
@@ -233,12 +235,17 @@ func (e *Env) planMise(ctx context.Context, p *Plan) (mise string, fetched bool)
 
 // planTools installs requested tools that mise reports missing, then
 // bootstraps Neovim plugins once.
-func (e *Env) planTools(ctx context.Context, p *Plan, comps []ComponentName, mise string, fetched bool) {
+func (e *Env) planTools(ctx context.Context, p *Plan, comps []ComponentName, mise string, fetched bool, opt AddOptions) {
 	if names := toolNames(e.Catalog, comps); len(names) > 0 {
 		pending := names
 		if !fetched && mise != "" && !e.changesFile(p, fragmentPath(e.Target)) {
 			if facts, err := e.listTools(ctx, mise); err == nil {
-				pending = slices.DeleteFunc(slices.Clone(names), func(n string) bool { return facts[n].Installed })
+				pending = slices.DeleteFunc(slices.Clone(names), func(n string) bool {
+					fact, requested := facts[n]
+					return fact.Installed || (opt.KeepConflicts && !requested)
+				})
+			} else if opt.KeepConflicts {
+				p.block("mise", err.Error(), "")
 			}
 		} else {
 			p.Notes = append(p.Notes, "tool versions resolve when mise installs them")
@@ -516,6 +523,8 @@ func (e *Env) planFiles(p *Plan, st State, entries []managed, opt AddOptions) {
 			p.Actions = append(p.Actions, FileChange{Entry: entry, Expect: in.State})
 		case stateConflict:
 			switch {
+			case opt.KeepConflicts && !in.Locked:
+				p.Notes = append(p.Notes, "preserving conflict: "+entry.path())
 			case in.Locked:
 				p.block(entry.path(), in.Reason, "")
 			case !opt.Force:

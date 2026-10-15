@@ -209,6 +209,40 @@ func toolNames(cat *Catalog, comps []ComponentName) []string {
 	return names
 }
 
+const externalToolDetail = "externally managed"
+
+func (e *Env) externalCommands(comp *Component) map[string]string {
+	if len(comp.Commands) == 0 {
+		return nil
+	}
+	p := e.Target.Paths()
+	miseData, err := filepath.EvalSymlinks(p.MiseData)
+	if err != nil {
+		miseData = p.MiseData
+	}
+	var dirs []string
+	for dir := range strings.SplitSeq(e.lookupPath(), ":") {
+		resolved, err := filepath.EvalSymlinks(dir)
+		if err == nil && (resolved == miseData || strings.HasPrefix(resolved, miseData+string(filepath.Separator))) {
+			continue
+		}
+		dirs = append(dirs, dir)
+	}
+	commands := make(map[string]string, len(comp.Commands))
+	for _, name := range comp.Commands {
+		path := lookPath(name, strings.Join(dirs, ":"))
+		if path == "" {
+			return nil
+		}
+		resolved, err := filepath.EvalSymlinks(path)
+		if err != nil || strings.HasPrefix(resolved, miseData+string(filepath.Separator)) {
+			return nil
+		}
+		commands[name] = path
+	}
+	return commands
+}
+
 // toolFact is mise's view of one effective global tool request.
 type toolFact struct {
 	Version     string `json:"version"`

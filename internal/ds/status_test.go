@@ -71,23 +71,75 @@ func TestRenderStatusDetails(t *testing.T) {
 	r := StatusReport{
 		Summary:    SummaryComplete,
 		Runtime:    VersionReport{Executable: "/bin/ds", Checkout: &CheckoutVersion{Root: "/src/ds", Commit: "abc", Dirty: true}},
+		Mise:       ComponentStatus{State: compInstalled, Version: "2026.9.12", Detail: "/bin/mise"},
 		Components: []ComponentStatus{{Name: "neovim", State: compInstalled, Version: "0.11.4", Requested: "latest", Source: "/mise/config.toml", InstallPath: "/mise/nvim", Commands: map[string]string{"nvim": "/bin/nvim"}}},
 		Files:      []FileStatus{{Path: "/config/nvim", State: statePresent.String()}},
 	}
 	var out bytes.Buffer
-	RenderStatus(&out, r, false)
-	for _, want := range []string{"executable: /bin/ds", "ds checkout /src/ds", "abc (dirty)", "installed   neovim", "request: latest (/mise/config.toml)", "install: /mise/nvim", "nvim: /bin/nvim"} {
+	RenderStatus(&out, r, false, false)
+	if !strings.Contains(out.String(), "installed   neovim (0.11.4; requested latest)\n") {
+		t.Fatalf("missing compact versions: %s", out.String())
+	}
+	for _, hidden := range []string{"/config/nvim", "/bin/ds", "/bin/mise", "/src/ds", "/mise/config.toml", "/mise/nvim", "/bin/nvim", "\x1b["} {
+		if strings.Contains(out.String(), hidden) {
+			t.Fatalf("compact output includes %q: %s", hidden, out.String())
+		}
+	}
+	out.Reset()
+	RenderStatus(&out, r, true, false)
+	for _, want := range []string{"executable: /bin/ds", "ds checkout /src/ds", "abc (dirty)", "mise: installed (2026.9.12; /bin/mise)", "installed   neovim", "request: latest (/mise/config.toml)", "install: /mise/nvim", "nvim: /bin/nvim", "/config/nvim"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("missing %q: %s", want, out.String())
 		}
 	}
-	if strings.Contains(out.String(), "/config/nvim") {
-		t.Fatal("healthy managed file shown without verbose")
-	}
-	out.Reset()
-	RenderStatus(&out, r, true)
-	if !strings.Contains(out.String(), "/config/nvim") {
-		t.Fatal("verbose omitted healthy managed file")
+}
+
+func TestRenderStatusHealth(t *testing.T) {
+	for _, color := range []bool{false, true} {
+		for _, tt := range []struct {
+			state, code string
+		}{
+			{SummaryComplete, "32"},
+			{SummaryIncomplete, "33"},
+			{SummaryConflict, "31"},
+		} {
+			r := StatusReport{
+				Summary: tt.state,
+				Components: []ComponentStatus{
+					{Name: "neovim", State: compInstalled, Version: "0.11.4", Requested: "0.11.4"},
+					{Name: "tmux", State: compMissing, Requested: "latest", Detail: "tmux is not installed"},
+					{Name: "kitty", State: compUnavailable, Detail: "unsupported platform"},
+				},
+				Files: []FileStatus{
+					{Path: "/config/tmux", State: stateConflict.String(), Detail: "existing file"},
+					{Path: "/config/zsh", State: stateStale.String()},
+				},
+			}
+			var out bytes.Buffer
+			RenderStatus(&out, r, false, color)
+			for _, label := range []struct {
+				text, code, tail string
+			}{
+				{tt.state, tt.code, "\n"},
+				{compInstalled, "32", "   neovim (0.11.4)\n"},
+				{compMissing, "33", "     tmux (requested latest; tmux is not installed)\n"},
+				{compUnavailable, "31", " kitty (unsupported platform)\n"},
+				{stateConflict.String(), "31", "    /config/tmux (existing file)\n"},
+				{stateStale.String(), "33", "    /config/zsh\n"},
+			} {
+				want := label.text
+				if color {
+					want = "\x1b[" + label.code + "m" + want + "\x1b[0m"
+				}
+				want += label.tail
+				if !strings.Contains(out.String(), want) {
+					t.Fatalf("missing %q: %s", want, out.String())
+				}
+			}
+			if !color && strings.Contains(out.String(), "\x1b[") {
+				t.Fatalf("plain output contains ANSI escapes: %q", out.String())
+			}
+		}
 	}
 }
 

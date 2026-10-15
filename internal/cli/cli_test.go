@@ -16,6 +16,11 @@ import (
 
 func invoke(t *testing.T, args ...string) (int, string, string) {
 	t.Helper()
+	return invokeWithIO(t, IO{}, args...)
+}
+
+func invokeWithIO(t *testing.T, sys IO, args ...string) (int, string, string) {
+	t.Helper()
 	_, file, _, _ := runtime.Caller(0)
 	root := filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 	dir := t.TempDir()
@@ -42,14 +47,12 @@ func invoke(t *testing.T, args ...string) (int, string, string) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	code := Run(context.Background(), args, IO{
-		Stdin:   strings.NewReader(""),
-		Stdout:  &stdout,
-		Stderr:  &stderr,
-		Environ: []string{"HOME=" + home, "PATH=/usr/bin:/bin"},
-		Source:  assets.Checkout{Root: root},
-		UID:     501,
-	})
+	sys.Stdin = strings.NewReader("")
+	sys.Stdout, sys.Stderr = &stdout, &stderr
+	sys.Environ = append([]string{"HOME=" + home, "PATH=/usr/bin:/bin"}, sys.Environ...)
+	sys.Source = assets.Checkout{Root: root}
+	sys.UID = 501
+	code := Run(context.Background(), args, sys)
 	return code, stdout.String(), stderr.String()
 }
 
@@ -95,6 +98,36 @@ func TestJSONGoesToStdout(t *testing.T) {
 	}
 	if report["mode"] != "checkout" || report["summary"] != "incomplete" {
 		t.Fatalf("report = %v", report)
+	}
+}
+
+func TestStatusColor(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		io    IO
+		json  bool
+		color bool
+	}{
+		{name: "pipe"},
+		{name: "terminal", io: IO{Color: true}, color: true},
+		{name: "no color", io: IO{Color: true, Environ: []string{"NO_COLOR=1"}}},
+		{name: "empty no color", io: IO{Color: true, Environ: []string{"NO_COLOR="}}, color: true},
+		{name: "dumb terminal", io: IO{Color: true, Environ: []string{"TERM=dumb"}}},
+		{name: "json", io: IO{Color: true}, json: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			args := []string{"status"}
+			if tt.json {
+				args = append(args, "--json")
+			}
+			code, stdout, stderr := invokeWithIO(t, tt.io, args...)
+			if code != 0 || strings.Contains(stdout, "\x1b[") != tt.color {
+				t.Fatalf("code %d, stdout %q, stderr %q", code, stdout, stderr)
+			}
+			if tt.json && !json.Valid([]byte(stdout)) {
+				t.Fatalf("invalid JSON: %s", stdout)
+			}
+		})
 	}
 }
 

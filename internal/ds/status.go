@@ -201,20 +201,26 @@ func summarize(r StatusReport) string {
 }
 
 // RenderStatus prints a report for people.
-func RenderStatus(w io.Writer, r StatusReport, verbose bool) {
+func RenderStatus(w io.Writer, r StatusReport, verbose, color bool) {
 	fmt.Fprintf(w, "%s (%s mode)\n", r.Target, r.Mode)
 	fmt.Fprintf(w, "platform: %s\n", r.Platform)
-	fmt.Fprintf(w, "executable: %s\n", orNone(r.Runtime.Executable))
-	RenderVersion(w, r.Runtime)
-	for _, repo := range slices.Sorted(maps.Keys(r.Runtime.Sources)) {
-		if s := r.Runtime.Sources[repo]; s.Error != "" {
-			fmt.Fprintf(w, "note: %s: %s\n", repo, s.Error)
+	if verbose {
+		fmt.Fprintf(w, "executable: %s\n", orNone(r.Runtime.Executable))
+		RenderVersion(w, r.Runtime)
+		for _, name := range slices.Sorted(maps.Keys(r.Paths)) {
+			fmt.Fprintf(w, "%s: %s\n", name, r.Paths[name])
 		}
 	}
-	for _, name := range slices.Sorted(maps.Keys(r.Paths)) {
-		fmt.Fprintf(w, "%s: %s\n", name, r.Paths[name])
+	for _, repo := range slices.Sorted(maps.Keys(r.Runtime.Sources)) {
+		if s := r.Runtime.Sources[repo]; s.Error != "" {
+			fmt.Fprintf(w, "%s: %s: %s\n", statusLabel("note", color), repo, s.Error)
+		}
 	}
-	fmt.Fprintf(w, "mise: %s%s\n", r.Mise.State, suffix(r.Mise.Version, r.Mise.Detail))
+	miseDetail := ""
+	if verbose {
+		miseDetail = r.Mise.Detail
+	}
+	fmt.Fprintf(w, "mise: %s%s\n", statusLabel(r.Mise.State, color), suffix(r.Mise.Version, miseDetail))
 	fmt.Fprintf(w, "selection: %s\n", r.Selection)
 	if r.Inspected != nil {
 		fmt.Fprintf(w, "inspecting: %s\n", *r.Inspected)
@@ -222,9 +228,23 @@ func RenderStatus(w io.Writer, r StatusReport, verbose bool) {
 	if r.Build != nil {
 		fmt.Fprintf(w, "build: running %s, current %s\n", r.Build.Running, orNone(r.Build.Current))
 	}
-	fmt.Fprintf(w, "status: %s\n", r.Summary)
+	fmt.Fprintf(w, "status: %s\n", statusLabel(r.Summary, color))
 	for _, c := range r.Components {
-		fmt.Fprintf(w, "  %-11s %s%s\n", c.State, c.Name, suffix(c.Version, c.Detail))
+		version := c.Version
+		if c.Requested != "" && c.Requested != c.Version {
+			if version != "" {
+				version += "; "
+			}
+			version += "requested " + c.Requested
+		}
+		detail := c.Detail
+		if !verbose && c.State == compInstalled {
+			detail = ""
+		}
+		renderStatusRow(w, c.State, string(c.Name), suffix(version, detail), color)
+		if !verbose {
+			continue
+		}
 		if c.Source != "" {
 			fmt.Fprintf(w, "    request: %s (%s)\n", c.Requested, c.Source)
 		}
@@ -237,11 +257,11 @@ func RenderStatus(w io.Writer, r StatusReport, verbose bool) {
 	}
 	for _, f := range r.Files {
 		if verbose || f.State != statePresent.String() {
-			fmt.Fprintf(w, "  %-11s %s%s\n", f.State, f.Path, suffix("", f.Detail))
+			renderStatusRow(w, f.State, f.Path, suffix("", f.Detail), color)
 		}
 	}
 	for _, n := range r.Notes {
-		fmt.Fprintf(w, "note: %s\n", n)
+		fmt.Fprintf(w, "%s: %s\n", statusLabel("note", color), n)
 	}
 	switch r.Summary {
 	case SummaryIncomplete:
@@ -251,6 +271,25 @@ func RenderStatus(w io.Writer, r StatusReport, verbose bool) {
 	case SummaryConflict:
 		fmt.Fprintln(w, "preview: ds add --force --dry-run")
 	}
+}
+
+func renderStatusRow(w io.Writer, state, name, detail string, color bool) {
+	padding := strings.Repeat(" ", max(0, 11-len(state)))
+	fmt.Fprintf(w, "  %s%s %s%s\n", statusLabel(state, color), padding, name, detail)
+}
+
+func statusLabel(state string, color bool) string {
+	if !color {
+		return state
+	}
+	code := "33"
+	switch state {
+	case SummaryComplete, compInstalled, statePresent.String():
+		code = "32"
+	case SummaryConflict, compUnavailable:
+		code = "31"
+	}
+	return "\x1b[" + code + "m" + state + "\x1b[0m"
 }
 
 func suffix(version, detail string) string {

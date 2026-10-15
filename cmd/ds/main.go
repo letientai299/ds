@@ -26,6 +26,7 @@ func main() {
 		Stderr:      os.Stderr,
 		Environ:     os.Environ(),
 		Interactive: isTerminal(os.Stdin),
+		Color:       isTerminal(os.Stdout),
 		Executable:  exe,
 		UID:         os.Getuid(),
 		Exec:        syscall.Exec,

@@ -32,6 +32,8 @@ type IO struct {
 	Environ []string
 	// Interactive reports a terminal on stdin.
 	Interactive bool
+	// Color reports a terminal on stdout.
+	Color bool
 	// Executable is the running binary path.
 	Executable string
 	// UID is the effective user ID.
@@ -339,7 +341,7 @@ func (a *app) statusCmd() *cobra.Command {
 		ValidArgsFunction: a.completeComponents,
 	}
 	sel.register(cmd, a)
-	cmd.Flags().BoolVarP(&st.verbose, "verbose", "v", false, "list healthy items too")
+	cmd.Flags().BoolVarP(&st.verbose, "verbose", "v", false, "show paths and healthy files")
 	cmd.Flags().BoolVar(&st.json, "json", false, "print JSON to stdout")
 	cmd.Flags().BoolVar(&st.check, "check", false, "exit 1 unless status is complete")
 	return cmd
@@ -366,7 +368,8 @@ func (a *app) status(ctx context.Context, layers, comps []string, flags statusFl
 			return err
 		}
 	} else {
-		ds.RenderStatus(a.io.Stdout, r, flags.verbose)
+		color := a.io.Color && a.getenv("NO_COLOR") == "" && a.getenv("TERM") != "dumb"
+		ds.RenderStatus(a.io.Stdout, r, flags.verbose, color)
 	}
 	if flags.check && !r.Healthy() {
 		return errUnhealthy

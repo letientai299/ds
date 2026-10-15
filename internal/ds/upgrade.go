@@ -139,8 +139,38 @@ func (e *Env) upgradeTools(ctx context.Context, comps []ComponentName, dryRun bo
 		e.printf("ds upgrade: skipping %s; not managed by mise\n", name)
 		return true
 	})
+	var floating []string
+	for _, name := range comps {
+		comp, _ := e.Catalog.Component(name)
+		if comp.Tool == nil || !slices.Contains(tools, comp.Tool.Name) {
+			continue
+		}
+		tool := comp.Tool
+		if strings.HasPrefix(tool.Name, "http:") && tool.Spec["version_list_url"] == nil {
+			e.printf("ds upgrade: %s pinned to %s by catalog\n", tool.Name, tool.Spec["version"])
+			tools = slices.DeleteFunc(tools, func(n string) bool { return n == tool.Name })
+			continue
+		}
+		fact := facts[tool.Name]
+		if tool.Spec["version"] == "latest" && fact.Requested != "latest" &&
+			filepath.Clean(fact.Source.Path) == fragmentPath(e.Target) {
+			floating = append(floating, tool.Name+"@latest")
+		}
+	}
 	if len(tools) == 0 {
 		return nil
+	}
+	if len(floating) > 0 {
+		args := append([]string{"use", "--fuzzy", "--path", fragmentPath(e.Target)}, floating...)
+		if dryRun {
+			e.printf("ds upgrade: would run mise %s\n", strings.Join(args, " "))
+		} else {
+			cmd := e.miseCmd(mise.Path, args...)
+			cmd.Env = cmd.Env.with("MISE_PIN", "0")
+			if err := e.Runner.Run(ctx, cmd); err != nil {
+				return err
+			}
+		}
 	}
 	if dryRun {
 		e.printf("ds upgrade: would run mise upgrade %s\n", strings.Join(tools, " "))

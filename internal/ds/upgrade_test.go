@@ -150,3 +150,69 @@ func TestUpgradePreservesExternalTools(t *testing.T) {
 		})
 	}
 }
+
+func TestUpgradeCatalogDownloads(t *testing.T) {
+	t.Parallel()
+	for _, dryRun := range []bool{false, true} {
+		t.Run(fmt.Sprint(dryRun), func(t *testing.T) {
+			f := newFixture(t)
+			f.add(ComponentRequest{Components: []ComponentName{"delta", "kitty", "ouch", "worktrunk", "bat"}}, AddOptions{})
+			if err := f.env.upgradeTools(context.Background(), []ComponentName{"delta", "kitty", "ouch", "worktrunk", "bat"}, dryRun); err != nil {
+				t.Fatal(err)
+			}
+			for _, tool := range []string{"delta", "kitty", "ouch", "worktrunk"} {
+				if !strings.Contains(f.err.String(), "http:"+tool+" pinned to ") {
+					t.Fatal(f.err.String())
+				}
+			}
+			upgrades := f.logLines("mise -C / upgrade")
+			if dryRun {
+				if len(upgrades) != 0 || !strings.Contains(f.err.String(), "would run mise upgrade bat") {
+					t.Fatalf("upgrades: %v; output: %s", upgrades, f.err.String())
+				}
+			} else if len(upgrades) != 1 || !strings.HasSuffix(upgrades[0], "upgrade bat") {
+				t.Fatalf("upgrades: %v", upgrades)
+			}
+		})
+	}
+}
+
+func TestUpgradeFloatingRequests(t *testing.T) {
+	t.Parallel()
+	for _, source := range []string{"managed", "override"} {
+		for _, dryRun := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/%t", source, dryRun), func(t *testing.T) {
+				f := newFixture(t)
+				f.add(ComponentRequest{Components: []ComponentName{"neovim"}}, AddOptions{})
+				script := strings.ReplaceAll(fakeMise, `"requested_version":"latest"`, `"requested_version":"0.12.5"`)
+				script = strings.ReplaceAll(script, "upgrade | bootstrap | exec)", "use | upgrade | bootstrap | exec)")
+				if source == "override" {
+					script = strings.ReplaceAll(script, "conf.d/10-ds.toml", "config.toml")
+				}
+				writeExec(t, filepath.Join(f.tools, "mise"), script)
+				before := snapshot(t, f.home)
+				if err := f.env.upgradeTools(context.Background(), []ComponentName{"neovim"}, dryRun); err != nil {
+					t.Fatal(err)
+				}
+				upgrades := f.logLines("mise -C / upgrade")
+				uses := f.logLines("mise -C / use")
+				if dryRun {
+					if len(upgrades) != 0 || len(uses) != 0 || !reflect.DeepEqual(before, snapshot(t, f.home)) {
+						t.Fatal("dry run changed target")
+					}
+					if strings.Contains(f.err.String(), "use --fuzzy --path ") != (source == "managed") {
+						t.Fatal(f.err.String())
+					}
+					return
+				}
+				var wantUses []string
+				if source == "managed" {
+					wantUses = []string{"mise -C / use --fuzzy --path " + fragmentPath(f.env.Target) + " neovim@latest"}
+				}
+				if !reflect.DeepEqual(uses, wantUses) || !reflect.DeepEqual(upgrades, []string{"mise -C / upgrade neovim"}) {
+					t.Fatalf("uses = %v; want %v; upgrades = %v", uses, wantUses, upgrades)
+				}
+			})
+		}
+	}
+}

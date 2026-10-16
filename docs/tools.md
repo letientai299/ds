@@ -19,7 +19,9 @@ FZF and Ctrl+T use `fzf-files`, with hidden files enabled and normal ignore
 rules preserved. Extend the directory and filename lists in the
 [include settings][fzf-includes] to expose ignored paths at any depth. Filename
 patterns support `*` and `?`; the skip list prunes dependency and build trees
-from ignored-path scans. The helper runs only when invoked and removes duplicates.
+from ignored-path scans. Names and patterns are case-sensitive.
+The helper runs only when invoked and removes duplicates.
+The [maintainer notes][fzf-design] explain the scan and buffering tradeoffs.
 
 Ripgrep uses the managed [rgrc][rgrc] for case-insensitive searching. Pass `-s`
 to match case for one invocation. The [shell exports][exports] also select
@@ -174,3 +176,4 @@ shortcuts or change existing Kitty windows.
 [zoxide]: https://github.com/ajeetdsouza/zoxide
 [completions]: https://github.com/zsh-users/zsh-completions
 [yazi]: https://yazi-rs.github.io/
+[fzf-design]: ../assets/dotfiles/fzf-paths.md

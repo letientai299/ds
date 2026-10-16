@@ -14,11 +14,11 @@ cd "$work/local/repo[1]+"
 git init -q
 print -rl -- 'local/' '.ai/' '.dump/' '.env*' 'ignored/' 'node_modules/' > .gitignore
 files=(
-  normal.txt local/root.txt lua/local/plugins/harper.lua
+  normal.txt local/root.txt nested/local/settings/config.lua
   .ai/notes.txt nested/.dump/log.txt .env nested/.env
   nested/.env.production ignored/deep/.env local/.env
 )
-omitted=(ignored/secret.txt node_modules/local/hidden.txt node_modules/.env)
+omitted=(ignored/secret.txt ignored/LOCAL/hidden.txt ignored/.ENV node_modules/local/hidden.txt node_modules/.env)
 for file in "${files[@]}" "${omitted[@]}"; do
   mkdir -p "${file:h}"
   touch "$file"
@@ -39,6 +39,18 @@ check_files() {
   done
 }
 check_files
+mkdir -p "$work/case-tools"
+cat > "$work/case-tools/fd" <<'SH'
+#!/bin/sh
+exec "$FZF_REAL_FD" --ignore-case "$@"
+SH
+chmod +x "$work/case-tools/fd"
+(
+  # Uppercase roots conceal fd's default smart-case.
+  export FZF_REAL_FD=${commands[fd]}
+  export PATH="$work/case-tools:$PATH"
+  check_files
+)
 ln -s "$PWD" "$work/linked"
 ln -s "$files_helper" "$work/linked-files"
 files_helper="$work/linked-files"
@@ -47,7 +59,7 @@ check_files
 actual=("${(@f)$("$work/helpers/tools/fzf-dirs")}")
 unique=("${(@u)actual}")
 (( $#actual == $#unique )) || fail 'duplicate directories'
-for directory in local/ lua/local/ lua/local/plugins/ .ai/ nested/.dump/; do
+for directory in local/ nested/local/ nested/local/settings/ .ai/ nested/.dump/; do
   (( ${actual[(Ie)$directory]} )) || fail "missing $directory"
 done
 for directory in ignored/ node_modules/local/ .env nested/.env; do
@@ -64,7 +76,7 @@ omitted+=(ignored/file12.cfg)
 check_files
 print -rl -- 'include_dirs=()' 'include_files=()' >> "$work/helpers/dotfiles/fzf-includes.zsh"
 files=(normal.txt .gitignore)
-omitted+=(local/root.txt lua/local/plugins/harper.lua .env nested/.env)
+omitted+=(local/root.txt nested/local/settings/config.lua .env nested/.env)
 check_files
 cp "$root/assets/dotfiles/fzf-includes.zsh" "$work/helpers/dotfiles/"
 mkdir -p "$work/tools"

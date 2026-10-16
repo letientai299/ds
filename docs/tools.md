@@ -5,6 +5,13 @@ The `zsh` component links `serve`, `fzf-files`, and `fzf-dirs` into
 Trial shells expose the same commands. Existing files at managed paths follow
 the normal ownership and conflict rules.
 
+`core` provides [sd][sd] and [GNU awk][gawk] through mise. GNU awk uses a
+pinned, checksummed source release so `awk` and `gawk` select the same version
+on every platform. Its build requires a C compiler and `make`; ds installs
+`build-essential` on Ubuntu, and macOS uses the Xcode Command Line Tools.
+Optional readline, MPFR, persistent memory, and translations are disabled
+to keep the build independent of host libraries.
+
 ## File selection and search
 
 FZF and Ctrl+T use `fzf-files`, with hidden files enabled and normal ignore
@@ -158,6 +165,8 @@ shortcuts or change existing Kitty windows.
 [gdu]: https://github.com/dundee/gdu
 [ouch]: https://github.com/ouch-org/ouch
 [fzf-includes]: ../assets/dotfiles/fzf-includes.zsh
+[sd]: https://github.com/chmln/sd
+[gawk]: https://www.gnu.org/software/gawk/
 [rgrc]: ../assets/dotfiles/rgrc
 [exports]: ../assets/dotfiles/exports.zsh
 [worktrunk]: https://worktrunk.dev/

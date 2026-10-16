@@ -23,6 +23,8 @@ core = [
   "fd",
   "fzf",
   "ripgrep",
+  "sd",
+  "awk",
   "tree-sitter",
   "zoxide",
   "jq",
@@ -95,6 +97,28 @@ links = [{ target = "{ds}/rgrc", source = "ds:dotfiles/rgrc" }]
 commands = ["tree-sitter"]
 requires = ["mise"]
 tool = { name = "tree-sitter", version = "latest" }
+
+[components.sd]
+commands = ["sd"]
+requires = ["mise"]
+tool = { name = "sd", version = "latest" }
+
+[components.awk]
+commands = ["awk", "gawk"]
+requires = ["mise", "c-build"]
+
+[components.awk.tool]
+name = "http:gawk"
+version = "5.4.1"
+url = "https://mirrors.kernel.org/gnu/gawk/gawk-5.4.1.tar.gz"
+checksum = "sha256:8b3b0ea83930311a3f30905d3ce898d32c6103c2fe20d6a90b40341171b174de"
+strip_components = 1
+bin_path = "bin"
+postinstall = 'sh "{assets}/tools/gawk-postinstall"'
+
+[components.c-build]
+commands = ["cc", "make"]
+packages = { apt = ["build-essential"], brew = ["make"] }
 
 [components.zoxide]
 commands = ["zoxide"]

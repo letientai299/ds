@@ -91,7 +91,7 @@ func newFixture(t *testing.T) *fixture {
 	}
 	writeExec(t, filepath.Join(f.tools, "mise"), fakeMise)
 	writeExec(t, filepath.Join(f.tools, "nvim"), fakeNvim)
-	for _, cmd := range []string{"git", "curl", "zsh", "tmux", "kitty", "kitten"} {
+	for _, cmd := range []string{"git", "curl", "zsh", "tmux", "kitty", "kitten", "cc", "make"} {
 		writeExec(t, filepath.Join(f.tools, cmd), fakeCommand)
 	}
 	repos := map[assets.Repo]string{}

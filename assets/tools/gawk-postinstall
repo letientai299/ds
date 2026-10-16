@@ -1,0 +1,23 @@
+#!/bin/sh
+set -eu
+: "${MISE_TOOL_INSTALL_PATH:?mise installation path is required}"
+build=$(mktemp -d "${MISE_TOOL_INSTALL_PATH}.build.XXXXXX")
+cleanup() {
+	result=$?
+	trap - EXIT
+	if [ "$result" -ne 0 ] && [ -d "$MISE_TOOL_INSTALL_PATH" ]; then
+		mv "$MISE_TOOL_INSTALL_PATH" "$build/incomplete"
+	fi
+	rm -rf "$build"
+	exit "$result"
+}
+trap cleanup EXIT
+mv "$MISE_TOOL_INSTALL_PATH" "$build/source"
+cd "$build/source"
+# Extraction refreshes generated file timestamps.
+find . -type f -exec touch -r configure {} +
+./configure --prefix="$MISE_TOOL_INSTALL_PATH" \
+	--disable-nls --disable-pma --without-readline --without-mpfr
+make -j2
+make install
+ln -sf gawk "$MISE_TOOL_INSTALL_PATH/bin/awk"

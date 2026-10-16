@@ -315,6 +315,21 @@ func TestLinuxPackagesNeedPrivilege(t *testing.T) {
 	}
 }
 
+func TestAwkBuildNeedsCompiler(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t)
+	f.env.Platform = Platform{OS: "linux", Arch: "amd64", Libc: "glibc", Glibc: "2.39"}
+	f.env.UID = 0
+	os.Remove(filepath.Join(f.tools, "cc"))
+	for _, name := range []string{"awk", "gawk", "apt-get"} {
+		writeExec(t, filepath.Join(f.tools, name), fakeCommand)
+	}
+	p := f.env.BuildPlan(context.Background(), f.state(), ComponentRequest{Components: []ComponentName{"awk"}}, AddOptions{})
+	if len(p.Blockers) > 0 || !hasAction(p, "install apt packages: build-essential") || !hasAction(p, "install mise tools: http:gawk") {
+		t.Fatalf("actions %v blockers %v", actionNames(p), p.Blockers)
+	}
+}
+
 func TestKittyNeedsGlibc(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t)

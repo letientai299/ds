@@ -14,6 +14,7 @@ to keep the build independent of host libraries.
 
 ## File selection and search
 
+The helpers rely on ds to provide `fd` on `PATH`.
 FZF and Ctrl+T use `fzf-files`, with hidden files enabled and normal ignore
 rules preserved. Extend the directory and filename lists in the
 [include settings][fzf-includes] to expose ignored paths at any depth. Filename

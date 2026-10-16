@@ -1,27 +1,25 @@
 source "${${(%):-%x}:A:h}/fzf-includes.zsh"
-if (( $+commands[fd] )); then
-  finder=$commands[fd]
-elif (( $+commands[fdfind] )); then
-  finder=$commands[fdfind]
-else
-  print -ru2 -- "${program}: fd is unavailable"
-  exit 1
-fi
+
+escape_regex() {
+  REPLY=$1
+  local character
+  for character in '\' '[' ']' '.' '^' '$' '*' '+' '?' '(' ')' '{' '}' '|'; do
+    REPLY=${REPLY//"$character"/\\$character}
+  done
+}
 
 {
-  "$finder" --hidden --type "$kind" --exclude .git --strip-cwd-prefix
-
   patterns=()
   for directory in "${include_dirs[@]}"; do
-    escaped=$(print -r -- "$directory" | sed 's/[][\\.^$*+?(){}|]/\\&/g')
-    patterns+=("${escaped}(/|$)")
+    escape_regex "$directory"
+    patterns+=("${REPLY}(/|$)")
   done
   if [[ $kind == f ]]; then
     for pattern in "${include_files[@]}"; do
-      escaped=$(print -r -- "$pattern" | sed \
-        -e 's/[][\\.^$+(){}|]/\\&/g' \
-        -e 's@\*@[^/]*@g' -e 's@?@[^/]@g')
-      patterns+=("${escaped}$")
+      escape_regex "$pattern"
+      REPLY=${REPLY//\\\*/'[^/]*'}
+      REPLY=${REPLY//\\\?/'[^/]'}
+      patterns+=("${REPLY}$")
     done
   fi
   if (( $#patterns )); then
@@ -29,9 +27,27 @@ fi
     for directory in "${skip_dirs[@]}"; do
       exclude_flags+=(--exclude "$directory")
     done
-    scan_root=$(print -r -- "${PWD%/}/" | sed 's/[][\\.^$*+?(){}|]/\\&/g')
-    "$finder" --no-ignore --hidden --type "$kind" --full-path \
-      --strip-cwd-prefix "${exclude_flags[@]}" \
-      "^${scan_root}([^/]+/)*(${(j:|:)patterns})"
+    escape_regex "${${PWD:A}%/}/"
+    scan_root=$REPLY
+    include_command=(fd --no-ignore --hidden --type "$kind" --full-path
+      --strip-cwd-prefix "${exclude_flags[@]}"
+      "^${scan_root}([^/]+/)*(${(j:|:)patterns})")
+    if [[ $kind == f ]]; then
+      coproc "${include_command[@]}"
+      scan_pid=$!
+      exec {scan_fd}<&p
+    fi
   fi
-} | awk '!seen[$0]++'
+  fd --hidden --type "$kind" --exclude .git --strip-cwd-prefix
+  if (( $#patterns )); then
+    if [[ $kind == f ]]; then
+      # Drain separately to preserve complete output lines.
+      cat <&$scan_fd
+      exec {scan_fd}<&-
+      wait "$scan_pid"
+    else
+      # Preserve first-result latency on directory scans.
+      "${include_command[@]}"
+    fi
+  fi
+} | awk '!seen[$0]++ { print; if (NR == 1) fflush() }'

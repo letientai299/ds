@@ -11,24 +11,27 @@ fi
 {
   "$finder" --hidden --type "$kind" --exclude .git --strip-cwd-prefix
 
-  # Restrict ignored scans to explicit roots.
-  search_paths=()
+  patterns=()
   for directory in "${include_dirs[@]}"; do
-    [[ ! -d $directory ]] || search_paths+=(--search-path "$directory")
+    escaped=$(print -r -- "$directory" | sed 's/[][\\.^$*+?(){}|]/\\&/g')
+    patterns+=("${escaped}(/|$)")
   done
-  if (( $#search_paths )); then
-    "$finder" --no-ignore --hidden --type "$kind" --exclude .git "${search_paths[@]}"
-  fi
-
   if [[ $kind == f ]]; then
     for pattern in "${include_files[@]}"; do
-      for file in ./${~pattern}(N); do
-        [[ ! -f $file ]] || print -r -- "${file#./}"
-      done
+      escaped=$(print -r -- "$pattern" | sed \
+        -e 's/[][\\.^$+(){}|]/\\&/g' \
+        -e 's@\*@[^/]*@g' -e 's@?@[^/]@g')
+      patterns+=("${escaped}$")
     done
-  else
-    for directory in "${include_dirs[@]}"; do
-      [[ ! -d $directory ]] || print -r -- "$directory/"
+  fi
+  if (( $#patterns )); then
+    exclude_flags=(--exclude .git)
+    for directory in "${skip_dirs[@]}"; do
+      exclude_flags+=(--exclude "$directory")
     done
+    scan_root=$(print -r -- "${PWD%/}/" | sed 's/[][\\.^$*+?(){}|]/\\&/g')
+    "$finder" --no-ignore --hidden --type "$kind" --full-path \
+      --strip-cwd-prefix "${exclude_flags[@]}" \
+      "^${scan_root}([^/]+/)*(${(j:|:)patterns})"
   fi
 } | awk '!seen[$0]++'

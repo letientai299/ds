@@ -8,9 +8,10 @@ the normal ownership and conflict rules.
 ## File selection and search
 
 FZF and Ctrl+T use `fzf-files`, with hidden files enabled and normal ignore
-rules preserved. The [include settings][fzf-includes] add `.ai`, `.dump`, and
-root-local configuration files even when ignored. Extra scans stay within those
-explicit directories. The helper runs only when invoked and removes duplicates.
+rules preserved. Extend the directory and filename lists in the
+[include settings][fzf-includes] to expose ignored paths at any depth. Filename
+patterns support `*` and `?`; the skip list prunes dependency and build trees
+from ignored-path scans. The helper runs only when invoked and removes duplicates.
 
 Ripgrep uses the managed [rgrc][rgrc] for case-insensitive searching. Pass `-s`
 to match case for one invocation. The [shell exports][exports] also select

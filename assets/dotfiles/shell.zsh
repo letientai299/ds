@@ -29,8 +29,6 @@ source "${${(%):-%x}:A:h}/exports.zsh"
 setopt append_history hist_ignore_all_dups hist_ignore_space hist_verify share_history
 setopt complete_in_word interactive_comments no_beep ignore_eof
 
-alias vi=nvim
-alias vim=nvim
 source "${${(%):-%x}:A:h}/aliases.zsh"
 source "${${(%):-%x}:A:h}/bindkeys.zsh"
 source "${${(%):-%x}:A:h}/functions.zsh"

@@ -11,6 +11,28 @@ alias so=source
 alias :q=exit
 alias wrap='tput smam'
 alias nowrap='tput rmam'
+if (( $+commands[ouch] )); then
+  alias extract='ouch decompress'
+elif [[ ${aliases[extract]:-} == 'ouch decompress' ]]; then
+  unalias extract
+fi
+
+if (( $+commands[xh] )); then
+  alias http=xh
+  alias https='xh --https'
+else
+  [[ ${aliases[http]:-} != xh ]] || unalias http
+  [[ ${aliases[https]:-} != 'xh --https' ]] || unalias https
+fi
+
+if (( $+commands[nvim] )); then
+  alias vi=nvim
+  alias vim=nvim
+else
+  [[ ${aliases[vi]:-} != nvim ]] || unalias vi
+  [[ ${aliases[vim]:-} != nvim ]] || unalias vim
+fi
+
 if (( $+commands[bat] )); then
   alias cat=bat
 elif [[ ${aliases[cat]:-} == bat ]]; then
@@ -19,8 +41,10 @@ fi
 
 if (( $+commands[eza] )) && command eza --version >/dev/null 2>&1; then
   alias ls=eza
-elif [[ ${aliases[ls]:-} == eza ]]; then
-  unalias ls
+  alias tree='eza --tree'
+else
+  [[ ${aliases[ls]:-} != eza ]] || unalias ls
+  [[ ${aliases[tree]:-} != 'eza --tree' ]] || unalias tree
 fi
 
 alias gcf!="git commit --amend --no-edit"

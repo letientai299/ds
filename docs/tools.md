@@ -25,7 +25,8 @@ The [maintainer notes][fzf-design] explain the scan and buffering tradeoffs.
 
 Ripgrep uses the managed [rgrc][rgrc] for case-insensitive searching. Pass `-s`
 to match case for one invocation. The [shell exports][exports] also select
-Neovim as the editor and configure history. The UTF-8 locale uses `en_US.UTF-8`
+the editor only when `EDITOR` is unset or empty, preferring Neovim, then Vim,
+then vi, and configure history. The UTF-8 locale uses `en_US.UTF-8`
 on macOS and `C.UTF-8` on Linux. Local overrides belong in
 `$XDG_CONFIG_HOME/ds/local.zsh`.
 
@@ -111,6 +112,9 @@ ouch decompress logs.tar.zst --dir restored
 
 Ouch supports ZIP, TAR, 7z, gzip, bzip2, xz, zstd, and other compression
 formats. RAR supports extraction and listing only.
+
+When `ouch` is on `PATH`, `extract` runs `ouch decompress` and accepts its
+arguments, including `--dir`.
 
 ## AI agents
 

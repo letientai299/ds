@@ -1,4 +1,12 @@
-export EDITOR=nvim
+if [[ -n ${EDITOR:-} ]]; then
+  export EDITOR
+elif (( $+commands[nvim] )); then
+  export EDITOR=nvim
+elif (( $+commands[vim] )); then
+  export EDITOR=vim
+else
+  export EDITOR=vi
+fi
 if [[ $OSTYPE == darwin* ]]; then
   export LANG=en_US.UTF-8
 else

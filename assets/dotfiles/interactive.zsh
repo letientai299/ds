@@ -95,8 +95,8 @@ _ds_highlighting_init() {
 # Wait for idle ZLE after the first prompt. Keep errors visible, without
 # replaying directory or prompt hooks; highlighting must follow widget setup.
 zsh-defer -dm2 _ds_mise_init
-zsh-defer -dm2 _ds_tool_init
 zsh-defer -dm2 _ds_completion_init
+zsh-defer -dm2 _ds_tool_init
 zsh-defer -dm2 _ds_fzf_tab_init
 zsh-defer -dm2 _ds_autosuggestions_init
 zsh-defer -dm2 _ds_highlighting_init

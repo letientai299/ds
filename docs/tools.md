@@ -32,9 +32,9 @@ on macOS and `C.UTF-8` on Linux. Local overrides belong in
 
 ## Navigate directories and worktrees
 
-Use `z` and `zi` for [zoxide][zoxide] navigation across projects. Use `j query`
-to jump to a remembered directory inside the current Git checkout. With no
-match, or no query, `j` opens the scoped `fzf-dirs` picker. Outside Git, the
+Use `z` and `zi` for [zoxide][zoxide] navigation across projects, with native
+directory completion for `z`. Use `j query` to jump to a remembered directory
+inside the current Git checkout. With no match, or no query, `j` opens the scoped `fzf-dirs` picker. Outside Git, the
 picker stays under the current directory. Ignored directory searches use the
 same bounded include settings as file selection.
 

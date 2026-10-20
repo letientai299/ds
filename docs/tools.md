@@ -65,6 +65,10 @@ and Ctrl-D does not exit the shell. `exit` and `:q` still exit normally.
 
 `gon` runs `git open`; the `git` component installs `git-open` through mise.
 
+Git uses [Delta][delta] as its pager when the command works, with `less` as
+the fallback. Delta highlights diffs and supports jumping between files with
+`n` and `N`. `git --no-pager` bypasses the pager for one invocation.
+
 ## Automatic project environments
 
 To enable mise's interactive environment activation, add this to
@@ -115,6 +119,8 @@ formats. RAR supports extraction and listing only.
 
 When `ouch` is on `PATH`, `extract` runs `ouch decompress` and accepts its
 arguments, including `--dir`.
+
+[delta]: https://github.com/dandavison/delta
 
 ## AI agents
 

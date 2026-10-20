@@ -26,7 +26,7 @@ run = [
 
 [tasks."test:zsh"]
 description = "Run the Zsh tests"
-run = ["zsh -df tests/prompt.zsh", "zsh -df tests/prompt-mr.zsh", "zsh -df tests/prompt-async.zsh", "zsh -df tests/fzf-paths.zsh", "zsh -df tests/shell-aliases.zsh"]
+run = ["zsh -df tests/prompt.zsh", "zsh -df tests/prompt-mr.zsh", "zsh -df tests/prompt-async.zsh", "zsh -df tests/fzf-paths.zsh", "zsh -df tests/shell-aliases.zsh", "zsh -df tests/git-pager.zsh"]
 
 [tasks.fmt]
 description = "Format Go and shell sources"

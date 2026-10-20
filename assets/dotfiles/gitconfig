@@ -4,3 +4,7 @@
 	rebase = false
 [push]
 	autoSetupRemote = true
+[core]
+	pager = "if command -v delta >/dev/null 2>&1 && delta --version >/dev/null 2>&1; then delta; else less; fi"
+[delta]
+	navigate = true

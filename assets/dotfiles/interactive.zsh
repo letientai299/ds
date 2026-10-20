@@ -4,6 +4,7 @@ typeset -g _ds_plugins_queued=1
 typeset -g _ds_plugins_dir="${${(%):-%x}:A:h}/plugins"
 typeset -gU fpath
 fpath=("$HOME/.local/share/zsh/site-functions" "$XDG_DATA_HOME/zsh/site-functions"
+  "$MISE_DATA_DIR"/installs/{bat,eza,fd,ripgrep,xh,aqua-ouch-org-ouch,sd,yazi,aqua-dandavison-delta,tree-sitter,codex}/latest/share/zsh/site-functions(N/)
   "${_ds_plugins_dir:h}/completions" "$_ds_config_dir/completions"
   "$_ds_plugins_dir/zsh-completions/src" $fpath)
 
@@ -40,6 +41,9 @@ _ds_completion_init() {
   zstyle ':completion:*' matcher-list '' 'm:{a-zA-Z}={A-Za-z}'
   zstyle ':completion:*:ssh:argument-1:*' tag-order hosts
   zstyle ':completion:*:ssh:*:hosts' format '%d'
+  local -a definitions=(
+    "$MISE_DATA_DIR"/installs/{bat,eza,fd,ripgrep,xh,aqua-ouch-org-ouch,sd,yazi,aqua-dandavison-delta,tree-sitter,codex}/latest/share/zsh/site-functions/_*(N)
+  )
   if (( ! $+functions[compdef] )); then
     local cache="$XDG_CACHE_HOME/ds/zsh"
     local revision="$(<"$_ds_plugins_dir/zsh-completions/REVISION")"
@@ -48,13 +52,16 @@ _ds_completion_init() {
     autoload -Uz compinit
     compinit -i -d "$cache/zcompdump-$ZSH_VERSION-$revision"
   else
-    local definition header
-    for definition in "$_ds_plugins_dir"/zsh-completions/src/_*(N); do
-      IFS= read -r header < "$definition"
-      [[ $header == '#compdef '* ]] || continue
-      compdef -na "${definition:t}" ${=header#\#compdef }
-    done
+    definitions+=("$_ds_plugins_dir"/zsh-completions/src/_*(N))
   fi
+  local definition header options
+  for definition in "${definitions[@]}"; do
+    IFS= read -r header < "$definition"
+    [[ $header == '#compdef '* ]] || continue
+    options=-a
+    [[ $definition != "$_ds_plugins_dir/"* ]] || options=-na
+    compdef "$options" "${definition:t}" ${=header#\#compdef }
+  done
   unfunction _ssh_hosts 2>/dev/null
   autoload -Uz _ssh_hosts
   _ds_worktrunk_init || true

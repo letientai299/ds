@@ -80,7 +80,7 @@ links = [{ target = "{nvim}", source = "nvim:" }]
 [components.fd]
 commands = ["fd"]
 requires = ["mise"]
-tool = { name = "fd", version = "latest" }
+tool = { name = "fd", version = "latest", postinstall = 'sh "{assets}/tools/completion-postinstall" fd' }
 
 [components.fzf]
 commands = ["fzf"]
@@ -90,18 +90,18 @@ tool = { name = "fzf", version = "latest" }
 [components.ripgrep]
 commands = ["rg"]
 requires = ["mise"]
-tool = { name = "ripgrep", version = "latest" }
+tool = { name = "ripgrep", version = "latest", postinstall = 'sh "{assets}/tools/completion-postinstall" rg' }
 links = [{ target = "{ds}/rgrc", source = "ds:dotfiles/rgrc" }]
 
 [components.tree-sitter]
 commands = ["tree-sitter"]
 requires = ["mise"]
-tool = { name = "tree-sitter", version = "latest" }
+tool = { name = "tree-sitter", version = "latest", postinstall = 'sh "{assets}/tools/completion-postinstall" tree-sitter' }
 
 [components.sd]
 commands = ["sd"]
 requires = ["mise"]
-tool = { name = "sd", version = "latest" }
+tool = { name = "sd", version = "latest", postinstall = 'sh "{assets}/tools/completion-postinstall" sd' }
 
 [components.awk]
 commands = ["awk", "gawk"]
@@ -133,7 +133,7 @@ tool = { name = "jq", version = "latest" }
 [components.xh]
 commands = ["xh"]
 requires = ["mise"]
-tool = { name = "xh", version = "latest" }
+tool = { name = "xh", version = "latest", postinstall = 'sh "{assets}/tools/completion-postinstall" xh' }
 
 [components.tmux]
 commands = ["tmux"]
@@ -147,7 +147,7 @@ links = [
 [components.yazi]
 commands = ["yazi", "ya"]
 requires = ["mise"]
-tool = { name = "yazi", version = "latest" }
+tool = { name = "yazi", version = "latest", postinstall = 'sh "{assets}/tools/completion-postinstall" yazi ya' }
 links = [{ target = "{ds}/yazi", source = "ds:dotfiles/yazi" }]
 
 [components.claude]
@@ -162,7 +162,7 @@ json = [
 [components.codex]
 commands = ["codex"]
 requires = ["mise"]
-tool = { name = "codex", version = "latest" }
+tool = { name = "codex", version = "latest", postinstall = 'sh "{assets}/tools/completion-postinstall" codex' }
 
 [components.cursor]
 commands = ["agent", "cursor-agent"]
@@ -182,12 +182,12 @@ postinstall = 'mkdir -p "$MISE_TOOL_INSTALL_PATH/bin" && for c in agent cursor-a
 [components.bat]
 commands = ["bat"]
 requires = ["mise"]
-tool = { name = "bat", version = "latest" }
+tool = { name = "bat", version = "latest", postinstall = 'sh "{assets}/tools/completion-postinstall" bat' }
 
 [components.eza]
 commands = ["eza"]
 requires = ["mise"]
-tool = { name = "eza", version = "latest" }
+tool = { name = "eza", version = "latest", postinstall = 'sh "{assets}/tools/completion-postinstall" eza' }
 
 [components.gdu]
 commands = ["gdu"]
@@ -201,6 +201,7 @@ requires = ["mise"]
 [components.delta.tool]
 name = "aqua:dandavison/delta"
 version = "latest"
+postinstall = 'sh "{assets}/tools/completion-postinstall" delta'
 
 [components.worktrunk]
 commands = ["wt"]
@@ -217,6 +218,7 @@ requires = ["mise"]
 [components.ouch.tool]
 name = "aqua:ouch-org/ouch"
 version = "latest"
+postinstall = 'sh "{assets}/tools/completion-postinstall" ouch'
 
 [components.kitty]
 commands = ["kitty", "kitten"]

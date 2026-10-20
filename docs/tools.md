@@ -49,6 +49,15 @@ directory in the shell after quitting. Its managed configuration lives under
 
 ## Completion and shell conveniences
 
+Tool installation prepares native Zsh completions for bat, eza, fd, ripgrep,
+xh, ouch, sd, yazi, ya, Delta, tree-sitter, and Codex. Release archives supply
+the definitions where available; Delta, tree-sitter, and Codex generate their
+own definitions at installation time. Eza's definition comes from its matching
+upstream tag. The shell loads them from mise's current
+`latest` installations without generating completions at startup. Existing tool
+installations need reinstalling with `mise install --force` after updating ds
+to acquire these definitions.
+
 [zsh-completions][completions] joins the existing deferred completion setup. Tab
 completion tries exact case first, then matches case insensitively. It also
 works with the cursor inside a word. History expansions return to the command

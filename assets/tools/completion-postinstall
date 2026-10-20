@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+: "${MISE_TOOL_INSTALL_PATH:?mise installation path is required}"
+for tool; do
+	target="$MISE_TOOL_INSTALL_PATH/share/zsh/site-functions"
+	mkdir -p "$target"
+	tmp=$(mktemp "$target/.completion.XXXXXX")
+	trap 'rm -f "$tmp"' EXIT HUP INT TERM
+	source=$(find "$MISE_TOOL_INSTALL_PATH" -type f \( -name "_$tool" -o -name "$tool.zsh" \) ! -path "$target/*" -print | head -n 1)
+	if [ -n "$source" ]; then
+		cp "$source" "$tmp"
+	elif [ "$tool" = eza ]; then
+		: "${MISE_TOOL_VERSION:?mise tool version is required}"
+		curl -fsSL "https://raw.githubusercontent.com/eza-community/eza/v${MISE_TOOL_VERSION#v}/completions/zsh/_eza" -o "$tmp"
+	elif [ "$tool" = delta ] || [ "$tool" = tree-sitter ] || [ "$tool" = codex ]; then
+		binary=$(find "$MISE_TOOL_INSTALL_PATH" \( -type f -o -type l \) -name "$tool" -print | head -n 1)
+		if [ ! -x "$binary" ]; then
+			printf 'Missing executable: %s\n' "$tool" >&2
+			exit 1
+		fi
+		case "$tool" in
+		delta) "$binary" --generate-completion zsh >"$tmp" ;;
+		tree-sitter) "$binary" complete --shell zsh >"$tmp" ;;
+		codex) "$binary" completion zsh >"$tmp" ;;
+		esac
+	else
+		printf 'Missing completion: %s\n' "$tool" >&2
+		exit 1
+	fi
+	test -s "$tmp"
+	chmod 644 "$tmp"
+	mv "$tmp" "$target/_$tool"
+done

@@ -26,7 +26,7 @@ run = [
 
 [tasks."test:zsh"]
 description = "Run the Zsh tests"
-run = ["zsh -df tests/prompt.zsh", "zsh -df tests/prompt-mr.zsh", "zsh -df tests/fzf-paths.zsh"]
+run = ["zsh -df tests/prompt.zsh", "zsh -df tests/prompt-mr.zsh", "zsh -df tests/prompt-async.zsh", "zsh -df tests/fzf-paths.zsh"]
 
 [tasks.fmt]
 description = "Format Go and shell sources"
@@ -37,5 +37,5 @@ description = "Build main-mode binaries for every platform into dist/"
 run = "go run ./cmd/ds-build dist --out dist"
 
 [tasks."bench:prompt"]
-description = "Measure prompt refresh latency in disposable repositories"
+description = "Measure synchronous prompt collection in disposable repositories"
 run = "zsh -df tests/prompt-bench.zsh"

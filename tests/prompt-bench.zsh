@@ -33,6 +33,7 @@ bench() {
     "$label" "$timings[$(( (samples + 1) / 2 ))]" "$timings[$(( (samples * 95 + 99) / 100 ))]" "$timings[-1]" "$samples"
 }
 print -r -- "zsh=$ZSH_VERSION git=$(git --version) os=$(uname -sm)"
+print 'mode=synchronous; excludes interactive background refresh'
 if (( $# )); then
   # Preserve each checkout's normal Git configuration.
   for checkout in "${(@)argv:A}"; do

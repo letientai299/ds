@@ -13,6 +13,9 @@ typeset -g _ds_prompt_char='%F{green}❯'
 typeset -g _ds_prompt_oid='' _ds_prompt_subject=''
 typeset -g _ds_prompt_command=git _ds_prompt_apple_git='' _ds_prompt_apple_key=''
 typeset -gF _ds_prompt_started=0
+typeset -g _ds_prompt_async_fd=${_ds_prompt_async_fd:-} _ds_prompt_async_key=''
+typeset -g _ds_prompt_cache_file='' _ds_prompt_cache_key=''
+typeset -gi _ds_prompt_generation=${_ds_prompt_generation:-0} _ds_prompt_pending_generation=${_ds_prompt_pending_generation:-0}
 # Reserve one column against automatic wrapping.
 PROMPT=$'\n''%$(( COLUMNS > _ds_prompt_status_width + 1 ? COLUMNS - _ds_prompt_status_width - 1 : 1 ))>…>${_ds_prompt_mr}${_ds_prompt_context}${_ds_prompt_path}${_ds_prompt_git}%>>${_ds_prompt_status}
 %F{yellow}%(1j.%(2j.%j.)• .)%f${_ds_prompt_duration}%F{yellow}%D{%H:%M:%S}%f ${_ds_prompt_char}%f '
@@ -292,6 +295,117 @@ _ds_prompt_context() {
   _ds_prompt_context=$context
 }
 
+_ds_prompt_cache_location() {
+  emulate -L zsh
+  local relative=${PWD#/} directory="${XDG_CACHE_HOME:-$HOME/.cache}/ds/prompt-v2/$EUID"
+  # Separate child directories from cached records.
+  [[ -z $relative ]] || directory+="/d/${relative//\//\/d\/}"
+  _ds_prompt_cache_file="$directory/entry"
+  _ds_prompt_cache_key="${(q)PWD}:${(q)GIT_DIR}:${(q)GIT_WORK_TREE}:${(q)GIT_INDEX_FILE}:${(q)HOST}:${(q)LC_SSH_ALIAS}:${SSH_CONNECTION:+ssh}:${SSH_TTY:+tty}"
+}
+
+_ds_prompt_cache_read() {
+  emulate -L zsh
+  local line file=$_ds_prompt_cache_file
+  local -a values
+  # Preserve existing caches during layout migration.
+  [[ -f $file ]] || file="${XDG_CACHE_HOME:-$HOME/.cache}/ds/prompt-v1/$EUID${PWD}/entry"
+  # Ignore incomplete records and special files.
+  [[ -f $file && -r $file ]] || return 0
+  IFS= read -r line < "$file" || return 0
+  values=("${(@ps:\t:)line}")
+  values=("${(@Q)values}")
+  (( $#values == 4 )) && [[ $values[1] == $_ds_prompt_cache_key ]] || return 0
+  _ds_prompt_context=$values[2]
+  _ds_prompt_git=$values[3]
+  _ds_prompt_path=$values[4]
+}
+
+_ds_prompt_cache_write() {
+  emulate -L zsh
+  [[ -n $_ds_prompt_cache_file && ! -d $_ds_prompt_cache_file ]] || return 0
+  local -a values=("$_ds_prompt_cache_key" "$_ds_prompt_context" "$_ds_prompt_git" "$_ds_prompt_path")
+  local record="${(pj:\t:)${(@qqqq)values}}" cached
+  if [[ -f $_ds_prompt_cache_file ]] && IFS= read -r cached < "$_ds_prompt_cache_file" && [[ $cached == $record ]]; then
+    return 0
+  fi
+  (
+    umask 077
+    command mkdir -p -- "${_ds_prompt_cache_file:h}" || return 0
+    local temporary="$_ds_prompt_cache_file.$$.tmp"
+    if print -r -- "$record" > "$temporary" && command mv -f -- "$temporary" "$_ds_prompt_cache_file"; then
+      return 0
+    fi
+    command rm -f -- "$temporary"
+  ) 2>/dev/null
+  return 0
+}
+
+_ds_prompt_snapshot() {
+  emulate -L zsh
+  _ds_prompt_context
+  _ds_prompt_git
+  _ds_prompt_path
+  _ds_prompt_cache_write
+  local -a values=(
+    "$_ds_prompt_context" "$_ds_prompt_git" "$_ds_prompt_path"
+    "$_ds_prompt_root" "$_ds_prompt_pwd" "$_ds_prompt_branch"
+    "$_ds_prompt_root_branch" "$_ds_prompt_physical"
+    "$_ds_prompt_oid" "$_ds_prompt_subject" "$_ds_prompt_command"
+    "$_ds_prompt_apple_git" "$_ds_prompt_apple_key"
+  )
+  # Quote data without evaluating repository text.
+  print -r -- "${(pj:\t:)${(@qqqq)values}}"
+}
+
+_ds_prompt_async_ready() {
+  emulate -L zsh
+  local fd=$1 line
+  local previous="$_ds_prompt_context:$_ds_prompt_git:$_ds_prompt_path:$_ds_prompt_mr"
+  local -a values
+  if [[ $2 != (err|nval) ]] && IFS= read -r -u "$fd" line; then
+    values=("${(@ps:\t:)line}")
+    values=("${(@Q)values}")
+  fi
+  zle -F "$fd"
+  exec {fd}<&-
+  _ds_prompt_async_fd=''
+  # Commands invalidate snapshots still in flight.
+  if (( _ds_prompt_pending_generation != _ds_prompt_generation )); then
+    _ds_prompt_async
+    return 0
+  fi
+  (( $#values == 13 )) || return 0
+  _ds_prompt_context=$values[1]
+  _ds_prompt_git=$values[2]
+  _ds_prompt_path=$values[3]
+  _ds_prompt_root=$values[4]
+  _ds_prompt_pwd=$values[5]
+  _ds_prompt_branch=$values[6]
+  _ds_prompt_root_branch=$values[7]
+  _ds_prompt_physical=$values[8]
+  _ds_prompt_oid=$values[9]
+  _ds_prompt_subject=$values[10]
+  _ds_prompt_command=$values[11]
+  _ds_prompt_apple_git=$values[12]
+  _ds_prompt_apple_key=$values[13]
+  _ds_prompt_mr
+  if [[ $previous != "$_ds_prompt_context:$_ds_prompt_git:$_ds_prompt_path:$_ds_prompt_mr" ]]; then
+    zle && zle reset-prompt
+  fi
+  return 0
+}
+
+_ds_prompt_async() {
+  emulate -L zsh
+  [[ -z $_ds_prompt_async_fd ]] || return 0
+  local fd
+  _ds_prompt_pending_generation=$_ds_prompt_generation
+  exec {fd}< <(_ds_prompt_snapshot </dev/null 2>/dev/null)
+  _ds_prompt_async_fd=$fd
+  zle -F "$fd" _ds_prompt_async_ready
+}
+
 _ds_prompt_precmd() {
   # Capture status before any command overwrites it.
   local -i code=$?
@@ -315,10 +429,25 @@ _ds_prompt_precmd() {
     _ds_prompt_status_width=$(( 3 + ${#code} ))
     _ds_prompt_char='%F{red}❯'
   fi
-  _ds_prompt_context
-  _ds_prompt_git
-  _ds_prompt_path
-  _ds_prompt_mr
+  if [[ -o interactive && -o zle ]]; then
+    _ds_prompt_cache_location
+    local key="${(q)_ds_prompt_cache_file}:$_ds_prompt_cache_key:${(q)PATH}:${(q)DEVELOPER_DIR}:${(q)SDKROOT}:${(q)TOOLCHAINS}"
+    if [[ $key != $_ds_prompt_async_key ]]; then
+      _ds_prompt_context='' _ds_prompt_git='' _ds_prompt_root='' _ds_prompt_branch=''
+      _ds_prompt_mr=''
+      _ds_prompt_path='%F{cyan}%(5~|…/%4~|%~)%f'
+      _ds_prompt_cache_read
+      _ds_prompt_async_key=$key
+    fi
+    _ds_prompt_mr_key=''
+    (( ++_ds_prompt_generation ))
+    _ds_prompt_async
+  else
+    _ds_prompt_context
+    _ds_prompt_git
+    _ds_prompt_path
+    _ds_prompt_mr
+  fi
   return 0
 }
 

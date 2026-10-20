@@ -39,6 +39,14 @@ mkdir -p "${legacy:h}"
 print "$(( EPOCHSECONDS + 86400 )) 99 https://gitlab.example/test/repo/-/merge_requests/99" > "$legacy"
 cat > "$work/init" <<'INIT'
 source "$DS_PROMPT_SOURCE"
+# Exercise MR callbacks separately.
+_ds_prompt_async() {
+  _ds_prompt_context
+  _ds_prompt_git
+  _ds_prompt_path
+  _ds_prompt_mr
+}
+functions[git_sync]=$functions[_ds_prompt_async]
 COLUMNS=160
 probe() { print -r -- "$_ds_prompt_mr" > "$DS_MR_PROBE"; }
 add-zsh-hook precmd probe
@@ -101,7 +109,7 @@ run 'git checkout -q second'
 run 'COLUMNS=20; :'
 await_text $'\e]8;;\e\\'
 run 'COLUMNS=160; :'
-run 'setopt prompt_bang; source "$DS_PROMPT_SOURCE"'
+run 'setopt prompt_bang; source "$DS_PROMPT_SOURCE"; functions[_ds_prompt_async]=$functions[git_sync]'
 [[ $(<"$work/probe") == *'!23'* ]] || fail 'reload cache missing'
 zpty -d shell
 zpty -b shell 'trap - EXIT; exec zsh -df'

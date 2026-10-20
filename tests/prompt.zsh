@@ -60,12 +60,12 @@ _ds_prompt_pwd=''
 print initial > tracked
 git add tracked
 git commit -qm initial
-expect '*⑂ main%f *initial%f' clean
+expect '*⑂ main%f *initial%f %F{242}????????%f' clean
 git checkout -qb wip
 git commit -q --allow-empty -m 'WIP: finish prompt'
-expect '*⑂ wip%f *%B%F{red}WIP%f%b: finish prompt%f' 'WIP subject'
+expect '*⑂ wip%f *%B%F{red}WIP%f%b: finish prompt%f %F{242}????????%f' 'WIP subject'
 git checkout -q main
-expect '*⑂ main%f *initial%f' 'finished subject'
+expect '*⑂ main%f *initial%f %F{242}????????%f' 'finished subject'
 print changed >> tracked
 expect '* %F{yellow}!1%f*' unstaged
 git add tracked
@@ -102,7 +102,7 @@ expect '*%F{red}×1%f*' conflict
 git merge --abort
 git worktree add -qb linked "$work/linked" >/dev/null 2>&1
 cd "$work/linked"
-expect '*⑂ linked%f*local%f' worktree
+expect '*⑂ linked%f*local%f %F{242}????????%f' worktree
 _ds_prompt_path
 [[ $_ds_prompt_path == '%B%F{blue}linked%b%F{cyan}%f' ]] || fail 'worktree path'
 cd "$work/repo"
@@ -119,7 +119,7 @@ expect '*%F{yellow}!1%f*' 'changed submodule head'
 git submodule update -q
 git submodule deinit -q -f sub
 git checkout -q upstream
-expect '*⑂ upstream%f*upstream%f' 'commit cache invalidation'
+expect '*⑂ upstream%f*upstream%f %F{242}????????%f' 'commit cache invalidation'
 git checkout -qb 'literal%F{red}$(false)'
 git commit -q --allow-empty -m $'literal %F{red} $(touch INJECTED) `touch ALSO` \033[31m'
 _ds_prompt_git
@@ -152,6 +152,8 @@ PATH="$work/bin:$PATH"
 _ds_prompt_oid=''
 expect '*⑂ literal*' 'PATH wrapper'
 [[ $(<"$DS_TEST_GIT_LOG") == $'status\nlog' ]] || fail 'wrapper bypassed'
+expect "* %F{242}${_ds_prompt_oid[1,8]}%f" 'cached short hash'
+[[ $(<"$DS_TEST_GIT_LOG") == $'status\nlog\nstatus' ]] || fail 'extra git call'
 _ds_prompt_oid=''
 export DS_TEST_LOG_FAIL=1
 expect '*⑂ literal*' 'log failure'

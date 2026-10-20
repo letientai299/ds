@@ -105,7 +105,7 @@ _ds_prompt_git() {
   if [[ -n $_ds_prompt_subject ]]; then
     local subject=${_ds_prompt_subject//\%/%%}
     [[ $_ds_prompt_subject == WIP* ]] && subject="%B%F{red}WIP%f%b${subject[4,-1]}"
-    _ds_prompt_git+=" %f${subject}%f"
+    _ds_prompt_git+=" %f${subject}%f %F{242}${oid[1,8]}%f"
   fi
   return 0
 }

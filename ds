@@ -33,7 +33,7 @@ go=$("$mise" -C "$root" which go 2>/dev/null) || {
 	printf 'ds: installing Go for %s\n' "$root" >&2
 	"$mise" -C "$root" install go >&2 && go=$("$mise" -C "$root" which go)
 } || die "install Go: mise -C $root install go"
-CGO_ENABLED=0 "$go" build -C "$root" -trimpath -o "$bin" \
+env -u GOROOT CGO_ENABLED=0 "$go" build -C "$root" -trimpath -o "$bin" \
 	-ldflags "-X 'github.com/letientai299/ds/internal/cli.checkoutRoot=$root'" ./cmd/ds ||
 	die "build failed in $root"
 exec "$bin" "$@"

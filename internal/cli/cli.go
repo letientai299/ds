@@ -134,7 +134,7 @@ func (a *app) rootCmd() *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return &ds.UsageError{Msg: err.Error()} })
 	root.AddCommand(
 		a.addCmd(), a.statusCmd(), a.shellCmd(), a.deployCmd(),
-		a.upgradeCmd(), a.completionCmd(), a.versionCmd(), a.continueCmd(),
+		a.upgradeCmd(), a.direnvCmd(), a.completionCmd(), a.versionCmd(), a.continueCmd(),
 	)
 	return root
 }

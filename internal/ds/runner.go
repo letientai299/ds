@@ -72,6 +72,14 @@ func (ExecRunner) Run(ctx context.Context, c Cmd) error {
 
 // output runs a command and returns trimmed stdout.
 func output(ctx context.Context, r Runner, c Cmd) (string, error) {
+	stdout, err := rawOutput(ctx, r, c)
+	if err != nil {
+		return stdout, err
+	}
+	return strings.TrimSpace(stdout), nil
+}
+
+func rawOutput(ctx context.Context, r Runner, c Cmd) (string, error) {
 	var stdout, stderr bytes.Buffer
 	c.Stdout = &stdout
 	c.Stderr = &stderr
@@ -84,7 +92,7 @@ func output(ctx context.Context, r Runner, c Cmd) (string, error) {
 		}
 		return stdout.String(), fmt.Errorf("%s: %w", filepath.Base(c.Args[0]), err)
 	}
-	return strings.TrimSpace(stdout.String()), nil
+	return stdout.String(), nil
 }
 
 func lastLine(s string) string {

@@ -51,6 +51,7 @@ func TestArgumentCompletion(t *testing.T) {
 		{"completion shells", []string{"completion", ""}, []string{"zsh", "bash"}},
 		{"completion takes one shell", []string{"completion", "zsh", ""}, nil},
 		{"shell has no arguments", []string{"shell", ""}, nil},
+		{"direnv has no arguments", []string{"direnv", ""}, nil},
 		{"version has no arguments", []string{"version", ""}, nil},
 		{"unknown component prefix", []string{"add", "zz"}, nil},
 	}

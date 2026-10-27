@@ -1,4 +1,5 @@
 .mise.local.toml
+mise.local.toml
 
 .jira.d/ .dump/
 dump/

@@ -1,0 +1,54 @@
+## Personal overrides; keep this file untracked.
+## Uncomment examples as needed.
+## Docs: https://mise.jdx.dev/configuration.html
+
+## Shell features require mise activation.
+## ds: enable DS_MISE_ACTIVATE in ~/.config/ds/local.zsh.
+
+## Environment variables restore when leaving the project.
+[env]
+# APP_ENV = "development"
+# PORT = "3000"
+
+## Load dotenv values; prepend project executables.
+# _.file = ".env"
+# _.path = ["bin"]
+
+## Aliases apply inside this project's directory tree.
+## Existing aliases aren't restored after name collisions.
+[shell_alias]
+# pstatus = "git status --short"
+# croot = "cd {{ config_root | quote }}"
+# pcheck = "mise run check"
+
+## Functions need current-shell hooks: script, not run.
+## Use unique function names; cleanup removes them.
+# [hooks.enter]
+# shell = "zsh"
+# script = '''
+# function project_cd() {
+#   builtin cd -- {{ config_root | quote }}/"$1"
+# }
+# function project_mkcd() {
+#   mkdir -p -- "$1" && builtin cd -- "$1"
+# }
+# '''
+
+## Remove functions when leaving the project.
+# [hooks.leave]
+# shell = "zsh"
+# script = 'unfunction project_cd project_mkcd'
+
+## Run after directory changes inside this project.
+# [hooks.cd]
+# shell = "zsh"
+# script = 'print -r -- "Working directory: $PWD"'
+
+## Tasks also work in scripts and CI.
+## Run this example with: mise run check
+# [tasks.check]
+# description = "Check whitespace errors"
+# run = "git diff --check"
+
+## Keep exports in [env] for automatic restoration.
+## Trust this file explicitly if mise requests it.

@@ -12,6 +12,7 @@ Selector command help lists components and layer members from the catalog.
 | `ds status [COMPONENT...]`                     | Inspect saved selection or supplied components        |
 | `ds status -l LAYER [-l LAYER]...`             | Inspect supplied layers                               |
 | `ds shell`                                     | Enter a persistent isolated trial environment         |
+| `ds direnv`                                    | Open the project's local mise configuration           |
 | `ds deploy HOST [COMPONENT...]`                | Deploy through OpenSSH; default to `core`             |
 | `ds deploy HOST -l LAYER [-l LAYER]...`        | Deploy specified layers                               |
 | `ds upgrade [ds\|tools\|plugins\|system\|all]` | Upgrade requested categories; default to all          |
@@ -77,6 +78,24 @@ Bare `upgrade` runs every category, `ds` first. Narrow categories do not pull
 sources. Repository sync failures warn and continue. Other failures in the `ds`
 stage stop the rest; remaining failures are reported per category.
 
+## Project environment
+
+`ds direnv` opens the project's local [mise configuration][mise-config] from
+anywhere inside its Git worktree. It reuses an existing local config; otherwise,
+it creates one beside a shared mise config at the Git root, including supported
+`.config/`, `.mise/`, and `mise/` layouts. Without a shared config, it creates
+`mise.local.toml` at the Git root. Linked Git worktrees use their own root.
+
+The editor comes from `VISUAL`, then `EDITOR`, then `vi`. Editor arguments are
+supported and resolve against the invocation directory. Existing config
+contents stay intact; new files contain
+[commented examples][direnv-template] for environment variables, dotenv files,
+`PATH`, aliases, functions, hooks, and tasks. New files have owner-only
+permissions. The command does not trust configuration automatically.
+
+The Git component manages `core.excludesFile` through the
+[global ignore file][gitignore], which ignores local mise configuration.
+
 ## Privileges
 
 ds never prompts for confirmation. Interactive runs that install Linux packages
@@ -92,3 +111,6 @@ for invalid input. An unhealthy `status` without `--check` exits 0. Status reads
 local and cached facts only.
 
 [catalog]: ../assets/catalog.toml
+[mise-config]: https://mise.jdx.dev/configuration.html
+[gitignore]: ../assets/dotfiles/gitignore
+[direnv-template]: ../internal/ds/direnv.toml

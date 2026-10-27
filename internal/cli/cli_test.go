@@ -69,6 +69,7 @@ func TestExitCodes(t *testing.T) {
 		{"positional layer", []string{"add", "core"}, 2, "use --layer core"},
 		{"unknown flag", []string{"status", "--bogus"}, 2, "unknown flag"},
 		{"unknown command", []string{"frobnicate"}, 2, "unknown command"},
+		{"direnv takes no arguments", []string{"direnv", "extra"}, 2, "unknown command"},
 		{"incompatible skip", []string{"upgrade", "system", "--skip", "system"}, 2, "cannot both upgrade and skip"},
 		{"deploy without host", []string{"deploy"}, 2, "needs a HOST"},
 		{"layer flag takes one name", []string{"status", "-l", "core,extra"}, 2, `unknown layer "core,extra"`},

@@ -167,6 +167,17 @@ Kitty with the configuration and helpers from [`kitty.conf`][kitty-conf]. The
 `ui` layer is independent; add `core` too for the fzf and Neovim features used
 by that configuration.
 
+The layer downloads [Iosevka Nerd Font Mono][iosevka-font] from the upstream
+Nerd Fonts release and verifies the archive against its published SHA-256 pinned
+in the [catalog][catalog]. It retains regular, bold, italic, and bold italic
+styles with their license in the ds data directory, then links the fonts into
+`~/Library/Fonts` on macOS or the XDG data directory's `fonts` folder on Linux.
+Repeat installs reuse the downloaded files. Extraction requires `tar` with xz
+support. ds also links its font selection into `conf/local/ds.conf` in the
+resolved `kitty.conf` checkout. Fresh deployments select the font automatically;
+`conf/local/machine.conf` can override it. Trials skip font downloads and config
+links. Existing font files and local ds config use ds's normal conflict handling.
+
 Kitty supports macOS and Linux with glibc 2.35 or newer. Plans that select it on
 older glibc hosts block before installation. A display is required to open a
 window. Ubuntu ARM64 CLI startup is verified; Rocky 9's older glibc cannot run
@@ -183,6 +194,8 @@ shortcuts or change existing Kitty windows.
 [codex]: https://learn.chatgpt.com/docs/codex/cli
 [cursor-cli]: https://cursor.com/docs/cli/overview
 [kitty-conf]: https://github.com/letientai299/kitty.conf
+[iosevka-font]: https://github.com/ryanoasis/nerd-fonts/releases
+[catalog]: ../assets/catalog.toml
 [caddy]: https://caddyserver.com/docs/caddyfile/directives/file_server
 [gdu]: https://github.com/dundee/gdu
 [ouch]: https://github.com/ouch-org/ouch

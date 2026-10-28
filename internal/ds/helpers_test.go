@@ -84,7 +84,7 @@ func newFixture(t *testing.T) *fixture {
 	mustMkdir(t, f.home)
 	sys := filepath.Join(dir, "sys")
 	mustMkdir(t, sys)
-	for _, util := range []string{"sh", "mkdir", "tr", "sed", "basename", "cat", "rm", "dirname", "wc", "chmod", "mktemp"} {
+	for _, util := range []string{"sh", "mkdir", "tr", "sed", "basename", "cat", "rm", "dirname", "wc", "chmod", "mktemp", "tar", "xz"} {
 		if real, err := exec.LookPath(util); err == nil {
 			symlink(t, real, filepath.Join(sys, util))
 		}
@@ -116,7 +116,7 @@ func newFixture(t *testing.T) *fixture {
 		sources[repo] = RepoSource{Dir: dir, URL: cat.RepoURL(repo)}
 	}
 	f.env = &Env{
-		Target:   HomeTarget{P: paths},
+		Target:   HomeTarget{P: paths, OS: "darwin"},
 		Source:   src,
 		Repos:    sources,
 		Catalog:  cat,
@@ -133,6 +133,7 @@ func newFixture(t *testing.T) *fixture {
 		Mise:       DefaultMise,
 		Completion: []byte("#compdef ds\n"),
 	}
+	mockFontDownload(t, f)
 	return f
 }
 

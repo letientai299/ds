@@ -134,6 +134,12 @@ func (e *Env) Status(ctx context.Context, st State, req Request) StatusReport {
 
 	scratch := &Plan{}
 	entries := e.managedEntries(scratch, comps)
+	entries = append(entries, e.planFonts(scratch, comps)...)
+	for _, action := range scratch.Actions {
+		if fonts, ok := action.(FetchFonts); ok {
+			r.Files = append(r.Files, FileStatus{Path: fonts.Dir, State: compMissing, Detail: "font download is incomplete"})
+		}
+	}
 	if link, ok := e.miseLink(mise.Path); ok {
 		entries = append(entries, link)
 	}

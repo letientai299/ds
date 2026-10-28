@@ -206,6 +206,7 @@ func (e *Env) BuildPlan(ctx context.Context, st State, req Request, opt AddOptio
 	e.planHelpers(p, comps, mise)
 
 	entries = append(entries, e.managedEntries(p, comps)...)
+	entries = append(entries, e.planFonts(p, comps)...)
 	e.planFiles(p, st, entries, opt)
 	// Links resolve through current, so tools and plugins that read assets
 	// run after activation.

@@ -94,6 +94,8 @@ func (e *Env) apply(ctx context.Context, a Action, st *State) error {
 		return stageBuild(emb, e.Executable, a.Dir)
 	case FetchMise:
 		return download(ctx, e.HTTP, a.Download, a.Path, 0o755)
+	case FetchFonts:
+		return e.fetchFonts(ctx, a)
 	case InstallPackages:
 		return e.installPackages(ctx, a)
 	case CloneRepo:

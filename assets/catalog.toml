@@ -2,8 +2,8 @@
 # their tools, native packages, dependencies, and owned configuration.
 #
 # Link, block, and json targets use target placeholders: {bin}, {ds}, {zshrc},
-# {gitconfig}, {ssh}, {nvim}, {tmux}, {claude}, and {cursor}. A trial shell
-# leaves {ssh}, {claude}, and {cursor} unset, which skips that entry. Link
+# {gitconfig}, {ssh}, {nvim}, {tmux}, {claude}, {cursor}, and {fonts}. A trial shell
+# leaves {ssh}, {claude}, {cursor}, and {fonts} unset, which skips that entry. Link
 # sources name a repository and a path inside it. Tool specs may use {assets}
 # for the ds asset directory.
 
@@ -244,6 +244,12 @@ links = [
   { target = "{ds}/kt", source = "kitty:bin/kt" },
   { target = "{bin}/kt", source = "ds:tools/kt" },
 ]
+
+[components.kitty.font]
+url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v3.5.1/Iosevka.tar.xz"
+# SHA-256 published on the upstream GitHub release asset.
+sha256 = "3b94ea1dc3955756762f977b7677bca671947dd56bc755a6f8465a8e83b5f257"
+files = ["IosevkaNerdFontMono-Regular.ttf", "IosevkaNerdFontMono-Bold.ttf", "IosevkaNerdFontMono-Italic.ttf", "IosevkaNerdFontMono-BoldItalic.ttf", "LICENSE.md"]
 
 [components.kitty.tool]
 name = "http:kitty"

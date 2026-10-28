@@ -177,15 +177,16 @@ func (a *app) env(ctx context.Context, trial bool) (*ds.Env, error) {
 	if err != nil {
 		return nil, err
 	}
-	var target ds.Target = ds.HomeTarget{P: paths}
-	if trial || (a.home == "" && a.getenv("DS_TRIAL") != "") {
-		target = ds.TrialTarget{P: paths}
-	}
 	runner := a.io.Runner
 	if runner == nil {
 		runner = ds.ExecRunner{}
 	}
 	environ := ds.NewEnviron(a.io.Environ)
+	platform := ds.DetectPlatform(ctx, runner, environ)
+	var target ds.Target = ds.HomeTarget{P: paths, OS: platform.OS}
+	if trial || (a.home == "" && a.getenv("DS_TRIAL") != "") {
+		target = ds.TrialTarget{P: paths}
+	}
 	client := a.io.HTTP
 	if client == nil {
 		client = &http.Client{Timeout: 10 * time.Minute}
@@ -202,7 +203,7 @@ func (a *app) env(ctx context.Context, trial bool) (*ds.Env, error) {
 		Source:      src,
 		Repos:       repos,
 		Catalog:     cat,
-		Platform:    ds.DetectPlatform(ctx, runner, environ),
+		Platform:    platform,
 		Runner:      runner,
 		Environ:     environ,
 		SystemPath:  "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",

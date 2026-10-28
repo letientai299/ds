@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -44,6 +45,7 @@ type Component struct {
 	Blocks        []BlockSpec
 	JSON          []JSONSpec
 	Helper        *HelperSpec
+	Font          *FontSpec
 	Glibc         string
 }
 
@@ -88,7 +90,7 @@ const (
 var (
 	namePattern   = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
 	targetPattern = regexp.MustCompile(`^\{([a-z]+)\}(/.*)?$`)
-	targetKeys    = []string{"bin", "ds", "zshrc", "gitconfig", "ssh", "nvim", "tmux", "claude", "cursor"}
+	targetKeys    = []string{"bin", "ds", "zshrc", "gitconfig", "ssh", "nvim", "tmux", "claude", "cursor", "fonts"}
 )
 
 type rawCatalog struct {
@@ -107,6 +109,7 @@ type rawComponent struct {
 	Blocks   []BlockSpec         `toml:"blocks"`
 	JSON     []JSONSpec          `toml:"json"`
 	Helper   *rawHelper          `toml:"helper"`
+	Font     *FontSpec           `toml:"font"`
 	Glibc    string              `toml:"glibc"`
 }
 
@@ -193,8 +196,14 @@ func parseComponent(name string, rc rawComponent) (*Component, error) {
 		Blocks:        rc.Blocks,
 		JSON:          rc.JSON,
 		Glibc:         rc.Glibc,
+		Font:          rc.Font,
 	}
 	var errs []error
+	if rc.Font != nil {
+		if err := rc.Font.validate(); err != nil {
+			errs = append(errs, fmt.Errorf("component %s: %w", name, err))
+		}
+	}
 	if len(rc.Commands) == 0 {
 		errs = append(errs, fmt.Errorf("component %s declares no commands", name))
 	}
@@ -274,6 +283,13 @@ func (c *Catalog) validate() []error {
 				errs = append(errs, fmt.Errorf("component %s: repository %s has no URL", name, repo))
 			}
 			claim(name, link.Target)
+		}
+		if comp.Font != nil {
+			for _, file := range comp.Font.Files {
+				if ext := filepath.Ext(file); ext == ".ttf" || ext == ".otf" {
+					claim(name, "{fonts}/"+file)
+				}
+			}
 		}
 		for _, block := range comp.Blocks {
 			if err := validTarget(block.Target); err != nil {

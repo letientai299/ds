@@ -119,7 +119,10 @@ type Target interface {
 }
 
 // HomeTarget converges a user's real configuration.
-type HomeTarget struct{ P Paths }
+type HomeTarget struct {
+	P  Paths
+	OS string
+}
 
 // TrialTarget converges an isolated trial beneath the state directory.
 type TrialTarget struct{ P Paths }
@@ -143,7 +146,12 @@ func (t TrialTarget) DSConfigDir() string   { return filepath.Join(t.Root(), "ds
 func (t TrialTarget) TmuxConfigDir() string { return filepath.Join(t.Root(), "tmux") }
 
 func (t HomeTarget) Placeholders() map[string]string {
+	fonts := filepath.Join(t.P.Data, "fonts")
+	if t.OS == "darwin" {
+		fonts = filepath.Join(t.P.Home, "Library", "Fonts")
+	}
 	return map[string]string{
+		"fonts":     fonts,
 		"bin":       t.P.Bin(),
 		"ds":        filepath.Join(t.P.Config, "ds"),
 		"zshrc":     filepath.Join(t.P.Home, ".zshrc"),

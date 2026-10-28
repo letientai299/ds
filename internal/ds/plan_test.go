@@ -232,6 +232,9 @@ func TestMissingRepoIsCloned(t *testing.T) {
 			if readFile(t, filepath.Join(dir, "f")) != "1\n" {
 				t.Fatal("repository not cloned")
 			}
+			if got := readFile(t, filepath.Join(dir, "conf", "local", "ds.conf")); !strings.Contains(got, "font_family Iosevka Nerd Font Mono\n") {
+				t.Fatalf("cloned repository font config missing: %q", got)
+			}
 			if dest, _ := os.Readlink(filepath.Join(f.env.Target.Placeholders()["ds"], "kitty")); dest != dir {
 				t.Fatalf("kitty link = %q", dest)
 			}
